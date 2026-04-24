@@ -282,6 +282,8 @@ private fun fallbackColorFor(key: String): Color {
     return palette[key.hashCode().absoluteValue % palette.size]
 }
 
+private const val MAX_ICONS_LOADED_EAGERLY = 300
+
 private suspend fun loadLauncherApps(
     packageManager: PackageManager,
     hostPackageName: String,
@@ -298,18 +300,27 @@ private suspend fun loadLauncherApps(
             resolveInfo.loadLabel(packageManager)?.toString()?.lowercase(Locale.getDefault()).orEmpty()
         }
 
-    val apps = resolveInfos.map { resolveInfo ->
+    val apps = resolveInfos.mapIndexed { index, resolveInfo ->
         val activityInfo = resolveInfo.activityInfo
         val componentId = "${activityInfo.packageName}/${activityInfo.name}"
         val label = resolveInfo.loadLabel(packageManager)?.toString().orEmpty().ifBlank {
             activityInfo.packageName.substringAfterLast('.').replaceFirstChar(Char::titlecase)
         }
-        val iconBitmap = runCatching {
-            resolveInfo
-                .loadIcon(packageManager)
-                .toBitmap(width = iconSizePx, height = iconSizePx, config = Bitmap.Config.ARGB_8888)
-                .asImageBitmap()
-        }.getOrNull()
+        // Cap eager icon decoding at MAX_ICONS_LOADED_EAGERLY: an ARGB_8888 144x144
+        // bitmap is ~82 KB, so 300 icons ≈ 24 MB. Devices with 400+ installed apps
+        // (or a hostile app registering many LAUNCHER-category aliases) could otherwise
+        // OOM the Compose snapshot. Entries beyond the cap render with their color
+        // swatch and first letter — lazy icon load is scheduled for v0.2.x.
+        val iconBitmap = if (index < MAX_ICONS_LOADED_EAGERLY) {
+            runCatching {
+                resolveInfo
+                    .loadIcon(packageManager)
+                    .toBitmap(width = iconSizePx, height = iconSizePx, config = Bitmap.Config.ARGB_8888)
+                    .asImageBitmap()
+            }.getOrNull()
+        } else {
+            null
+        }
 
         CloneApp(
             id = componentId,
@@ -1512,6 +1523,10 @@ private fun readSystemWallpaper(context: Context): ImageBitmap? = runCatching {
     // colour fidelity; caller drops the reference when the composition leaves scope.
     val safeCopy = source.copy(Bitmap.Config.ARGB_8888, false) ?: return@runCatching null
     safeCopy.asImageBitmap()
+}.onFailure { failure ->
+    // Log class name only — no message, no stack (avoid leaking OEM wallpaper path data
+    // to logcat on restricted OEM skins). Useful signal in bug reports.
+    android.util.Log.w("OneUiHome/wallpaper", failure.javaClass.simpleName)
 }.getOrNull()
 
 @OptIn(ExperimentalFoundationApi::class)

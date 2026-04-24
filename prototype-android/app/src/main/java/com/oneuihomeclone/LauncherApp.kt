@@ -69,13 +69,18 @@ class LauncherApp : Application() {
             sw.toString()
         }
         val timestamp = SimpleDateFormat(TIMESTAMP_PATTERN, Locale.US).format(Date())
+        // Intentionally record the exception class only, not message. Stack trace is
+        // sufficient for root-cause in a crash log and `throwable.message` can embed
+        // user search strings, file paths, or drag-op package names as features land.
+        // `filesDir` is 0700 today so exposure is bounded, but the principle holds as
+        // soon as any crash-report exfil path ships.
         crashLogFile.writeText(
             buildString {
                 append("timestamp=").append(timestamp).append('\n')
                 append("thread=").append(thread.name).append('\n')
                 append("build.versionName=").append(BuildConfig.VERSION_NAME).append('\n')
                 append("build.versionCode=").append(BuildConfig.VERSION_CODE).append('\n')
-                append("message=").append(throwable.message ?: "(no message)").append('\n')
+                append("exception=").append(throwable.javaClass.name).append('\n')
                 append("---\n")
                 append(stackTrace)
             },
