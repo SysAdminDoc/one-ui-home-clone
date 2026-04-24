@@ -1,9 +1,14 @@
 package com.oneuihomeclone.ui
 
+import android.annotation.SuppressLint
+import android.app.WallpaperManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -57,7 +62,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
@@ -100,9 +107,13 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.withContext
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
+import com.oneuihomeclone.data.DrawerSortKey
+import com.oneuihomeclone.data.HomeLayoutKey
+import com.oneuihomeclone.data.LauncherPreferences
 
 private data class CloneApp(
     val id: String,
@@ -212,6 +223,22 @@ private enum class OverlayPanel {
     HIDE_APPS,
 }
 
+/**
+ * Flattened snapshot of persisted toggles for the snapshotFlow pipeline.
+ * Equality + hashCode on the data class lets snapshotFlow suppress emissions
+ * that encode the same user-visible state.
+ */
+private data class PersistedToggles(
+    val mediaPageEnabled: Boolean,
+    val appsButtonEnabled: Boolean,
+    val appLabelsEnabled: Boolean,
+    val widgetLabelsEnabled: Boolean,
+    val swipeDownForNotifications: Boolean,
+    val lockHomeScreenLayout: Boolean,
+    val homeLayoutMode: HomeLayoutMode,
+    val drawerSortMode: DrawerSortMode,
+)
+
 private fun sampleApps(): List<CloneApp> {
     return listOf(
         CloneApp(id = "sample-gallery", name = "Gallery", color = Color(0xFFFFB84D)),
@@ -300,8 +327,10 @@ private suspend fun loadLauncherApps(
 }
 
 @Composable
-fun OneUiHomeCloneApp() {
+fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
     val appContext = LocalContext.current.applicationContext
+    val preferences = remember(appContext) { LauncherPreferences(appContext) }
+    val initialPrefs = remember(preferences) { preferences.snapshot() }
     val fallbackApps = remember { sampleApps() }
     var allApps by remember { mutableStateOf(fallbackApps) }
     var hasSeededDeviceApps by remember { mutableStateOf(false) }
@@ -333,21 +362,35 @@ fun OneUiHomeCloneApp() {
 
     var activeOverlay by remember { mutableStateOf<OverlayPanel?>(null) }
     var openFolderTarget by remember { mutableStateOf<OpenFolderTarget?>(null) }
-    var homeLayoutMode by remember { mutableStateOf(HomeLayoutMode.HOME_AND_APPS_SCREENS) }
-    var lockHomeScreenLayout by remember { mutableStateOf(false) }
+    var homeLayoutMode by remember {
+        mutableStateOf(
+            when (initialPrefs.homeLayoutMode) {
+                HomeLayoutKey.HOME_AND_APPS_SCREENS -> HomeLayoutMode.HOME_AND_APPS_SCREENS
+                HomeLayoutKey.HOME_SCREEN_ONLY -> HomeLayoutMode.HOME_SCREEN_ONLY
+            },
+        )
+    }
+    var lockHomeScreenLayout by remember { mutableStateOf(initialPrefs.lockHomeScreenLayout) }
     val drawerApps = allApps
-    var drawerSortMode by remember { mutableStateOf(DrawerSortMode.CUSTOM_ORDER) }
+    var drawerSortMode by remember {
+        mutableStateOf(
+            when (initialPrefs.drawerSortMode) {
+                DrawerSortKey.CUSTOM_ORDER -> DrawerSortMode.CUSTOM_ORDER
+                DrawerSortKey.ALPHABETICAL -> DrawerSortMode.ALPHABETICAL
+            },
+        )
+    }
     var drawerPageIndex by remember { mutableIntStateOf(0) }
     var hiddenAppIds by remember { mutableStateOf(setOf<String>()) }
     var searchQuery by remember { mutableStateOf("") }
     var recentSearches by remember {
         mutableStateOf(listOf("Media page", "Folder grid", "Widgets", "Home screen grid"))
     }
-    var mediaPageEnabled by remember { mutableStateOf(true) }
-    var appsButtonEnabled by remember { mutableStateOf(true) }
-    var appLabelsEnabled by remember { mutableStateOf(true) }
-    var widgetLabelsEnabled by remember { mutableStateOf(true) }
-    var swipeDownForNotifications by remember { mutableStateOf(true) }
+    var mediaPageEnabled by remember { mutableStateOf(initialPrefs.mediaPageEnabled) }
+    var appsButtonEnabled by remember { mutableStateOf(initialPrefs.appsButtonEnabled) }
+    var appLabelsEnabled by remember { mutableStateOf(initialPrefs.appLabelsEnabled) }
+    var widgetLabelsEnabled by remember { mutableStateOf(initialPrefs.widgetLabelsEnabled) }
+    var swipeDownForNotifications by remember { mutableStateOf(initialPrefs.swipeDownForNotifications) }
     var settingsFocusTitle by remember { mutableStateOf<String?>(null) }
     var selectedWidgetCategory by remember { mutableStateOf("Recommended") }
     var nextPageId by remember { mutableIntStateOf(3) }
@@ -364,12 +407,81 @@ fun OneUiHomeCloneApp() {
     var defaultHomePageIndex by remember { mutableIntStateOf(0) }
     var pageIndex by remember { mutableIntStateOf(1) }
 
-    LaunchedEffect(appContext.packageName) {
+    LaunchedEffect(Unit) {
         allApps = loadLauncherApps(
             packageManager = appContext.packageManager,
             hostPackageName = appContext.packageName,
             fallbackApps = fallbackApps,
         )
+    }
+
+    // Persist user-facing toggles via snapshotFlow so the first emission (on composition
+    // entry) can be discarded — there's no reason to rewrite SharedPreferences with the
+    // values we just read from it. Further emissions fire only on genuine state changes.
+    LaunchedEffect(preferences) {
+        snapshotFlow {
+            PersistedToggles(
+                mediaPageEnabled = mediaPageEnabled,
+                appsButtonEnabled = appsButtonEnabled,
+                appLabelsEnabled = appLabelsEnabled,
+                widgetLabelsEnabled = widgetLabelsEnabled,
+                swipeDownForNotifications = swipeDownForNotifications,
+                lockHomeScreenLayout = lockHomeScreenLayout,
+                homeLayoutMode = homeLayoutMode,
+                drawerSortMode = drawerSortMode,
+            )
+        }
+            .drop(1)
+            .collect { toggles ->
+                preferences.update { editor ->
+                    editor
+                        .setMediaPageEnabled(toggles.mediaPageEnabled)
+                        .setAppsButtonEnabled(toggles.appsButtonEnabled)
+                        .setAppLabelsEnabled(toggles.appLabelsEnabled)
+                        .setWidgetLabelsEnabled(toggles.widgetLabelsEnabled)
+                        .setSwipeDownForNotifications(toggles.swipeDownForNotifications)
+                        .setLockHomeScreenLayout(toggles.lockHomeScreenLayout)
+                        .setHomeLayoutMode(
+                            when (toggles.homeLayoutMode) {
+                                HomeLayoutMode.HOME_AND_APPS_SCREENS -> HomeLayoutKey.HOME_AND_APPS_SCREENS
+                                HomeLayoutMode.HOME_SCREEN_ONLY -> HomeLayoutKey.HOME_SCREEN_ONLY
+                            },
+                        )
+                        .setDrawerSortMode(
+                            when (toggles.drawerSortMode) {
+                                DrawerSortMode.CUSTOM_ORDER -> DrawerSortKey.CUSTOM_ORDER
+                                DrawerSortMode.ALPHABETICAL -> DrawerSortKey.ALPHABETICAL
+                            },
+                        )
+                }
+            }
+    }
+
+    // HOME intent re-entry (user pressed HOME while inside the launcher, or picked us
+    // from the home-app picker again). Collapse every overlay + scroll to default page.
+    LaunchedEffect(homeIntentTick) {
+        if (homeIntentTick > 0) {
+            activeOverlay = null
+            openFolderTarget = null
+            searchQuery = ""
+            settingsFocusTitle = null
+            drawerPageIndex = 0
+            pageIndex = visualIndexForHomePage(defaultHomePageIndex, mediaPageEnabled)
+        }
+    }
+
+    // Launcher BACK semantics: collapse overlays first, then restore default page,
+    // then absorb further back presses — HOME is the bottom of the nav stack.
+    BackHandler(enabled = true) {
+        when {
+            activeOverlay != null -> activeOverlay = null
+            openFolderTarget != null -> openFolderTarget = null
+            searchQuery.isNotEmpty() -> searchQuery = ""
+            pageIndex != visualIndexForHomePage(defaultHomePageIndex, mediaPageEnabled) -> {
+                pageIndex = visualIndexForHomePage(defaultHomePageIndex, mediaPageEnabled)
+            }
+            // else: already on default home with no overlays — absorb the back press.
+        }
     }
 
     val pageCount = totalPageCount(homePages.size, mediaPageEnabled)
@@ -1322,6 +1434,14 @@ private fun finderActionIcon(type: FinderActionType) = when (type) {
 
 @Composable
 private fun WallpaperAtmosphere() {
+    val context = LocalContext.current
+    // Decode the wallpaper off the main thread. First-frame render uses the gradient
+    // glyphs alone; the real wallpaper fades in once the IO work completes. This avoids
+    // a 200+ ms main-thread hitch on devices with large (≥3MP) wallpapers.
+    val wallpaperBitmap: ImageBitmap? by produceState<ImageBitmap?>(initialValue = null, context) {
+        value = withContext(Dispatchers.IO) { readSystemWallpaper(context) }
+    }
+
     val transition = rememberInfiniteTransition(label = "wallpaper")
     val pulse by transition.animateFloat(
         initialValue = 0.92f,
@@ -1334,6 +1454,19 @@ private fun WallpaperAtmosphere() {
     )
 
     Box(Modifier.fillMaxSize()) {
+        // When the user has set us as HOME launcher we can read the system wallpaper
+        // directly — render it as the full-bleed backdrop, then layer the One UI soft
+        // gradient glyphs on top. When no wallpaper is accessible we rely on the
+        // themes.xml transparent background + our glyphs alone, which matches the
+        // previous prototype feel.
+        wallpaperBitmap?.let { wallpaper ->
+            Image(
+                bitmap = wallpaper,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            )
+        }
         Box(
             Modifier
                 .align(Alignment.TopEnd)
@@ -1361,6 +1494,25 @@ private fun WallpaperAtmosphere() {
         )
     }
 }
+
+/**
+ * Best-effort system wallpaper read. The active HOME launcher gets implicit access at
+ * runtime without declaring READ_WALLPAPER_INTERNAL (signature-only) or
+ * MANAGE_EXTERNAL_STORAGE (which we deliberately do not request for privacy reasons).
+ * Lint flags this statically; runCatching handles the SecurityException on OEM skins
+ * that decline the access and fall back to our gradient glyphs.
+ */
+@SuppressLint("MissingPermission")
+private fun readSystemWallpaper(context: Context): ImageBitmap? = runCatching {
+    val manager = WallpaperManager.getInstance(context) ?: return@runCatching null
+    val drawable = manager.peekDrawable() ?: manager.peekFastDrawable() ?: return@runCatching null
+    val source = (drawable as? BitmapDrawable)?.bitmap ?: return@runCatching null
+    // Copy so we own the memory — WallpaperManager may recycle the backing bitmap when
+    // the user changes wallpaper (live wallpapers in particular). An ARGB_8888 copy keeps
+    // colour fidelity; caller drops the reference when the composition leaves scope.
+    val safeCopy = source.copy(Bitmap.Config.ARGB_8888, false) ?: return@runCatching null
+    safeCopy.asImageBitmap()
+}.getOrNull()
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

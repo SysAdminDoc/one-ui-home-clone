@@ -90,6 +90,18 @@ android {
             )
         }
     }
+
+    lint {
+        abortOnError = true
+        warningsAsErrors = false
+        // Intentionally staged for Iteration 2 — tracked in ROADMAP v0.2.0 block
+        disable += setOf("OldTargetApi", "GradleDependency")
+        // Platform convention forces -v26 qualifier on adaptive-icon resources even when
+        // minSdk>=26; lint's "obsolete" heuristic doesn't account for this, so ignore.
+        disable += setOf("ObsoleteSdkInt")
+        // Lint's own bundled custom checks fall out of sync with Compose compiler updates
+        disable += setOf("ObsoleteLintCustomCheck")
+    }
 }
 
 dependencies {

@@ -1,13 +1,22 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.OneUiHomeClone" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- System-bar transparency so our Compose content draws edge-to-edge. Light vs.
+             dark foreground is NOT fixed in XML — enableEdgeToEdge() wires it at runtime
+             via SystemBarStyle.auto, so status/nav icons flip with system dark mode. -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
         <item name="android:windowTranslucentStatus">false</item>
         <item name="android:windowTranslucentNavigation">false</item>
         <item name="android:windowFullscreen">false</item>
+
+        <!-- Launcher semantics: transparent window so the OS wallpaper renders through our
+             Compose surface; our WallpaperAtmosphere adds a soft gradient on top. -->
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+
+        <!-- Our palette is explicitly defined for both day and night — don't let the OS
+             auto-invert Compose surfaces. -->
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
     </style>
 </resources>
