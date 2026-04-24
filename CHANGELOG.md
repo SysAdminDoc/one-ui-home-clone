@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- DataStore Preferences mirror (`LauncherDataStore`) with one-shot `SharedPreferencesMigration` from the v0.1.0 `one_ui_home_clone_prefs` file. Forward-compat plumbing for v0.2.x — `LauncherPreferences` (SharedPreferences) remains the single writer until the monolith split lands
+- `WidgetPersistence` — DataStore-backed, JSON-encoded widget ID store with `schemaVersion=1` dispatch on decode. Scaffolding for real `AppWidgetHost` binding in a follow-up iter; not yet wired to the picker UI
+- `MotionScheme` + `LocalMotionScheme` CompositionLocal — Standard / Reduced motion presets exposed as raw `SpringParams` so callers build typed `spring<T>()` at the call site. `ProvideMotionScheme` top-level provider OR's the persisted user preset with the system-level `ANIMATOR_DURATION_SCALE == 0` signal (system "Remove animations" wins)
+- `motionPreset` persisted toggle (`standard` / `reduced`) added to both `LauncherPreferences` and `LauncherDataStore`; included in the SP→DS migration key set
+- `WidgetBindContract` — stateless `ActivityResultContract<WidgetBindRequest, WidgetBindResult>` for `ACTION_APPWIDGET_BIND`. Round-trips the allocated widget id through an Intent extra so process death during the bind dialog still deallocates correctly on cancel. Falls back to `EXTRA_APPWIDGET_ID` on OEM forks that strip non-framework extras
+- `WidgetPreviewLoader` — API-31+ `previewLayout` → `previewImage` → provider icon fallback hierarchy. `PreviewSource` sealed type (`RemoteLayout` / `PreviewImage` / `ProviderIcon` / `Empty`) so callers don't have to re-derive the precedence
+- `LauncherApp.requestWidgetBind(request, callback)` helper + lifecycle-aware `ActivityResultLauncher` registration in `MainActivity` — bind requests from anywhere in the tree dispatch through the Activity-scoped launcher
+
+### Changed
+
+- Dependency bumps for v0.2.0: `core-ktx` 1.12.0 → 1.13.1, `activity-compose` 1.8.2 → 1.9.3, `lifecycle-runtime-ktx` 2.7.0 → 2.8.7 (added `lifecycle-runtime-compose`), `material` 1.11.0 → 1.12.0, Compose BOM 2024.01.00 → 2024.10.01 (Compose 1.7.x / Material3 1.3.0), `kotlinCompilerExtensionVersion` 1.5.8 → 1.5.14, Kotlin plugin 1.9.22 → 1.9.24. `datastore-preferences` 1.1.1 added as a new dep. Closes the `GradleDependency` lint disable (removed from the suppress list)
+- `LauncherState` gained `motionPreset: MotionPresetKey` (default `STANDARD`) — callers constructing `LauncherState` directly keep compiling
+- Enum `fromRaw` accessors in `HomeLayoutKey` / `DrawerSortKey` switched from `values()` to `entries` for parity with the new `MotionPresetKey`
+
+### Fixed
+
+- Widget bind cancel path no longer leaks allocated widget ids on process death — the allocated id is now encoded in the outbound Intent so `parseResult` can recover it from the result Intent even when the contract instance is recreated
+- `MainActivity.onDestroy` now flushes any pending widget-bind callback so a dying Activity's closure can't pin Compose state on a rotation during the bind dialog
+- `WidgetPersistence.decode` now honours the stored `schema_version` — reserves the version-dispatch branch for when a future shape change ships
+- `WidgetPersistence.clear()` wipes the schema stamp alongside the JSON so an empty store doesn't carry a stale version marker
+
+### Notes
+
+- This is scaffolding + primitives for v0.2.0 "widgets + persistence + motion". Behavioural wire-up (drop-to-edge page creation in the grid drag detector, widget resize handles, picker UI using the new preview loader, settings toggle for motion preset) is staged for the next iteration
+- Motion preset live-switch without Activity recreate is deferred — `ProvideMotionScheme` seeds from `LauncherPreferences.snapshot()` today; a Flow-based observation ships when the motion toggle lands in settings
+- Physical-device interactive validation for this iteration was not possible (no device attached). Build, lint, and static audit are the ship gates; the new surfaces will be exercised on device during the v0.2.0 release smoke test
+
 ## v0.1.0 — 2026-04-24
 
 ### Added
