@@ -1,0 +1,43 @@
+# Android / Gradle
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+keystore.properties
+!app/debug.keystore
+
+# Kotlin
+.kotlin/
+**/.kotlin/
+
+# Android Studio build output
+**/build/
+**/app/build/
+**/app/release/
+
+# AI agent working files — never commit
+CLAUDE.md
+CODEX_CHANGELOG.md
+.claude/
+.octo/
+
+# Backups
+*.bak
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Generated icons preview (keep sources, drop exports pipeline dumps)
+*.tmp

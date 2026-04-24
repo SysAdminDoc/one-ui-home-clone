@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Safe zone is 66dp centered at 54,54; outside 66dp may be cropped by adaptive shapes -->
+    <!-- Rounded squircle base -->
+    <path
+        android:pathData="M34,36h40a10,10 0 0,1 10,10v16a10,10 0 0,1 -10,10h-40a10,10 0 0,1 -10,-10v-16a10,10 0 0,1 10,-10z"
+        android:fillColor="#4A88FF" />
+    <!-- Two upper icon squares -->
+    <path
+        android:pathData="M38,42h12v12h-12z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M58,42h12v12h-12z"
+        android:fillColor="#FFFFFF" />
+    <!-- Lower dock bar -->
+    <path
+        android:pathData="M38,60h32v4h-32z"
+        android:fillColor="#FFFFFF" />
+    <!-- Page indicator pair -->
+    <path
+        android:pathData="M50,68h2v2h-2z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M56,68h2v2h-2z"
+        android:fillColor="#FFFFFF" />
+</vector>
