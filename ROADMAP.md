@@ -2,6 +2,63 @@
 
 Separate Gradle-independent workspace for building a Samsung One UI Home parity clone. Standalone Compose prototype + parity research docs; not wired into the Lawnchair Lite build.
 
+## Iteration 1 — v0.1.0 "actually-a-launcher" (P0/P1)
+
+Ship a debug APK that a Samsung user can install and select as their default home app, with persistent toggles and real wallpaper behind the home surface.
+
+- [x] **P0**: Transparent window + `windowShowWallpaper=true` so system wallpaper renders behind the Compose home surface instead of our gradient placeholder
+- [x] **P0**: `BackHandler` on home that collapses overlays first and then absorbs the back press (launcher HOME semantics — back never leaves home)
+- [x] **P0**: `onNewIntent` wiring — when user presses HOME while already inside launcher, collapse every overlay and scroll back to the default home page
+- [x] **P0**: Complete `Typography` scale (display → label, 13 slots) matching One UI metrics instead of empty default
+- [x] **P0**: Complete `DarkColorScheme` so dark mode renders every surface/text variant, not just `primary`
+- [x] **P0**: `LauncherPreferences` repo (SharedPreferences-backed) persisting 8 user-facing toggles: `mediaPageEnabled`, `appsButtonEnabled`, `appLabelsEnabled`, `widgetLabelsEnabled`, `swipeDownForNotifications`, `homeLayoutMode`, `lockHomeScreenLayout`, `drawerSortMode`. Launcher launches retain state across restarts
+- [x] **P0**: Real `WallpaperManager.peekFastDrawable()` integration inside `WallpaperAtmosphere`, gradient fallback if permission denied (auto for non-system apps that haven't requested READ_EXTERNAL_STORAGE)
+- [x] **P1**: `./gradlew lintDebug` baseline — 0 lint errors, only warnings allowed; lint-baseline.xml shipped for legacy warnings
+- [x] **P1**: Adaptive-icon monochrome layer (Android 13+ themed-icon support) — foreground vector reused as monochrome drawable
+- [x] **P1**: Signed-release keystore scaffold + release workflow gated on `KEYSTORE_BASE64` secret
+
+## Iteration 2 — v0.2.0 "widgets + persistence + motion" (planned)
+
+- [ ] **P0**: DataStore migration from SharedPreferences for typed, async persistence
+- [ ] **P0**: Real `AppWidgetHost` scaffolding (host id 2048, allocate + bind + listen lifecycle)
+- [ ] **P0**: `AppWidgetProviderInfo.previewLayout` (API 31+) with `previewImage` fallback in widget picker
+- [ ] **P0**: Drop-to-edge page creation with haptic tick + 350 ms hold threshold from ROADMAP capture research
+- [ ] **P0**: Widget resize handles with Samsung dashed outline, 8dp grid snap
+- [ ] **P1**: Motion preset switcher (Standard / Reduced) wired through a `MotionScheme` object
+- [ ] **P1**: Split `OneUiHomeCloneApp.kt` into per-surface files once behavior stabilizes (home, drawer, edit, finder, settings, folders, widgets, notifications)
+- [ ] **P1**: App launch crash guard — global uncaught exception handler writes crash log to app files dir + shows toast on next launch
+
+## Iteration 3 — v0.3.0 "parity & polish" (planned)
+
+- [ ] **P0**: `tribalfs/oneui-design` sesl7 interop wrapper — `AndroidView` host for `SeslSwitchBar`
+- [ ] **P0**: Folder grid settings (3×4 / 4×4 / 5×5 options) with Samsung defaults
+- [ ] **P0**: Alphabet scrubber on drawer right edge with pull-out affordance
+- [ ] **P1**: `IconPackManager` runtime contract compatible with Launcher3 icon packs (including our own iOSIconPack)
+- [ ] **P1**: Adaptive-icon shape switcher (squircle / square / rounded-square / circle / teardrop / cylinder)
+- [ ] **P1**: Lock-layout toggle wired globally to disable long-press reorder
+
+## Iteration 4 — v0.4.0 "device class" (planned)
+
+- [ ] **P0**: Landscape home grid (5×3 per One UI) separate from portrait (4×5)
+- [ ] **P0**: Tablet layout (larger cell / wider dock / denser widget picker)
+- [ ] **P1**: Foldable posture listener (`WindowInfoTracker`) — half-open dock mode
+
+## Iteration 5 — v0.5.0 "pre-1.0 hardening" (planned)
+
+- [ ] **P0**: `./gradlew testDebug` unit test harness — at least `buildSeedWidgets`, `alphabeticalAppSections`, `reorderHomeGridItems`, `applyHiddenAppsToPages`
+- [ ] **P0**: Espresso scenario: tap drawer button → drawer opens → type search → Finder results render
+- [ ] **P1**: `ProGuard` rules audit for Compose + AppWidgetHost in release build
+- [ ] **P1**: Play Store AAB build path + signing config separation from APK path
+
+## Cumulative metrics target (v1.0)
+
+- Cold launch time: ≤ 800 ms (home visible) on Pixel-class devices
+- Frame pacing: ≤ 5% dropped frames during drawer open animation (Perfetto capture)
+- App launch time: ≤ 250 ms from tap to target `onCreate`
+- Memory: resident set ≤ 140 MB with 40 installed apps + 6 widgets bound
+
+
+
 ## Planned Features
 
 ### Home screen
