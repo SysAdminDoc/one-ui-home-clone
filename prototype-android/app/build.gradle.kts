@@ -77,7 +77,9 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
+        // Kotlin 1.9.24 pairs with Compose compiler 1.5.14+ per the official map.
+        // https://developer.android.com/jetpack/androidx/releases/compose-kotlin
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
 
     packaging {
@@ -94,8 +96,8 @@ android {
     lint {
         abortOnError = true
         warningsAsErrors = false
-        // Intentionally staged for Iteration 2 — tracked in ROADMAP v0.2.0 block
-        disable += setOf("OldTargetApi", "GradleDependency")
+        // targetSdk bump 34 -> 35 requires AGP 8.6+ / Gradle 8.9+ — tracked on v0.2.x roadmap.
+        disable += setOf("OldTargetApi")
         // Platform convention forces -v26 qualifier on adaptive-icon resources even when
         // minSdk>=26; lint's "obsolete" heuristic doesn't account for this, so ignore.
         disable += setOf("ObsoleteSdkInt")
@@ -105,11 +107,15 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
-    implementation(platform("androidx.compose:compose-bom:2024.01.00"))
+    // DataStore — typed async persistence for launcher toggles + widget IDs (v0.2.0)
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    implementation(platform("androidx.compose:compose-bom:2024.10.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -117,7 +123,7 @@ dependencies {
     implementation("androidx.compose.animation:animation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("com.google.android.material:material:1.11.0")
+    implementation("com.google.android.material:material:1.12.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

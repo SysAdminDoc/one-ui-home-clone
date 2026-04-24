@@ -30,6 +30,7 @@ CLAUDE.md
 CODEX_CHANGELOG.md
 .claude/
 .octo/
+.factory/
 
 # Backups
 *.bak
