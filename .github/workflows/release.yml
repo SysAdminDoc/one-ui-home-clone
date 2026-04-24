@@ -35,14 +35,18 @@ jobs:
         run: chmod +x ./gradlew
 
       # Restore release keystore if secret is set; otherwise we still build debug APK.
+      # IMPORTANT: rootProject.file("keystore.properties") in app/build.gradle.kts
+      # resolves to prototype-android/keystore.properties (that's where settings.gradle.kts
+      # lives). The keystore binary goes next to it, so storeFile is a simple filename
+      # with no parent directory segments.
       - name: Decode release keystore
         if: env.KEYSTORE_BASE64 != ''
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
-          cat <<EOF > ../keystore.properties
-          storeFile=prototype-android/release.keystore
+          cat <<EOF > keystore.properties
+          storeFile=release.keystore
           storePassword=${{ secrets.KEYSTORE_STORE_PASSWORD }}
           keyAlias=${{ secrets.KEYSTORE_KEY_ALIAS }}
           keyPassword=${{ secrets.KEYSTORE_KEY_PASSWORD }}
