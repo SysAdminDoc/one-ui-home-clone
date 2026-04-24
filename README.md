@@ -6,7 +6,7 @@
 
 <p align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.0-4A88FF)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.0-4A88FF)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-4A88FF)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-4A88FF)](prototype-android/app/build.gradle.kts)
 [![Stack](https://img.shields.io/badge/stack-Kotlin%20%2B%20Compose-4A88FF)](prototype-android/)
@@ -31,7 +31,7 @@ Unlike Lawnchair / Niagara / OpenLauncher, the project's north star is **Samsung
 - [ROADMAP.md](ROADMAP.md) — planned features + competitive research (3 rounds) + implementation deep dive
 - [prototype-android/](prototype-android/) — standalone Android Compose prototype (app package)
 
-## Current state (v0.1.0)
+## Current state (v0.2.0)
 
 Compose-first prototype covering:
 
@@ -45,7 +45,16 @@ Compose-first prototype covering:
 - Notification shade overlay
 - Full settings surface with Samsung section ordering + terminology
 
-Not yet wired into AOSP's `AppWidgetHost` — widgets are visual templates. Real `AppWidgetProviderInfo` / `AppWidgetHost` integration staged for v0.2.x.
+v0.2.0 landed the widgets + persistence + motion primitives:
+
+- `LauncherDataStore` — DataStore Preferences mirror with one-shot migration from the v0.1.0 SharedPreferences file (live DataStore flow; `LauncherPreferences` remains the sole writer until the monolith split cuts call sites over)
+- `WidgetPersistence` — versioned JSON widget-ID store on its own DataStore file, bounds-checked decode (128 KB / 1024 entries) to contain corrupt-file blast radius
+- `MotionScheme` + `ProvideMotionScheme` — Standard / Reduced presets exposed as raw `SpringParams`, threaded through a `LocalMotionScheme` CompositionLocal. Platform `ANIMATOR_DURATION_SCALE == 0` forces Reduced
+- `WidgetBindContract` — stateless `ActivityResultContract` for `ACTION_APPWIDGET_BIND` that round-trips the allocated widget ID through an Intent extra so process death during the bind dialog still deallocates correctly on cancel
+- `WidgetPreviewLoader` — `previewLayout` (API 31+) → `previewImage` → provider icon fallback
+- Dep bumps: Compose BOM 2024.01 → 2024.10.01 (Compose 1.7 / Material3 1.3), Kotlin 1.9.22 → 1.9.24, core-ktx / activity-compose / lifecycle / material advanced to current stable; `datastore-preferences` 1.1.1 added
+
+Motion preset wiring is seeded at composition — live switch without Activity recreate ships when the settings toggle lands. Widget bind / preview / persistence are plumbed but not yet consumed by the picker UI; that's v0.2.x follow-up work alongside drop-to-edge page creation and widget resize handles.
 
 ## Build the prototype
 

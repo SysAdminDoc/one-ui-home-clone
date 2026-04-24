@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## v0.2.0 — 2026-04-24
+
 ### Added
 
 - DataStore Preferences mirror (`LauncherDataStore`) with one-shot `SharedPreferencesMigration` from the v0.1.0 `one_ui_home_clone_prefs` file. Forward-compat plumbing for v0.2.x — `LauncherPreferences` (SharedPreferences) remains the single writer until the monolith split lands
