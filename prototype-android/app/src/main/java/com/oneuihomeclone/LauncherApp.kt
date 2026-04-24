@@ -5,6 +5,9 @@ import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.os.Process
 import android.util.Log
+import androidx.activity.result.ActivityResultLauncher
+import com.oneuihomeclone.widgets.WidgetBindRequest
+import com.oneuihomeclone.widgets.WidgetBindResult
 import kotlin.system.exitProcess
 import java.io.File
 import java.io.PrintWriter
@@ -12,6 +15,7 @@ import java.io.StringWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Application subclass. Two jobs:
@@ -118,11 +122,80 @@ class LauncherApp : Application() {
         @Volatile
         private var widgetHost: AppWidgetHost? = null
 
+        @Volatile
+        private var widgetBindLauncher: ActivityResultLauncher<WidgetBindRequest>? = null
+
+        /**
+         * Callback that should fire when the current bind flow completes. AtomicReference
+         * so two near-simultaneous requests can't read stale data — the second caller
+         * observes null and falls back to its own error path rather than silently
+         * stealing the first caller's result.
+         */
+        private val pendingWidgetBindCallback: AtomicReference<((WidgetBindResult) -> Unit)?> =
+            AtomicReference(null)
+
         fun appWidgetHost(): AppWidgetHost? = widgetHost
 
         fun appWidgetManager(): AppWidgetManager? =
             instance?.let { AppWidgetManager.getInstance(it) }
 
         fun consumePreviousCrashLog(): String? = instance?.consumePreviousCrashLog()
+
+        /** Called once per Activity creation so Compose-layer code can dispatch a bind. */
+        internal fun registerWidgetBindLauncher(launcher: ActivityResultLauncher<WidgetBindRequest>) {
+            widgetBindLauncher = launcher
+        }
+
+        /**
+         * Drops the reference if (and only if) [launcher] matches the current one.
+         * Guards against a late [onDestroy] from an old Activity unregistering a newer
+         * Activity's launcher during a configuration-change race.
+         */
+        internal fun clearWidgetBindLauncher(launcher: ActivityResultLauncher<WidgetBindRequest>) {
+            if (widgetBindLauncher === launcher) widgetBindLauncher = null
+        }
+
+        /**
+         * Issues a bind request. Returns true if the Activity was able to launch the
+         * system chooser; false if there is no Activity-scoped launcher right now (e.g.
+         * request issued before Activity.onCreate or after onDestroy).
+         */
+        fun requestWidgetBind(
+            request: WidgetBindRequest,
+            callback: (WidgetBindResult) -> Unit,
+        ): Boolean {
+            val launcher = widgetBindLauncher ?: return false
+            // A prior-in-flight callback would mean someone started a second bind before
+            // the first returned. This shouldn't happen in UI flow — but if it does, we
+            // surface Declined for the older request so neither waits forever.
+            pendingWidgetBindCallback.getAndSet(callback)?.let { stale ->
+                runCatching { stale(WidgetBindResult.Declined(AppWidgetManager.INVALID_APPWIDGET_ID)) }
+                    .onFailure { Log.w(TAG, "Stale bind callback threw during superseding request", it) }
+            }
+            return runCatching { launcher.launch(request) }.fold(
+                onSuccess = { true },
+                onFailure = { cause ->
+                    Log.e(TAG, "Widget bind launcher.launch() failed", cause)
+                    pendingWidgetBindCallback.set(null)
+                    false
+                },
+            )
+        }
+
+        internal fun consumePendingWidgetBindCallback(): ((WidgetBindResult) -> Unit)? =
+            pendingWidgetBindCallback.getAndSet(null)
+
+        /**
+         * Called from `Activity.onDestroy` to prevent a callback left by a dying Activity
+         * from firing on a dead Compose tree — the callback's closure would pin the old
+         * Activity + composition, leaking them until the next bind result arrives.
+         * Delivers [WidgetBindResult.Declined] so any awaiting coroutine / continuation
+         * completes rather than hanging forever.
+         */
+        internal fun cancelPendingWidgetBind() {
+            val pending = pendingWidgetBindCallback.getAndSet(null) ?: return
+            runCatching { pending(WidgetBindResult.Declined(AppWidgetManager.INVALID_APPWIDGET_ID)) }
+                .onFailure { Log.w(TAG, "Pending widget bind callback threw during cancel", it) }
+        }
     }
 }

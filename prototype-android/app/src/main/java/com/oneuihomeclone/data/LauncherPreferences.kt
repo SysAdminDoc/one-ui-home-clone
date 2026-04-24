@@ -25,6 +25,7 @@ class LauncherPreferences(context: Context) {
         lockHomeScreenLayout = prefs.getBoolean(KEY_LOCK_LAYOUT, false),
         homeLayoutMode = HomeLayoutKey.fromRaw(prefs.getString(KEY_HOME_LAYOUT, null)),
         drawerSortMode = DrawerSortKey.fromRaw(prefs.getString(KEY_DRAWER_SORT, null)),
+        motionPreset = MotionPresetKey.fromRaw(prefs.getString(KEY_MOTION_PRESET, null)),
     )
 
     fun update(mutator: (Editor) -> Unit) {
@@ -42,6 +43,7 @@ class LauncherPreferences(context: Context) {
         fun setLockHomeScreenLayout(value: Boolean): Editor = apply { editor.putBoolean(KEY_LOCK_LAYOUT, value) }
         fun setHomeLayoutMode(value: HomeLayoutKey): Editor = apply { editor.putString(KEY_HOME_LAYOUT, value.raw) }
         fun setDrawerSortMode(value: DrawerSortKey): Editor = apply { editor.putString(KEY_DRAWER_SORT, value.raw) }
+        fun setMotionPreset(value: MotionPresetKey): Editor = apply { editor.putString(KEY_MOTION_PRESET, value.raw) }
     }
 
     companion object {
@@ -55,6 +57,7 @@ class LauncherPreferences(context: Context) {
         private const val KEY_LOCK_LAYOUT = "lock_home_screen_layout"
         private const val KEY_HOME_LAYOUT = "home_layout_mode"
         private const val KEY_DRAWER_SORT = "drawer_sort_mode"
+        private const val KEY_MOTION_PRESET = "motion_preset"
     }
 }
 
@@ -68,6 +71,7 @@ data class LauncherState(
     val lockHomeScreenLayout: Boolean,
     val homeLayoutMode: HomeLayoutKey,
     val drawerSortMode: DrawerSortKey,
+    val motionPreset: MotionPresetKey = MotionPresetKey.STANDARD,
 )
 
 /**
@@ -80,7 +84,7 @@ enum class HomeLayoutKey(val raw: String) {
 
     companion object {
         fun fromRaw(raw: String?): HomeLayoutKey =
-            values().firstOrNull { it.raw == raw } ?: HOME_AND_APPS_SCREENS
+            entries.firstOrNull { it.raw == raw } ?: HOME_AND_APPS_SCREENS
     }
 }
 
@@ -90,6 +94,6 @@ enum class DrawerSortKey(val raw: String) {
 
     companion object {
         fun fromRaw(raw: String?): DrawerSortKey =
-            values().firstOrNull { it.raw == raw } ?: CUSTOM_ORDER
+            entries.firstOrNull { it.raw == raw } ?: CUSTOM_ORDER
     }
 }
