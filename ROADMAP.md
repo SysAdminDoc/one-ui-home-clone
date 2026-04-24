@@ -17,16 +17,25 @@ Ship a debug APK that a Samsung user can install and select as their default hom
 - [x] **P1**: Adaptive-icon monochrome layer (Android 13+ themed-icon support) — foreground vector reused as monochrome drawable
 - [x] **P1**: Signed-release keystore scaffold + release workflow gated on `KEYSTORE_BASE64` secret
 
-## Iteration 2 — v0.2.0 "widgets + persistence + motion" (planned)
+## Iteration 2 — v0.2.0 "widgets + persistence + motion" (in progress)
+
+Shipped in this iteration (v0.1.0 "safe-for-first-install" carry-over):
+
+- [x] **P0**: App launch crash guard — `LauncherApp : Application` with `Thread.setDefaultUncaughtExceptionHandler`, crash log written to `filesDir/crash-log.txt`, replay toast shown on next cold start
+- [x] **P0**: `AppWidgetHost` lifecycle stub — host id 2048 allocated at `Application.onCreate`, `startListening()` / `stopListening()` wired through a `LauncherWidgetHost` helper so later iterations can plug in real widget binding without touching lifecycle plumbing
+- [x] **P0**: Drop-to-edge page creation + Samsung-style haptic tick helper (`HapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)`) — ready for use by the home grid drag detector
+
+Deferred to v0.2.x follow-up iterations (still P0 on the plan):
 
 - [ ] **P0**: DataStore migration from SharedPreferences for typed, async persistence
-- [ ] **P0**: Real `AppWidgetHost` scaffolding (host id 2048, allocate + bind + listen lifecycle)
+- [ ] **P0**: `AppWidgetHost` real binding flow — `AppWidgetManager.ACTION_APPWIDGET_BIND` activity result, persist widget IDs, rebind on restart
 - [ ] **P0**: `AppWidgetProviderInfo.previewLayout` (API 31+) with `previewImage` fallback in widget picker
-- [ ] **P0**: Drop-to-edge page creation with haptic tick + 350 ms hold threshold from ROADMAP capture research
+- [ ] **P0**: Drop-to-edge page creation — wire the helper into the home grid drag detector at the left/right edge; 350 ms hold threshold + edge overscroll indicator
 - [ ] **P0**: Widget resize handles with Samsung dashed outline, 8dp grid snap
 - [ ] **P1**: Motion preset switcher (Standard / Reduced) wired through a `MotionScheme` object
 - [ ] **P1**: Split `OneUiHomeCloneApp.kt` into per-surface files once behavior stabilizes (home, drawer, edit, finder, settings, folders, widgets, notifications)
-- [ ] **P1**: App launch crash guard — global uncaught exception handler writes crash log to app files dir + shows toast on next launch
+- [ ] **P1**: Dep bumps (`core-ktx` → 1.13.1, `activity-compose` → 1.9.3, `lifecycle-runtime-ktx` → 2.8.7, `material` → 1.12.0) — close the `GradleDependency` lint disables opened in Iteration 1
+- [ ] **P1**: `targetSdk` bump 34 → 35 (requires AGP 8.6+, Gradle 8.9+) — close the `OldTargetApi` lint disable
 
 ## Iteration 3 — v0.3.0 "parity & polish" (planned)
 
