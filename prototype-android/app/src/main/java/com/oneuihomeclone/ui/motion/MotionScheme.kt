@@ -15,21 +15,25 @@ import com.oneuihomeclone.data.MotionPresetKey
 
 /**
  * Centralized motion presets so flipping Standard -> Reduced changes every transition in
- * lockstep. Consumed through [LocalMotionScheme] — call sites ask for a named spring
- * (`MotionScheme.Current.drawerOpen<Dp>()`) rather than hard-coding `spring(dampingRatio, stiffness)`
- * across the 3,800-line prototype.
+ * lockstep. Consumed through [LocalMotionScheme] — call sites ask for a named spring:
+ * ```
+ * val spec = LocalMotionScheme.current.drawerOpen.spec<Dp>()
+ * animateDpAsState(target, animationSpec = spec)
+ * ```
+ * rather than hard-coding `spring(dampingRatio, stiffness)` across the prototype.
  *
  * Params are exposed as raw `(dampingRatio, stiffness)` pairs rather than a concrete
  * `SpringSpec<Float>` because call sites animate typed values (`Dp`, `Offset`, `Color`).
- * A `SpringSpec<Float>` won't satisfy `animateDpAsState(animationSpec = ...)` — Compose's
- * generic-typed `spring<T>()` call must be built at the site where the type is known.
+ * Compose's generic-typed `spring<T>()` call must be built at the site where the type is
+ * known, so [SpringParams.spec] supplies it.
  *
- * Reduced preset targets the "Reduce animations" accessibility toggle: higher damping,
+ * Reduced preset targets the "Reduce animations" accessibility setting: higher damping,
  * lower stiffness — perceivable motion without overshoot. It is *not* silent: haptics
  * and colour transitions remain independent by design (accessibility guidance: keep the
- * navigation cue, soften the parallax). `forPreset` accepts a `reduceMotionHint` so the
- * top-level provider can OR in the system [android.view.accessibility.AccessibilityManager]
- * setting without callers repeating the logic.
+ * navigation cue, soften the parallax). [forPreset] accepts a `reduceMotionHint` so the
+ * top-level [ProvideMotionScheme] can OR in the platform's animator-scale-disabled
+ * signal (`Settings.Global.ANIMATOR_DURATION_SCALE == 0`) without callers repeating the
+ * logic.
  */
 @Immutable
 data class SpringParams(val dampingRatio: Float, val stiffness: Float)
@@ -43,16 +47,6 @@ data class MotionScheme(
     val overlayCollapse: SpringParams,
     val widgetResize: SpringParams,
 ) {
-    /**
-     * Build a typed spring spec at the call site. Usage:
-     * ```
-     * val spec = LocalMotionScheme.current.drawerOpen.spring<Dp>()
-     * animateDpAsState(target, animationSpec = spec)
-     * ```
-     */
-    inline fun <reified T> pageTransitionSpec(): FiniteAnimationSpec<T> =
-        spring(dampingRatio = pageTransition.dampingRatio, stiffness = pageTransition.stiffness)
-
     companion object {
         val Standard: MotionScheme = MotionScheme(
             pageTransition = SpringParams(0.82f, Spring.StiffnessMediumLow),
@@ -74,8 +68,11 @@ data class MotionScheme(
 
         /**
          * @param preset user-selected motion preference.
-         * @param reduceMotionHint system-level hint (e.g. AccessibilityManager.isAnimationRemovalRequested
-         *   on API 33+ via LocalAccessibilityManager). If true, force REDUCED regardless of [preset].
+         * @param reduceMotionHint platform-level override. [ProvideMotionScheme] reads
+         *   `Settings.Global.ANIMATOR_DURATION_SCALE` and passes true when it is 0.0f —
+         *   the user has disabled animations at the OS level via Developer Options or
+         *   Accessibility → "Remove animations". If true, force REDUCED regardless of
+         *   [preset].
          */
         fun forPreset(preset: MotionPresetKey, reduceMotionHint: Boolean = false): MotionScheme =
             if (reduceMotionHint || preset == MotionPresetKey.REDUCED) Reduced else Standard

@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -53,7 +54,7 @@ class WidgetPersistence(context: Context) {
             // Corrupt JSON or disk failure — empty the in-memory view rather than crashing
             // the launcher. A follow-up `clear()` call is the user-visible recovery path.
             Log.w(TAG, "Failed to read widget store — returning empty list", cause)
-            emit(androidx.datastore.preferences.core.emptyPreferences())
+            emit(emptyPreferences())
         }
         .map { prefs -> decode(prefs[Keys.SCHEMA], prefs[Keys.WIDGETS_JSON]) }
 
@@ -93,6 +94,12 @@ class WidgetPersistence(context: Context) {
     companion object {
         private const val TAG = "WidgetPersistence"
 
+        /** Defense-in-depth against self-inflicted DoS from a corrupt store. Worst realistic
+         *  widget count: ~5 pages x 4 cols x 5 rows = 100 widgets. 1024 entries is ~10x that
+         *  headroom and a 128 KB JSON ceiling cuts off runaway payloads well before OOM. */
+        private const val MAX_DECODE_BYTES = 128 * 1024
+        private const val MAX_DECODE_ENTRIES = 1024
+
         internal fun encode(list: List<BoundWidget>): String {
             val arr = JSONArray()
             list.forEach { w ->
@@ -113,6 +120,10 @@ class WidgetPersistence(context: Context) {
 
         internal fun decode(schema: Int?, json: String?): List<BoundWidget> {
             if (json.isNullOrBlank()) return emptyList()
+            if (json.length > MAX_DECODE_BYTES) {
+                Log.w(TAG, "Widget JSON exceeds ${MAX_DECODE_BYTES}B cap (${json.length}B) — discarding")
+                return emptyList()
+            }
             // Version dispatch. schema=null is treated as SCHEMA_VERSION since v0.2.0 was
             // the first writer and the null branch can only occur on a partial write.
             return when (schema ?: SCHEMA_VERSION) {
@@ -126,6 +137,10 @@ class WidgetPersistence(context: Context) {
 
         private fun decodeV1(json: String): List<BoundWidget> = runCatching {
             val arr = JSONArray(json)
+            if (arr.length() > MAX_DECODE_ENTRIES) {
+                Log.w(TAG, "Widget JSON has ${arr.length()} entries > $MAX_DECODE_ENTRIES cap — discarding")
+                return@runCatching emptyList<BoundWidget>()
+            }
             buildList(arr.length()) {
                 for (i in 0 until arr.length()) {
                     val o = arr.getJSONObject(i)

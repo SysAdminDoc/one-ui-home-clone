@@ -24,10 +24,11 @@ import com.oneuihomeclone.LauncherApp
  * **Process-death / rotation robustness:** the [ActivityResultRegistry] restores only the
  * request key across a process kill, not instance state on the contract object. We avoid
  * storing anything on the contract itself and instead smuggle [allocatedWidgetId] as an
- * extra in the outbound Intent. On `parseResult`, the system echoes the extras back (both
- * for RESULT_OK and RESULT_CANCELED — AOSP `AppWidgetServiceImpl` copies them), so we can
- * always recover the ID and deallocate on cancel. If the system strips the extra (OEM
- * divergence), we fall back to `EXTRA_APPWIDGET_ID` which every bind dialog echoes.
+ * extra in the outbound Intent. Some bind-dialog implementations echo custom extras
+ * verbatim on the result Intent; the canonical fallback path is `EXTRA_APPWIDGET_ID`,
+ * which every AOSP-derived bind dialog copies into the result on RESULT_OK and most
+ * copy on RESULT_CANCELED as well. If both are stripped (`intent == null` + both extras
+ * missing), deallocation short-circuits with a `Log.w` rather than touching a random ID.
  */
 private const val EXTRA_ALLOCATED_ID_INTERNAL = "com.oneuihomeclone.widgets.ALLOCATED_ID"
 

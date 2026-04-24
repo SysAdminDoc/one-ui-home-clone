@@ -6,6 +6,7 @@ import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -19,14 +20,15 @@ import kotlinx.coroutines.flow.map
  * A [SharedPreferencesMigration] copies the existing v0.1.0 store once on first read so
  * users keep their toggle state after upgrade.
  *
- * **Read/write split — v0.2.0 only:** [LauncherPreferences] remains the sole WRITER in
+ * **Dual-store reality for v0.2.0:** [LauncherPreferences] remains the sole WRITER in
  * v0.2.0 to avoid split-brain with the 3,800-line monolith that already owns every
- * write call site. This class exists so new Flow-consuming code (e.g. motion-preset
- * observation, widget pipeline) can read DataStore once the monolith split in v0.2.x
- * cuts writes over. Today the DataStore view is effectively a **one-shot snapshot** of
- * whatever SharedPreferences held at first read; updates made to SharedPreferences after
- * that read will NOT propagate until the cut-over lands. New readers that need live
- * updates in v0.2.0 should read [LauncherPreferences.snapshot] instead (synchronous).
+ * write call site. This DataStore file is live — `state` is a real DataStore flow — but
+ * the SP→DS migration is strictly one-shot: after it runs on the first DS read, further
+ * writes made through [LauncherPreferences] go to SharedPreferences only and will NOT
+ * reach this DataStore file. Conversely, writes made through [update] go to DataStore
+ * only and will NOT reach SharedPreferences. Until the v0.2.x monolith split cuts every
+ * call site over to DataStore, readers that need to observe live toggle changes should
+ * read [LauncherPreferences.snapshot] instead.
  *
  * Why DataStore: widget-binding state and pending-operation logs need typed async flows
  * that SharedPreferences can't offer without main-thread writes. Standing this up now
@@ -70,7 +72,7 @@ class LauncherDataStore(context: Context) {
             // IOException is the documented failure mode (disk full, corrupted proto). Emit
             // defaults rather than crashing the launcher — a broken preferences file must
             // never stop the user from reaching home.
-            if (cause is java.io.IOException) emit(androidx.datastore.preferences.core.emptyPreferences())
+            if (cause is java.io.IOException) emit(emptyPreferences())
             else throw cause
         }
         .map { prefs -> prefs.toLauncherState() }
