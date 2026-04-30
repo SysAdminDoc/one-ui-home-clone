@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="assets/icon.svg" width="120" alt="One UI Home Clone icon" />
-</p>
-
 <h1 align="center">One UI Home Clone</h1>
 
 <p align="center">
