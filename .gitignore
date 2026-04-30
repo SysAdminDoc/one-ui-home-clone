@@ -42,3 +42,5 @@ Desktop.ini
 
 # Generated icons preview (keep sources, drop exports pipeline dumps)
 *.tmp
+oneuihomeclone.jks
+prototype-android/keystore.properties
