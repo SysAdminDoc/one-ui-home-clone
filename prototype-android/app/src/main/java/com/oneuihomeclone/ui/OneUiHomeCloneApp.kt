@@ -137,7 +137,7 @@ import com.oneuihomeclone.widgets.WidgetBindRequest
 import com.oneuihomeclone.widgets.WidgetBindResult
 import com.oneuihomeclone.widgets.WidgetPreviewLoader
 
-private data class CloneApp(
+internal data class CloneApp(
     val id: String,
     val name: String,
     val launchIntent: Intent? = null,
@@ -145,11 +145,11 @@ private data class CloneApp(
     val color: Color,
 )
 
-private sealed interface HomeGridItemModel {
+internal sealed interface HomeGridItemModel {
     val id: String
 }
 
-private data class HomePageModel(
+internal data class HomePageModel(
     val id: Int,
     val label: String,
     val eyebrow: String,
@@ -171,14 +171,14 @@ private data class StatusClock(
     val fullDateText: String,
 )
 
-private data class FolderModel(
+internal data class FolderModel(
     override val id: String,
     val title: String,
     val summary: String,
     val apps: List<CloneApp>,
 ) : HomeGridItemModel
 
-private data class AppItemModel(
+internal data class AppItemModel(
     val app: CloneApp,
 ) : HomeGridItemModel {
     override val id: String = app.id
@@ -201,7 +201,7 @@ private data class FinderActionItem(
     val summary: String,
 )
 
-private data class WidgetTemplateModel(
+internal data class WidgetTemplateModel(
     val title: String,
     val summary: String,
     val category: String,
@@ -1273,15 +1273,15 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
     }
 }
 
-private fun totalPageCount(homePageCount: Int, mediaPageEnabled: Boolean): Int {
+internal fun totalPageCount(homePageCount: Int, mediaPageEnabled: Boolean): Int {
     return homePageCount + if (mediaPageEnabled) 1 else 0
 }
 
-private fun visualIndexForHomePage(homePageIndex: Int, mediaPageEnabled: Boolean): Int {
+internal fun visualIndexForHomePage(homePageIndex: Int, mediaPageEnabled: Boolean): Int {
     return if (mediaPageEnabled) homePageIndex + 1 else homePageIndex
 }
 
-private fun homePageIndexFromVisual(pageIndex: Int, mediaPageEnabled: Boolean): Int? {
+internal fun homePageIndexFromVisual(pageIndex: Int, mediaPageEnabled: Boolean): Int? {
     return if (mediaPageEnabled) {
         if (pageIndex == 0) null else pageIndex - 1
     } else {
@@ -1289,7 +1289,7 @@ private fun homePageIndexFromVisual(pageIndex: Int, mediaPageEnabled: Boolean): 
     }
 }
 
-private fun <T> moveListItem(
+internal fun <T> moveListItem(
     items: List<T>,
     fromIndex: Int,
     toIndex: Int,
@@ -1303,7 +1303,7 @@ private fun <T> moveListItem(
     return mutableItems
 }
 
-private fun movedIndexForSwap(
+internal fun movedIndexForSwap(
     trackedIndex: Int,
     fromIndex: Int,
     toIndex: Int,
@@ -1316,7 +1316,7 @@ private fun movedIndexForSwap(
     }
 }
 
-private fun applyHiddenAppsToPages(
+internal fun applyHiddenAppsToPages(
     pages: List<HomePageModel>,
     hiddenAppIds: Set<String>,
 ): List<HomePageModel> {
@@ -1517,7 +1517,7 @@ private fun homeItemLabel(item: HomeGridItemModel): String {
     }
 }
 
-private fun folderSummaryFor(apps: List<CloneApp>): String {
+internal fun folderSummaryFor(apps: List<CloneApp>): String {
     return when (apps.size) {
         0 -> "Empty folder"
         1 -> apps.first().name
@@ -1535,7 +1535,7 @@ private fun previewAppsForPage(page: HomePageModel): List<CloneApp> {
     }.take(4)
 }
 
-private fun reorderHomeGridItems(
+internal fun reorderHomeGridItems(
     items: List<HomeGridItemModel>,
     sourceItemId: String,
     targetItemId: String,
@@ -3103,7 +3103,7 @@ private fun FinderEmptyState(
     }
 }
 
-private fun alphabeticalAppSections(apps: List<CloneApp>): List<Pair<String, List<CloneApp>>> {
+internal fun alphabeticalAppSections(apps: List<CloneApp>): List<Pair<String, List<CloneApp>>> {
     return apps
         .groupBy { app -> app.name.firstOrNull()?.uppercase() ?: "#" }
         .toSortedMap()
