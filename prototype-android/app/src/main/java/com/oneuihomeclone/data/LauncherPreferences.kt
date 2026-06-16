@@ -26,6 +26,7 @@ class LauncherPreferences(context: Context) {
         homeLayoutMode = HomeLayoutKey.fromRaw(prefs.getString(KEY_HOME_LAYOUT, null)),
         drawerSortMode = DrawerSortKey.fromRaw(prefs.getString(KEY_DRAWER_SORT, null)),
         motionPreset = MotionPresetKey.fromRaw(prefs.getString(KEY_MOTION_PRESET, null)),
+        folderGrid = FolderGridKey.fromRaw(prefs.getString(KEY_FOLDER_GRID, null)),
     )
 
     fun update(mutator: (Editor) -> Unit) {
@@ -44,6 +45,7 @@ class LauncherPreferences(context: Context) {
         fun setHomeLayoutMode(value: HomeLayoutKey): Editor = apply { editor.putString(KEY_HOME_LAYOUT, value.raw) }
         fun setDrawerSortMode(value: DrawerSortKey): Editor = apply { editor.putString(KEY_DRAWER_SORT, value.raw) }
         fun setMotionPreset(value: MotionPresetKey): Editor = apply { editor.putString(KEY_MOTION_PRESET, value.raw) }
+        fun setFolderGrid(value: FolderGridKey): Editor = apply { editor.putString(KEY_FOLDER_GRID, value.raw) }
     }
 
     companion object {
@@ -58,6 +60,7 @@ class LauncherPreferences(context: Context) {
         private const val KEY_HOME_LAYOUT = "home_layout_mode"
         private const val KEY_DRAWER_SORT = "drawer_sort_mode"
         private const val KEY_MOTION_PRESET = "motion_preset"
+        private const val KEY_FOLDER_GRID = "folder_grid"
     }
 }
 
@@ -72,6 +75,7 @@ data class LauncherState(
     val homeLayoutMode: HomeLayoutKey,
     val drawerSortMode: DrawerSortKey,
     val motionPreset: MotionPresetKey = MotionPresetKey.STANDARD,
+    val folderGrid: FolderGridKey = FolderGridKey.GRID_3X4,
 )
 
 /**
@@ -95,5 +99,16 @@ enum class DrawerSortKey(val raw: String) {
     companion object {
         fun fromRaw(raw: String?): DrawerSortKey =
             entries.firstOrNull { it.raw == raw } ?: CUSTOM_ORDER
+    }
+}
+
+enum class FolderGridKey(val raw: String) {
+    GRID_3X4("3x4"),
+    GRID_4X4("4x4"),
+    GRID_5X5("5x5");
+
+    companion object {
+        fun fromRaw(raw: String?): FolderGridKey =
+            entries.firstOrNull { it.raw == raw } ?: GRID_3X4
     }
 }

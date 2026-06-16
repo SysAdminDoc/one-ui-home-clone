@@ -12,7 +12,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import com.oneuihomeclone.ui.OneUiHomeCloneApp
-import com.oneuihomeclone.ui.motion.ProvideMotionScheme
 import com.oneuihomeclone.ui.theme.OneUiHomeCloneTheme
 import com.oneuihomeclone.widgets.WidgetBindContract
 import com.oneuihomeclone.widgets.WidgetBindRequest
@@ -64,11 +63,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             OneUiHomeCloneTheme {
-                ProvideMotionScheme {
-                    OneUiHomeCloneApp(
-                        homeIntentTick = homeIntentTick,
-                    )
-                }
+                OneUiHomeCloneApp(
+                    homeIntentTick = homeIntentTick,
+                )
             }
         }
     }

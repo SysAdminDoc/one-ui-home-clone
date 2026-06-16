@@ -57,6 +57,7 @@ private val Context.launcherDataStore: DataStore<Preferences> by preferencesData
                     "home_layout_mode",
                     "drawer_sort_mode",
                     "motion_preset",
+                    "folder_grid",
                 ),
             ),
         )
@@ -93,6 +94,7 @@ class LauncherDataStore(context: Context) {
         fun setHomeLayoutMode(value: HomeLayoutKey) { prefs[Keys.HOME_LAYOUT] = value.raw }
         fun setDrawerSortMode(value: DrawerSortKey) { prefs[Keys.DRAWER_SORT] = value.raw }
         fun setMotionPreset(value: MotionPresetKey) { prefs[Keys.MOTION_PRESET] = value.raw }
+        fun setFolderGrid(value: FolderGridKey) { prefs[Keys.FOLDER_GRID] = value.raw }
     }
 
     private object Keys {
@@ -105,6 +107,7 @@ class LauncherDataStore(context: Context) {
         val HOME_LAYOUT = stringPreferencesKey("home_layout_mode")
         val DRAWER_SORT = stringPreferencesKey("drawer_sort_mode")
         val MOTION_PRESET = stringPreferencesKey("motion_preset")
+        val FOLDER_GRID = stringPreferencesKey("folder_grid")
     }
 
     private fun Preferences.toLauncherState(): LauncherState = LauncherState(
@@ -117,6 +120,7 @@ class LauncherDataStore(context: Context) {
         homeLayoutMode = HomeLayoutKey.fromRaw(this[Keys.HOME_LAYOUT]),
         drawerSortMode = DrawerSortKey.fromRaw(this[Keys.DRAWER_SORT]),
         motionPreset = MotionPresetKey.fromRaw(this[Keys.MOTION_PRESET]),
+        folderGrid = FolderGridKey.fromRaw(this[Keys.FOLDER_GRID]),
     )
 }
 

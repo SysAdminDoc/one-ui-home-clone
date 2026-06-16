@@ -1,12 +1,20 @@
 package com.oneuihomeclone.ui
 
 import android.annotation.SuppressLint
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
+import android.os.Bundle
+import android.util.Log
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.RemoteViews
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -64,6 +72,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.pointer.pointerInput
@@ -91,7 +101,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toBitmap
+import com.oneuihomeclone.LauncherApp
+import com.oneuihomeclone.data.BoundWidget
+import com.oneuihomeclone.data.DrawerSortKey
+import com.oneuihomeclone.data.FolderGridKey
+import com.oneuihomeclone.data.HomeLayoutKey
+import com.oneuihomeclone.data.LauncherPreferences
+import com.oneuihomeclone.data.MotionPresetKey
+import com.oneuihomeclone.data.WidgetPersistence
+import com.oneuihomeclone.ui.motion.ProvideMotionScheme
 import com.oneuihomeclone.ui.theme.OneUiAccent
 import com.oneuihomeclone.ui.theme.OneUiAccentSoft
 import com.oneuihomeclone.ui.theme.OneUiBackground
@@ -108,12 +128,14 @@ import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
-import com.oneuihomeclone.data.DrawerSortKey
-import com.oneuihomeclone.data.HomeLayoutKey
-import com.oneuihomeclone.data.LauncherPreferences
+import com.oneuihomeclone.widgets.PreviewSource
+import com.oneuihomeclone.widgets.WidgetBindRequest
+import com.oneuihomeclone.widgets.WidgetBindResult
+import com.oneuihomeclone.widgets.WidgetPreviewLoader
 
 private data class CloneApp(
     val id: String,
@@ -185,6 +207,11 @@ private data class WidgetTemplateModel(
     val category: String,
     val span: String,
     val accent: Color,
+    val providerInfo: AppWidgetProviderInfo? = null,
+    val previewSource: PreviewSource = PreviewSource.Empty,
+    val hostWidgetId: Int? = null,
+    val spanX: Int = 4,
+    val spanY: Int = 2,
 )
 
 private data class NotificationCardModel(
@@ -213,6 +240,17 @@ private enum class DrawerSortMode(val title: String) {
     ALPHABETICAL("Alphabetical order"),
 }
 
+private enum class MotionPresetMode(val title: String) {
+    STANDARD("Standard"),
+    REDUCED("Reduced"),
+}
+
+private enum class FolderGridMode(val title: String, val columns: Int, val rows: Int) {
+    GRID_3X4("3x4", 3, 4),
+    GRID_4X4("4x4", 4, 4),
+    GRID_5X5("5x5", 5, 5),
+}
+
 private enum class OverlayPanel {
     DRAWER,
     NOTIFICATIONS,
@@ -237,6 +275,8 @@ private data class PersistedToggles(
     val lockHomeScreenLayout: Boolean,
     val homeLayoutMode: HomeLayoutMode,
     val drawerSortMode: DrawerSortMode,
+    val motionPreset: MotionPresetMode,
+    val folderGrid: FolderGridMode,
 )
 
 private fun sampleApps(): List<CloneApp> {
@@ -283,6 +323,7 @@ private fun fallbackColorFor(key: String): Color {
 }
 
 private const val MAX_ICONS_LOADED_EAGERLY = 300
+private const val MAX_WIDGET_PROVIDERS_LOADED = 150
 
 private suspend fun loadLauncherApps(
     packageManager: PackageManager,
@@ -337,16 +378,101 @@ private suspend fun loadLauncherApps(
     apps.ifEmpty { fallbackApps }
 }
 
+private suspend fun loadWidgetProviderTemplates(
+    context: Context,
+    fallbackWidgets: List<WidgetTemplateModel>,
+): List<WidgetTemplateModel> = withContext(Dispatchers.IO) {
+    val packageManager = context.packageManager
+    val providers = runCatching {
+        AppWidgetManager.getInstance(context).getInstalledProviders()
+    }.getOrElse { cause ->
+        Log.w("OneUiHome/widgets", "Widget provider query failed (${cause.javaClass.simpleName})")
+        emptyList()
+    }
+
+    val widgets = providers
+        .asSequence()
+        .filter { info -> info.provider != null }
+        .distinctBy { info -> info.provider.flattenToShortString() }
+        .sortedWith(
+            compareBy<AppWidgetProviderInfo> { info ->
+                widgetProviderAppLabel(packageManager, info).lowercase(Locale.getDefault())
+            }.thenBy { info ->
+                widgetProviderLabel(packageManager, info).lowercase(Locale.getDefault())
+            },
+        )
+        .take(MAX_WIDGET_PROVIDERS_LOADED)
+        .map { info ->
+            val appLabel = widgetProviderAppLabel(packageManager, info)
+            val label = widgetProviderLabel(packageManager, info)
+            val spanX = widgetSpanX(info)
+            val spanY = widgetSpanY(info)
+            WidgetTemplateModel(
+                title = label,
+                summary = "Provided by $appLabel",
+                category = appLabel,
+                span = "$spanX x $spanY",
+                accent = fallbackColorFor(info.provider.flattenToShortString()),
+                providerInfo = info,
+                previewSource = WidgetPreviewLoader.load(context, info),
+                spanX = spanX,
+                spanY = spanY,
+            )
+        }
+        .toList()
+
+    widgets.ifEmpty { fallbackWidgets }
+}
+
+private fun widgetProviderLabel(
+    packageManager: PackageManager,
+    info: AppWidgetProviderInfo,
+): String {
+    return runCatching { info.loadLabel(packageManager)?.toString().orEmpty() }
+        .getOrDefault("")
+        .ifBlank { info.provider.className.substringAfterLast('.') }
+}
+
+private fun widgetProviderAppLabel(
+    packageManager: PackageManager,
+    info: AppWidgetProviderInfo,
+): String {
+    val packageName = info.provider?.packageName.orEmpty()
+    if (packageName.isBlank()) return "Widgets"
+    return runCatching {
+        val appInfo = packageManager.getApplicationInfo(packageName, 0)
+        packageManager.getApplicationLabel(appInfo).toString()
+    }.getOrDefault(packageName.substringAfterLast('.').replaceFirstChar(Char::titlecase))
+}
+
+private fun widgetSpanX(info: AppWidgetProviderInfo): Int {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val cells = info.targetCellWidth
+        if (cells > 0) return cells.coerceIn(1, 4)
+    }
+    return if (info.minWidth > 0) ((info.minWidth + 71) / 72).coerceIn(1, 4) else 2
+}
+
+private fun widgetSpanY(info: AppWidgetProviderInfo): Int {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val cells = info.targetCellHeight
+        if (cells > 0) return cells.coerceIn(1, 4)
+    }
+    return if (info.minHeight > 0) ((info.minHeight + 71) / 72).coerceIn(1, 4) else 2
+}
+
 @Composable
 fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
     val appContext = LocalContext.current.applicationContext
     val preferences = remember(appContext) { LauncherPreferences(appContext) }
+    val widgetPersistence = remember(appContext) { WidgetPersistence(appContext) }
+    val coroutineScope = rememberCoroutineScope()
     val initialPrefs = remember(preferences) { preferences.snapshot() }
     val fallbackApps = remember { sampleApps() }
     var allApps by remember { mutableStateOf(fallbackApps) }
     var hasSeededDeviceApps by remember { mutableStateOf(false) }
     val dockApps = remember(allApps) { allApps.take(4) }
-    val widgetTemplates = remember {
+    val fallbackWidgetTemplates = remember {
         listOf(
             WidgetTemplateModel("Calendar", "Month agenda with Samsung-style rounded chrome", "Recommended", "4 x 2", Color(0xFFFF8B7B)),
             WidgetTemplateModel("Weather", "Large conditions card with soft edge highlights", "Recommended", "4 x 2", Color(0xFF62B8FF)),
@@ -356,6 +482,7 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
             WidgetTemplateModel("Reminder list", "Pinned tasks for routines and grocery runs", "Productivity", "4 x 2", Color(0xFFFFC857)),
         )
     }
+    var widgetTemplates by remember { mutableStateOf(fallbackWidgetTemplates) }
     val launchSelectedApp = remember(appContext) {
         { app: CloneApp ->
             val launchIntent = app.launchIntent
@@ -402,6 +529,23 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
     var appLabelsEnabled by remember { mutableStateOf(initialPrefs.appLabelsEnabled) }
     var widgetLabelsEnabled by remember { mutableStateOf(initialPrefs.widgetLabelsEnabled) }
     var swipeDownForNotifications by remember { mutableStateOf(initialPrefs.swipeDownForNotifications) }
+    var motionPreset by remember {
+        mutableStateOf(
+            when (initialPrefs.motionPreset) {
+                MotionPresetKey.STANDARD -> MotionPresetMode.STANDARD
+                MotionPresetKey.REDUCED -> MotionPresetMode.REDUCED
+            },
+        )
+    }
+    var folderGrid by remember {
+        mutableStateOf(
+            when (initialPrefs.folderGrid) {
+                FolderGridKey.GRID_3X4 -> FolderGridMode.GRID_3X4
+                FolderGridKey.GRID_4X4 -> FolderGridMode.GRID_4X4
+                FolderGridKey.GRID_5X5 -> FolderGridMode.GRID_5X5
+            },
+        )
+    }
     var settingsFocusTitle by remember { mutableStateOf<String?>(null) }
     var selectedWidgetCategory by remember { mutableStateOf("Recommended") }
     var nextPageId by remember { mutableIntStateOf(3) }
@@ -415,6 +559,7 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
             ),
         )
     }
+    val latestHomePages by rememberUpdatedState(homePages)
     var defaultHomePageIndex by remember { mutableIntStateOf(0) }
     var pageIndex by remember { mutableIntStateOf(1) }
 
@@ -424,6 +569,20 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
             hostPackageName = appContext.packageName,
             fallbackApps = fallbackApps,
         )
+    }
+
+    LaunchedEffect(appContext, fallbackWidgetTemplates) {
+        widgetTemplates = loadWidgetProviderTemplates(appContext, fallbackWidgetTemplates)
+    }
+
+    LaunchedEffect(widgetPersistence, widgetTemplates) {
+        widgetPersistence.widgets.collect { boundWidgets ->
+            homePages = mergeBoundWidgetsIntoPages(
+                pages = latestHomePages,
+                boundWidgets = boundWidgets,
+                templates = widgetTemplates,
+            )
+        }
     }
 
     // Persist user-facing toggles via snapshotFlow so the first emission (on composition
@@ -440,6 +599,8 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
                 lockHomeScreenLayout = lockHomeScreenLayout,
                 homeLayoutMode = homeLayoutMode,
                 drawerSortMode = drawerSortMode,
+                motionPreset = motionPreset,
+                folderGrid = folderGrid,
             )
         }
             .drop(1)
@@ -462,6 +623,19 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
                             when (toggles.drawerSortMode) {
                                 DrawerSortMode.CUSTOM_ORDER -> DrawerSortKey.CUSTOM_ORDER
                                 DrawerSortMode.ALPHABETICAL -> DrawerSortKey.ALPHABETICAL
+                            },
+                        )
+                        .setMotionPreset(
+                            when (toggles.motionPreset) {
+                                MotionPresetMode.STANDARD -> MotionPresetKey.STANDARD
+                                MotionPresetMode.REDUCED -> MotionPresetKey.REDUCED
+                            },
+                        )
+                        .setFolderGrid(
+                            when (toggles.folderGrid) {
+                                FolderGridMode.GRID_3X4 -> FolderGridKey.GRID_3X4
+                                FolderGridMode.GRID_4X4 -> FolderGridKey.GRID_4X4
+                                FolderGridMode.GRID_5X5 -> FolderGridKey.GRID_5X5
                             },
                         )
                 }
@@ -531,12 +705,9 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
             appsScreenApps.filter { it.name.contains(searchQuery, ignoreCase = true) }
         }
     }
+    val widgetCategories = remember(widgetTemplates) { buildWidgetCategories(widgetTemplates) }
     val filteredWidgetTemplates = remember(selectedWidgetCategory, widgetTemplates) {
-        if (selectedWidgetCategory == "All") {
-            widgetTemplates
-        } else {
-            widgetTemplates.filter { it.category == selectedWidgetCategory }
-        }
+        filterWidgetsForCategory(widgetTemplates, selectedWidgetCategory)
     }
     val finderSettings = remember(
         searchQuery,
@@ -620,7 +791,101 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
         activeOverlay = null
         searchQuery = ""
     }
+    fun addWidgetToTargetPage(
+        widget: WidgetTemplateModel,
+        targetPageId: Int?,
+        targetHomePageIndex: Int,
+    ) {
+        if (targetPageId == null) return
+        homePages = homePages.map { page ->
+            if (page.id == targetPageId) {
+                page.copy(widgets = addWidgetToPage(page.widgets, widget))
+            } else {
+                page
+            }
+        }
+        pageIndex = visualIndexForHomePage(targetHomePageIndex, mediaPageEnabled)
+        activeOverlay = null
+    }
 
+    val addWidgetFromPicker: (WidgetTemplateModel) -> Unit = { widget ->
+        val targetPageId = widgetTargetPage?.id
+        val targetPageLabel = widgetTargetPage?.label ?: "Home"
+        val targetHomePageIndex = widgetTargetHomePageIndex
+        val providerInfo = widget.providerInfo
+
+        if (providerInfo == null) {
+            addWidgetToTargetPage(widget, targetPageId, targetHomePageIndex)
+        } else {
+            val host = LauncherApp.appWidgetHost()
+            val manager = LauncherApp.appWidgetManager()
+            if (host == null || manager == null) {
+                Toast.makeText(appContext, "Widget host is not ready yet.", Toast.LENGTH_SHORT).show()
+            } else {
+                val allocatedId = runCatching { host.allocateAppWidgetId() }.getOrElse { cause ->
+                    Log.w("OneUiHome/widgets", "Widget id allocation failed (${cause.javaClass.simpleName})")
+                    AppWidgetManager.INVALID_APPWIDGET_ID
+                }
+                if (allocatedId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+                    Toast.makeText(appContext, "Couldn't allocate a widget slot.", Toast.LENGTH_SHORT).show()
+                } else {
+                    val options = widgetBindOptions(widget)
+                    val commitBoundWidget: (Int) -> Unit = { boundId ->
+                        val boundModel = widget.copy(hostWidgetId = boundId)
+                        addWidgetToTargetPage(boundModel, targetPageId, targetHomePageIndex)
+                        boundModel.toBoundWidget(boundId, targetHomePageIndex)?.let { persisted ->
+                            coroutineScope.launch { widgetPersistence.add(persisted) }
+                        }
+                        Toast.makeText(appContext, "${widget.title} added to $targetPageLabel.", Toast.LENGTH_SHORT).show()
+                    }
+                    val alreadyAllowed = runCatching {
+                        if (providerInfo.profile != null) {
+                            manager.bindAppWidgetIdIfAllowed(
+                                allocatedId,
+                                providerInfo.profile,
+                                providerInfo.provider,
+                                options,
+                            )
+                        } else {
+                            manager.bindAppWidgetIdIfAllowed(allocatedId, providerInfo.provider)
+                        }
+                    }.getOrDefault(false)
+
+                    if (alreadyAllowed) {
+                        commitBoundWidget(allocatedId)
+                    } else {
+                        val launched = LauncherApp.requestWidgetBind(
+                            WidgetBindRequest(
+                                allocatedWidgetId = allocatedId,
+                                providerInfo = providerInfo,
+                                options = options,
+                            ),
+                        ) { result ->
+                            when (result) {
+                                is WidgetBindResult.Bound -> commitBoundWidget(result.widgetId)
+                                is WidgetBindResult.Declined -> {
+                                    Toast.makeText(appContext, "Widget was not added.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                        if (!launched) {
+                            deleteWidgetId(allocatedId)
+                            Toast.makeText(appContext, "Widget picker is not ready yet.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    val motionPresetKey = remember(motionPreset) {
+        when (motionPreset) {
+            MotionPresetMode.STANDARD -> MotionPresetKey.STANDARD
+            MotionPresetMode.REDUCED -> MotionPresetKey.REDUCED
+        }
+    }
+
+    ProvideMotionScheme(presetOverride = motionPresetKey) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -834,6 +1099,8 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
                 swipeDownForNotifications = swipeDownForNotifications,
                 homeLayoutMode = homeLayoutMode,
                 lockHomeScreenLayout = lockHomeScreenLayout,
+                motionPreset = motionPreset,
+                folderGrid = folderGrid,
                 defaultHomePageLabel = homePages.getOrNull(defaultHomePageIndex)?.label ?: "Home 1",
                 homePageCount = homePages.size,
                 appsScreenSortTitle = drawerSortMode.title,
@@ -850,6 +1117,8 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
                 onSwipeDownChange = { swipeDownForNotifications = it },
                 onHomeLayoutModeChange = { homeLayoutMode = it },
                 onLockHomeScreenLayoutChange = { lockHomeScreenLayout = it },
+                onMotionPresetChange = { motionPreset = it },
+                onFolderGridChange = { folderGrid = it },
             )
         }
 
@@ -958,6 +1227,7 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
                 FolderOverlay(
                     folder = folder,
                     appLabelsEnabled = appLabelsEnabled,
+                    folderGrid = folderGrid,
                     onOpenApp = { app -> launchSelectedApp(app) },
                     onRenameFolder = { newTitle ->
                         homePages = homePages.map { page ->
@@ -990,27 +1260,16 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
             exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(220)) + fadeOut(tween(140)),
         ) {
             WidgetPickerOverlay(
-                categories = listOf("Recommended", "All", "Connected", "Device", "Entertainment", "Productivity"),
+                categories = widgetCategories,
                 selectedCategory = selectedWidgetCategory,
                 widgets = filteredWidgetTemplates,
                 targetPageLabel = widgetTargetPage?.label ?: "Home 1",
                 onSelectCategory = { selectedWidgetCategory = it },
-                onAddWidget = { widget ->
-                    widgetTargetPage?.let { targetPage ->
-                        homePages = homePages.map { page ->
-                            if (page.id == targetPage.id) {
-                                page.copy(widgets = addWidgetToPage(page.widgets, widget))
-                            } else {
-                                page
-                            }
-                        }
-                        pageIndex = visualIndexForHomePage(widgetTargetHomePageIndex, mediaPageEnabled)
-                    }
-                    activeOverlay = null
-                },
+                onAddWidget = addWidgetFromPicker,
                 onClose = { activeOverlay = null },
             )
         }
+    }
     }
 }
 
@@ -1102,7 +1361,153 @@ private fun addWidgetToPage(
     widgets: List<WidgetTemplateModel>,
     widget: WidgetTemplateModel,
 ): List<WidgetTemplateModel> {
-    return (widgets.filterNot { it.title == widget.title } + widget).takeLast(3)
+    return (widgets.filterNot { it.stableWidgetKey() == widget.stableWidgetKey() } + widget).takeLast(3)
+}
+
+private fun buildWidgetCategories(widgets: List<WidgetTemplateModel>): List<String> {
+    val providerCategories = widgets
+        .map { it.category }
+        .filterNot { it == "Recommended" || it == "All" }
+        .distinct()
+        .sortedWith(String.CASE_INSENSITIVE_ORDER)
+    val templateCategories = widgets
+        .map { it.category }
+        .filterNot { it == "All" }
+        .distinct()
+        .filter { it !in providerCategories }
+    return (listOf("Recommended", "All") + providerCategories + templateCategories)
+        .distinct()
+}
+
+private fun filterWidgetsForCategory(
+    widgets: List<WidgetTemplateModel>,
+    selectedCategory: String,
+): List<WidgetTemplateModel> {
+    return when (selectedCategory) {
+        "All" -> widgets
+        "Recommended" -> widgets.filter { it.category == "Recommended" }.ifEmpty { widgets.take(8) }
+        else -> widgets.filter { it.category == selectedCategory }
+    }
+}
+
+private fun mergeBoundWidgetsIntoPages(
+    pages: List<HomePageModel>,
+    boundWidgets: List<BoundWidget>,
+    templates: List<WidgetTemplateModel>,
+): List<HomePageModel> {
+    if (boundWidgets.isEmpty() || pages.isEmpty()) return pages
+    val byPage = boundWidgets.groupBy { it.pageIndex.coerceIn(0, pages.lastIndex) }
+    return pages.mapIndexed { index, page ->
+        val restoredWidgets = byPage[index]
+            .orEmpty()
+            .map { bound -> bound.toWidgetModel(templates) }
+        if (restoredWidgets.isEmpty()) {
+            page
+        } else {
+            val volatileWidgets = page.widgets.filter { it.hostWidgetId == null }
+            page.copy(widgets = (volatileWidgets + restoredWidgets).distinctBy { it.stableWidgetKey() }.takeLast(3))
+        }
+    }
+}
+
+private fun BoundWidget.toWidgetModel(templates: List<WidgetTemplateModel>): WidgetTemplateModel {
+    val providerKey = "$providerPackage/$providerClass"
+    val template = templates.firstOrNull { it.providerKey() == providerKey }
+    return if (template != null) {
+        template.copy(
+            hostWidgetId = hostWidgetId,
+            span = "$spanX x $spanY",
+            spanX = spanX,
+            spanY = spanY,
+        )
+    } else {
+        WidgetTemplateModel(
+            title = providerClass.substringAfterLast('.'),
+            summary = "Restored widget from ${providerPackage.substringAfterLast('.')}",
+            category = providerPackage.substringAfterLast('.').replaceFirstChar(Char::titlecase),
+            span = "$spanX x $spanY",
+            accent = fallbackColorFor(providerKey),
+            hostWidgetId = hostWidgetId,
+            spanX = spanX,
+            spanY = spanY,
+        )
+    }
+}
+
+private fun WidgetTemplateModel.toBoundWidget(
+    widgetId: Int,
+    pageIndex: Int,
+): BoundWidget? {
+    val provider = providerInfo?.provider ?: return null
+    return BoundWidget(
+        hostWidgetId = widgetId,
+        providerPackage = provider.packageName,
+        providerClass = provider.className,
+        pageIndex = pageIndex,
+        cellX = 0,
+        cellY = 0,
+        spanX = spanX,
+        spanY = spanY,
+    )
+}
+
+private fun WidgetTemplateModel.providerKey(): String? =
+    providerInfo?.provider?.let { provider -> "${provider.packageName}/${provider.className}" }
+
+private fun WidgetTemplateModel.stableWidgetKey(): String {
+    hostWidgetId?.let { return "bound:$it" }
+    providerKey()?.let { return "provider:$it" }
+    return "template:$title"
+}
+
+private fun widgetBindOptions(widget: WidgetTemplateModel): Bundle =
+    Bundle().apply {
+        val minWidth = widget.spanX.coerceAtLeast(1) * 72
+        val minHeight = widget.spanY.coerceAtLeast(1) * 72
+        putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, minWidth)
+        putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, minHeight)
+        putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidth * 2)
+        putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight * 2)
+    }
+
+private fun replaceBoundWidgetView(
+    container: FrameLayout,
+    widgetId: Int,
+    providerInfo: AppWidgetProviderInfo,
+) {
+    container.removeAllViews()
+    val resolvedInfo = LauncherApp.appWidgetManager()?.getAppWidgetInfo(widgetId) ?: providerInfo
+    val hostView = runCatching {
+        LauncherApp.appWidgetHost()?.createView(container.context, widgetId, resolvedInfo)
+    }.getOrElse { cause ->
+        Log.w("OneUiHome/widgets", "Bound widget view failed (${cause.javaClass.simpleName})")
+        null
+    } ?: return
+    container.addView(hostView, matchParentLayoutParams())
+}
+
+private fun replaceRemotePreview(
+    container: FrameLayout,
+    preview: PreviewSource.RemoteLayout,
+) {
+    container.removeAllViews()
+    val previewView = runCatching {
+        RemoteViews(preview.providerPackage, preview.layoutResId).apply(container.context, container)
+    }.getOrElse { cause ->
+        Log.w("OneUiHome/widgets", "Remote widget preview failed (${cause.javaClass.simpleName})")
+        null
+    } ?: return
+    container.addView(previewView, matchParentLayoutParams())
+}
+
+private fun matchParentLayoutParams(): FrameLayout.LayoutParams =
+    FrameLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.MATCH_PARENT,
+    )
+
+private fun deleteWidgetId(widgetId: Int) {
+    runCatching { LauncherApp.appWidgetHost()?.deleteAppWidgetId(widgetId) }
 }
 
 private fun homeItemLabel(item: HomeGridItemModel): String {
@@ -1844,21 +2249,172 @@ private fun WidgetPreviewStrip(
                         )
                     }
                     Spacer(Modifier.width(12.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        repeat(if (widget.span == "4 x 1") 2 else 3) { thumb ->
-                            Box(
-                                modifier = Modifier
-                                    .size(width = if (widget.span == "4 x 1") 46.dp else 32.dp, height = if (widget.span == "4 x 1") 18.dp else 22.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(widget.accent.copy(alpha = 0.12f + (thumb * 0.04f))),
-                            )
-                        }
-                    }
+                    WidgetPreviewPane(
+                        widget = widget,
+                        modifier = Modifier.size(
+                            width = if (widget.spanY == 1) 74.dp else 80.dp,
+                            height = if (widget.spanY == 1) 46.dp else 72.dp,
+                        ),
+                        compact = true,
+                    )
                 }
             }
         }
         repeat(2 - shownWidgets.size) {
             Spacer(Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun WidgetPreviewPane(
+    widget: WidgetTemplateModel,
+    modifier: Modifier,
+    compact: Boolean,
+) {
+    val hostWidgetId = widget.hostWidgetId
+    val providerInfo = widget.providerInfo
+    when {
+        hostWidgetId != null && providerInfo != null -> BoundWidgetPreview(
+            widgetId = hostWidgetId,
+            providerInfo = providerInfo,
+            modifier = modifier,
+        )
+        widget.previewSource is PreviewSource.RemoteLayout -> RemoteLayoutPreview(
+            preview = widget.previewSource,
+            modifier = modifier,
+        )
+        widget.previewSource is PreviewSource.PreviewImage -> DrawableWidgetPreview(
+            preview = widget.previewSource,
+            modifier = modifier,
+            contentScale = ContentScale.Crop,
+        )
+        widget.previewSource is PreviewSource.ProviderIcon -> DrawableWidgetPreview(
+            preview = widget.previewSource,
+            modifier = modifier,
+            contentScale = ContentScale.Fit,
+        )
+        else -> SyntheticWidgetPreview(
+            widget = widget,
+            modifier = modifier,
+            compact = compact,
+        )
+    }
+}
+
+@Composable
+private fun BoundWidgetPreview(
+    widgetId: Int,
+    providerInfo: AppWidgetProviderInfo,
+    modifier: Modifier,
+) {
+    AndroidView(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.82f)),
+        factory = { context ->
+            FrameLayout(context).apply {
+                replaceBoundWidgetView(this, widgetId, providerInfo)
+            }
+        },
+        update = { container ->
+            val tag = "bound:$widgetId:${providerInfo.provider.flattenToShortString()}"
+            if (container.tag != tag) {
+                container.tag = tag
+                replaceBoundWidgetView(container, widgetId, providerInfo)
+            }
+        },
+    )
+}
+
+@Composable
+private fun RemoteLayoutPreview(
+    preview: PreviewSource.RemoteLayout,
+    modifier: Modifier,
+) {
+    AndroidView(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.82f)),
+        factory = { context ->
+            FrameLayout(context).apply {
+                replaceRemotePreview(this, preview)
+            }
+        },
+        update = { container ->
+            val tag = "remote:${preview.providerPackage}:${preview.layoutResId}"
+            if (container.tag != tag) {
+                container.tag = tag
+                replaceRemotePreview(container, preview)
+            }
+        },
+    )
+}
+
+@Composable
+private fun DrawableWidgetPreview(
+    preview: PreviewSource,
+    modifier: Modifier,
+    contentScale: ContentScale,
+) {
+    val density = LocalDensity.current
+    val drawable = when (preview) {
+        is PreviewSource.PreviewImage -> preview.drawable
+        is PreviewSource.ProviderIcon -> preview.drawable
+        else -> null
+    }
+    val bitmap = remember(drawable, density) {
+        drawable?.let {
+            runCatching {
+                it.toBitmap(width = 320, height = 180, config = Bitmap.Config.ARGB_8888)
+                    .asImageBitmap()
+            }.getOrNull()
+        }
+    }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap,
+            contentDescription = null,
+            modifier = modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White.copy(alpha = 0.82f)),
+            contentScale = contentScale,
+        )
+    } else {
+        Box(
+            modifier = modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White.copy(alpha = 0.82f)),
+        )
+    }
+}
+
+@Composable
+private fun SyntheticWidgetPreview(
+    widget: WidgetTemplateModel,
+    modifier: Modifier,
+    compact: Boolean,
+) {
+    val barCount = if (compact) {
+        if (widget.spanY == 1) 2 else 3
+    } else {
+        if (widget.spanY == 1) 3 else 4
+    }
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(widget.accent.copy(alpha = 0.1f))
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+    ) {
+        repeat(barCount) { thumb ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(if (thumb == 0) 1f else 0.72f)
+                    .height(if (compact) 8.dp else 12.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(widget.accent.copy(alpha = 0.14f + (thumb * 0.04f))),
+            )
         }
     }
 }
@@ -2756,6 +3312,7 @@ private fun FinderAppGrid(
 private fun FolderOverlay(
     folder: FolderModel,
     appLabelsEnabled: Boolean,
+    folderGrid: FolderGridMode,
     onOpenApp: (CloneApp) -> Unit,
     onRenameFolder: (String) -> Unit,
     onClose: () -> Unit,
@@ -2825,9 +3382,10 @@ private fun FolderOverlay(
                     DrawerPill("Samsung folder")
                 }
                 Spacer(Modifier.height(18.dp))
+                val folderGridHeight = (folderGrid.rows * 78).dp
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    modifier = Modifier.height(258.dp),
+                    columns = GridCells.Fixed(folderGrid.columns),
+                    modifier = Modifier.height(folderGridHeight),
                     userScrollEnabled = false,
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -3053,7 +3611,7 @@ private fun WidgetTemplateCard(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (widget.span == "4 x 1") 86.dp else 126.dp),
+                    .height(if (widget.spanY == 1) 86.dp else 126.dp),
                 shape = RoundedCornerShape(24.dp),
                 color = Color.White,
                 border = BorderStroke(1.dp, widget.accent.copy(alpha = 0.18f)),
@@ -3070,21 +3628,26 @@ private fun WidgetTemplateCard(
                         )
                         .padding(horizontal = 18.dp, vertical = 16.dp),
                 ) {
-                    Column {
-                        Text(widget.category, color = widget.accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(6.dp))
-                        Text(widget.title, color = OneUiText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            repeat(if (widget.span == "4 x 1") 3 else 4) { index ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(width = if (widget.span == "4 x 1") 54.dp else 34.dp, height = if (widget.span == "4 x 1") 28.dp else 34.dp)
-                                        .clip(RoundedCornerShape(14.dp))
-                                        .background(widget.accent.copy(alpha = 0.12f + (index * 0.03f))),
-                                )
-                            }
+                    if (widget.previewSource == PreviewSource.Empty && widget.providerInfo == null) {
+                        Column {
+                            Text(widget.category, color = widget.accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Spacer(Modifier.height(6.dp))
+                            Text(widget.title, color = OneUiText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(8.dp))
+                            SyntheticWidgetPreview(
+                                widget = widget,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(if (widget.spanY == 1) 30.dp else 42.dp),
+                                compact = false,
+                            )
                         }
+                    } else {
+                        WidgetPreviewPane(
+                            widget = widget,
+                            modifier = Modifier.fillMaxSize(),
+                            compact = false,
+                        )
                     }
                 }
             }
@@ -3642,6 +4205,8 @@ private fun SettingsOverlay(
     swipeDownForNotifications: Boolean,
     homeLayoutMode: HomeLayoutMode,
     lockHomeScreenLayout: Boolean,
+    motionPreset: MotionPresetMode,
+    folderGrid: FolderGridMode,
     defaultHomePageLabel: String,
     homePageCount: Int,
     appsScreenSortTitle: String,
@@ -3655,8 +4220,10 @@ private fun SettingsOverlay(
     onSwipeDownChange: (Boolean) -> Unit,
     onHomeLayoutModeChange: (HomeLayoutMode) -> Unit,
     onLockHomeScreenLayoutChange: (Boolean) -> Unit,
+    onMotionPresetChange: (MotionPresetMode) -> Unit,
+    onFolderGridChange: (FolderGridMode) -> Unit,
 ) {
-    val layoutRows = remember(defaultHomePageLabel, homePageCount, homeLayoutMode, appsScreenSortTitle, hiddenAppCount) {
+    val layoutRows = remember(defaultHomePageLabel, homePageCount, homeLayoutMode, appsScreenSortTitle, hiddenAppCount, folderGrid) {
         listOf(
             SettingRowState("Home screen layout", homeLayoutMode.title),
             SettingRowState("Home screen grid", "4x6"),
@@ -3666,7 +4233,7 @@ private fun SettingsOverlay(
                 if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) "Unavailable in Home screen only mode" else appsScreenSortTitle,
             ),
             SettingRowState("Hide apps", if (hiddenAppCount == 0) "None" else "$hiddenAppCount hidden"),
-            SettingRowState("Folder grid", "3x4"),
+            SettingRowState("Folder grid", folderGrid.title),
             SettingRowState("Default home page", defaultHomePageLabel),
             SettingRowState("Visible pages", homePageCount.toString()),
         )
@@ -3742,6 +4309,26 @@ private fun SettingsOverlay(
                 item { SettingsToggleCard("Widget labels", widgetLabelsEnabled, onWidgetLabelsChange) }
                 item { SettingsToggleCard("Swipe down for notification panel", swipeDownForNotifications, onSwipeDownChange) }
                 item { SettingsToggleCard("Lock Home screen layout", lockHomeScreenLayout, onLockHomeScreenLayoutChange) }
+                item {
+                    SettingsSelectorCard(
+                        title = "Folder grid",
+                        description = "Controls how many apps appear per folder page. Samsung defaults to 3x4.",
+                        entries = FolderGridMode.entries,
+                        selectedEntry = folderGrid,
+                        labelOf = { it.title },
+                        onSelect = onFolderGridChange,
+                    )
+                }
+                item {
+                    SettingsSelectorCard(
+                        title = "Motion",
+                        description = "Standard uses spring overshoot for One UI feel. Reduced softens transitions for accessibility.",
+                        entries = MotionPresetMode.entries,
+                        selectedEntry = motionPreset,
+                        labelOf = { it.title },
+                        onSelect = onMotionPresetChange,
+                    )
+                }
                 item {
                     SettingsSection(
                         title = "Behavior",
@@ -3844,6 +4431,46 @@ private fun SettingsToggleCard(
         ) {
             Text(title, color = OneUiText, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
             Switch(checked = checked, onCheckedChange = onCheckedChange)
+        }
+    }
+}
+
+@Composable
+private fun <T> SettingsSelectorCard(
+    title: String,
+    description: String,
+    entries: List<T>,
+    selectedEntry: T,
+    labelOf: (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = OneUiSurface,
+        shadowElevation = 2.dp,
+    ) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
+            Text(title, color = OneUiText, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                description,
+                color = OneUiTextSecondary,
+                fontSize = 12.sp,
+                lineHeight = 18.sp,
+            )
+            Spacer(Modifier.height(14.dp))
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                entries.forEach { entry ->
+                    SettingsCapsule(
+                        label = labelOf(entry),
+                        onClick = { onSelect(entry) },
+                        accent = entry == selectedEntry,
+                    )
+                }
+            }
         }
     }
 }

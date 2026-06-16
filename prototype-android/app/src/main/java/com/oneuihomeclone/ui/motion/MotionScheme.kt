@@ -100,9 +100,14 @@ val LocalMotionScheme = staticCompositionLocalOf { MotionScheme.Standard }
  * approach means changing the preset today requires an Activity recreate to take effect.
  */
 @Composable
-fun ProvideMotionScheme(content: @Composable () -> Unit) {
+fun ProvideMotionScheme(
+    presetOverride: MotionPresetKey? = null,
+    content: @Composable () -> Unit,
+) {
     val context = LocalContext.current.applicationContext
-    val preset = remember(context) { LauncherPreferences(context).snapshot().motionPreset }
+    val preset = presetOverride ?: remember(context) {
+        LauncherPreferences(context).snapshot().motionPreset
+    }
     val systemReduce = remember(context) {
         runCatching {
             Settings.Global.getFloat(
