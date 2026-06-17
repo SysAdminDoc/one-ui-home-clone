@@ -487,7 +487,7 @@ private fun WidgetPreviewStrip(
                 color = OneUiCard,
                 shadowElevation = 1.dp,
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
@@ -497,44 +497,57 @@ private fun WidgetPreviewStrip(
                                 end = Offset(900f, 260f),
                             ),
                         )
+                        .heightIn(min = 168.dp)
                         .padding(horizontal = 18.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(Modifier.weight(1f)) {
-                        if (showLabels) {
-                            Text(
-                                text = widget.category,
-                                color = widget.accent,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                        }
+                    if (showLabels) {
                         Text(
-                            text = widget.title,
-                            color = OneUiText,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = widget.summary,
-                            color = OneUiTextSecondary,
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
-                            maxLines = 2,
+                            text = widget.category,
+                            color = widget.accent,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        Spacer(Modifier.height(4.dp))
                     }
-                    Spacer(Modifier.width(12.dp))
-                    WidgetPreviewPane(
-                        widget = widget,
-                        modifier = Modifier.size(
-                            width = if (widget.spanY == 1) 74.dp else 80.dp,
-                            height = if (widget.spanY == 1) 46.dp else 72.dp,
-                        ),
-                        compact = true,
+                    Text(
+                        text = widget.title,
+                        color = OneUiText,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = widget.summary,
+                        color = OneUiTextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(58.dp)
+                            .clip(OneUiControlShape)
+                            .background(Color.White.copy(alpha = 0.58f)),
+                        contentAlignment = Alignment.CenterEnd,
+                    ) {
+                        WidgetPreviewPane(
+                            widget = widget,
+                            modifier = Modifier
+                                .padding(end = 10.dp)
+                                .size(
+                                    width = if (widget.spanY == 1) 88.dp else 94.dp,
+                                    height = if (widget.spanY == 1) 42.dp else 50.dp,
+                                ),
+                            compact = true,
+                        )
+                    }
                 }
             }
         }
