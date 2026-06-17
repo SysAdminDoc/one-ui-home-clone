@@ -330,7 +330,7 @@ internal fun addAppToFolder(
 internal fun buildSeedWidgets(id: Int): List<WidgetTemplateModel> {
     return when ((id - 1) % 3) {
         0 -> listOf(
-            WidgetTemplateModel("Calendar", "Month agenda with Samsung-style rounded chrome", "Recommended", "4 x 2", Color(0xFFFF8B7B)),
+            WidgetTemplateModel("Calendar", "Month agenda with rounded launcher chrome", "Recommended", "4 x 2", Color(0xFFFF8B7B)),
             WidgetTemplateModel("Weather", "Large conditions card with soft edge highlights", "Recommended", "4 x 2", Color(0xFF62B8FF)),
         )
         1 -> listOf(
@@ -351,14 +351,14 @@ internal fun Set<String>.toggle(value: String): Set<String> {
 internal fun buildHomePage(id: Int, allApps: List<CloneApp>): HomePageModel {
     val metadata = when ((id - 1) % 3) {
         0 -> listOf("Home $id", "Monday", "30", "73° and bright", "Build parity first. Add customization only after the launcher feels native.")
-        1 -> listOf("Home $id", "Focus", "4 blocks", "Calendar, tasks, and routines", "Samsung's page manager works because every screen has a purpose, not just icons.")
-        else -> listOf("Home $id", "Evening", "3 scenes", "Lighting, music, and home controls", "A true One UI clone needs dedicated pages for routines, widgets, and media moments.")
+        1 -> listOf("Home $id", "Focus", "4 blocks", "Calendar, tasks, and routines", "Every screen should have a purpose, not just icons.")
+        else -> listOf("Home $id", "Evening", "3 scenes", "Lighting, music, and home controls", "Dedicated pages keep routines, widgets, and media moments easy to reach.")
     }
     val startIndex = ((id - 1) * 4) % allApps.size
     val folderApps = List(4) { offset -> allApps[(startIndex + offset) % allApps.size] }
     val pageApps = List(11) { offset -> allApps[(startIndex + 4 + offset) % allApps.size] }
     val folder = when ((id - 1) % 3) {
-        0 -> FolderModel(id = "folder-seed-$id", title = "Samsung", summary = folderSummaryFor(folderApps), apps = folderApps)
+        0 -> FolderModel(id = "folder-seed-$id", title = "Tools", summary = folderSummaryFor(folderApps), apps = folderApps)
         1 -> FolderModel(id = "folder-seed-$id", title = "Focus", summary = folderSummaryFor(folderApps), apps = folderApps)
         else -> FolderModel(id = "folder-seed-$id", title = "Home life", summary = folderSummaryFor(folderApps), apps = folderApps)
     }
@@ -438,7 +438,7 @@ internal fun buildFinderActionResults(
             "Wallpapers and style",
             if (lockHomeScreenLayout) "Layout is locked, so wallpaper controls route through settings first" else "Open edit mode for wallpaper and theme controls",
         ),
-        FinderActionItem(FinderActionType.WIDGETS, "Widgets", "Jump into the Samsung-style widget surface"),
+        FinderActionItem(FinderActionType.WIDGETS, "Widgets", "Open the widget picker"),
         FinderActionItem(
             FinderActionType.PAGE_MANAGER,
             "Page manager",
@@ -447,7 +447,7 @@ internal fun buildFinderActionResults(
         FinderActionItem(
             FinderActionType.MEDIA_PAGE,
             if (mediaPageEnabled) "Go to media page" else "Enable media page",
-            if (mediaPageEnabled) "Jump to the Samsung Free-style screen" else "Turn on the left media page and open it",
+            if (mediaPageEnabled) "Jump to the media page" else "Turn on the left media page and open it",
         ),
         FinderActionItem(FinderActionType.HOME_PAGE, "Go to default home page", "Return to the main home screen immediately"),
         FinderActionItem(

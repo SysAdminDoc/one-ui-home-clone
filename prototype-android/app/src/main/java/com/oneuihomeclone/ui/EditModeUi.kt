@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
@@ -38,6 +36,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -83,9 +84,9 @@ internal fun EditModeTray(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(16.dp),
-            shape = RoundedCornerShape(34.dp),
+            shape = OneUiPanelShape,
             color = OneUiSurface,
-            shadowElevation = 10.dp,
+            shadowElevation = 6.dp,
         ) {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
                 Row(
@@ -104,7 +105,7 @@ internal fun EditModeTray(
                             icon = Icons.Default.Image,
                             modifier = Modifier.weight(1f),
                             enabled = false,
-                            supportingText = "Preview only",
+                            supportingText = "Unavailable",
                         )
                         EditTile("Widgets", Icons.Default.Widgets, modifier = Modifier.weight(1f), onClick = onOpenWidgetPicker)
                     }
@@ -115,7 +116,7 @@ internal fun EditModeTray(
                             icon = Icons.Default.Tune,
                             modifier = Modifier.weight(1f),
                             enabled = false,
-                            supportingText = "Preview below",
+                            supportingText = "Controls below",
                         )
                     }
                 }
@@ -189,14 +190,14 @@ private fun PageManagerPanel(
     onAddPage: () -> Unit,
 ) {
     Surface(
-        shape = RoundedCornerShape(28.dp),
+        shape = OneUiPanelShape,
         color = OneUiSurfaceSoft,
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
             Text("Pages", color = OneUiText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Samsung-style page controls need real thumbnails, a default home marker, and a dedicated media surface.",
+                "Page controls use real thumbnails, a default home marker, and a dedicated media surface.",
                 color = OneUiTextSecondary,
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
@@ -209,14 +210,14 @@ private fun PageManagerPanel(
                 if (mediaPageEnabled) {
                     PagePreviewTile(
                         title = "Media",
-                        subtitle = "Samsung Free",
+                        subtitle = "Media hub",
                         selected = pageIndex == 0,
                         onClick = { onSelectPage(0) },
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clip(RoundedCornerShape(18.dp))
+                                .clip(OneUiPanelShape)
                                 .background(
                                     Brush.verticalGradient(
                                         colors = listOf(Color(0xFFEEF4FF), Color(0xFFDDEBFF)),
@@ -252,7 +253,7 @@ private fun PageManagerPanel(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(18.dp))
+                            .clip(OneUiPanelShape)
                             .background(OneUiAccentSoft),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -274,14 +275,17 @@ private fun PagePreviewTile(
 ) {
     Surface(
         modifier = Modifier.width(132.dp),
-        shape = RoundedCornerShape(24.dp),
+        shape = OneUiPanelShape,
         color = if (selected) Color.White else OneUiSurface,
         border = if (selected) BorderStroke(1.dp, OneUiAccent.copy(alpha = 0.32f)) else null,
         shadowElevation = if (selected) 4.dp else 1.dp,
     ) {
         Column(
             modifier = Modifier
-                .clickable(onClick = onClick)
+                .semantics {
+                    contentDescription = title
+                }
+                .clickable(role = Role.Button, onClick = onClick)
                 .padding(horizontal = 12.dp, vertical = 12.dp),
         ) {
             Box(
@@ -312,7 +316,7 @@ private fun HomePagePreview(
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
-        shape = RoundedCornerShape(18.dp),
+        shape = OneUiPanelShape,
         color = Color(0xFFF3F6FB),
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
@@ -324,7 +328,7 @@ private fun HomePagePreview(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = Color.White) {
+            Surface(modifier = Modifier.fillMaxWidth(), shape = OneUiPanelShape, color = Color.White) {
                 Box(
                     modifier = Modifier.fillMaxWidth().height(34.dp).padding(horizontal = 10.dp),
                     contentAlignment = Alignment.CenterStart,
@@ -352,11 +356,11 @@ private fun PreviewItem(item: HomeGridItemModel, modifier: Modifier = Modifier) 
                 if (item.app.icon != null) {
                     Image(bitmap = item.app.icon, contentDescription = item.app.name, modifier = Modifier.size(22.dp), contentScale = ContentScale.Fit)
                 } else {
-                    Box(modifier = Modifier.size(22.dp).clip(RoundedCornerShape(8.dp)).background(item.app.color))
+                    Box(modifier = Modifier.size(22.dp).clip(OneUiMicroShape).background(item.app.color))
                 }
             }
             is FolderModel -> {
-                Surface(modifier = Modifier.size(22.dp), shape = RoundedCornerShape(8.dp), color = Color.White, border = BorderStroke(1.dp, OneUiBorder)) {
+                Surface(modifier = Modifier.size(22.dp), shape = OneUiMicroShape, color = Color.White, border = BorderStroke(1.dp, OneUiBorder)) {
                     Column(Modifier.padding(3.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         repeat(2) { row ->
                             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -365,7 +369,7 @@ private fun PreviewItem(item: HomeGridItemModel, modifier: Modifier = Modifier) 
                                         if (app.icon != null) {
                                             Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                                         } else {
-                                            Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(3.dp)).background(app.color))
+                                            Box(modifier = Modifier.fillMaxSize().clip(OneUiMicroShape).background(app.color))
                                         }
                                     }
                                 }
@@ -376,7 +380,7 @@ private fun PreviewItem(item: HomeGridItemModel, modifier: Modifier = Modifier) 
             }
         }
         Spacer(Modifier.height(4.dp))
-        Box(modifier = Modifier.fillMaxWidth(0.8f).height(3.dp).clip(RoundedCornerShape(12.dp)).background(Color(0x22000000)))
+        Box(modifier = Modifier.fillMaxWidth(0.8f).height(3.dp).clip(OneUiMicroShape).background(Color(0x22000000)))
     }
 }
 
@@ -391,20 +395,21 @@ internal fun EditTile(
 ) {
     Surface(
         modifier = modifier.widthIn(min = 150.dp),
-        shape = RoundedCornerShape(24.dp),
+        shape = OneUiPanelShape,
         color = if (enabled) OneUiSurfaceSoft else OneUiSurfaceSoft.copy(alpha = 0.76f),
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+                .semantics { contentDescription = title }
+                .then(if (enabled) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 Modifier
                     .size(38.dp)
-                    .clip(CircleShape)
+                    .clip(OneUiIconShape)
                     .background(if (enabled) OneUiAccentSoft else OneUiAccentSoft.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center,
             ) {

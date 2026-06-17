@@ -15,7 +15,6 @@ import android.util.Log
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.RemoteViews
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -46,8 +45,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
@@ -158,7 +155,7 @@ private fun sampleApps(): List<CloneApp> {
         CloneApp(id = "sample-calculator", name = "Calculator", color = Color(0xFF627085)),
         CloneApp(id = "sample-smartthings", name = "SmartThings", color = Color(0xFF2EBCF6)),
         CloneApp(id = "sample-recorder", name = "Recorder", color = Color(0xFFFF8D5A)),
-        CloneApp(id = "sample-samsung-free", name = "Samsung Free", color = Color(0xFF7A6BFF)),
+        CloneApp(id = "sample-daily", name = "Daily", color = Color(0xFF7A6BFF)),
     )
 }
 
@@ -274,7 +271,7 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
     val dockApps = remember(allApps) { allApps.take(4) }
     val fallbackWidgetTemplates = remember {
         listOf(
-            WidgetTemplateModel("Calendar", "Month agenda with Samsung-style rounded chrome", "Recommended", "4 x 2", Color(0xFFFF8B7B)),
+            WidgetTemplateModel("Calendar", "Month agenda with rounded launcher chrome", "Recommended", "4 x 2", Color(0xFFFF8B7B)),
             WidgetTemplateModel("Weather", "Large conditions card with soft edge highlights", "Recommended", "4 x 2", Color(0xFF62B8FF)),
             WidgetTemplateModel("SmartThings", "Scenes and devices in a compact control stack", "Connected", "4 x 2", Color(0xFF2EBCF6)),
             WidgetTemplateModel("Battery", "Device and buds battery status", "Device", "4 x 1", Color(0xFF5ECB85)),
@@ -283,17 +280,28 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
         )
     }
     var widgetTemplates by remember { mutableStateOf(fallbackWidgetTemplates) }
-    val launchSelectedApp = remember(appContext) {
-        { app: CloneApp ->
-            val launchIntent = app.launchIntent
-            if (launchIntent == null) {
-                Toast.makeText(appContext, "${app.name} is a prototype surface for now.", Toast.LENGTH_SHORT).show()
-            } else {
-                runCatching { appContext.startActivity(Intent(launchIntent)) }
-                    .onFailure {
-                        Toast.makeText(appContext, "Couldn't open ${app.name}.", Toast.LENGTH_SHORT).show()
-                    }
-            }
+    var feedbackMessage by remember { mutableStateOf<String?>(null) }
+
+    fun showFeedback(message: String) {
+        feedbackMessage = message
+    }
+
+    LaunchedEffect(feedbackMessage) {
+        if (feedbackMessage != null) {
+            delay(2600)
+            feedbackMessage = null
+        }
+    }
+
+    val launchSelectedApp: (CloneApp) -> Unit = { app ->
+        val launchIntent = app.launchIntent
+        if (launchIntent == null) {
+            showFeedback("${app.name} is available after device app loading finishes.")
+        } else {
+            runCatching { appContext.startActivity(Intent(launchIntent)) }
+                .onFailure {
+                    showFeedback("Couldn't open ${app.name}.")
+                }
         }
     }
     val clock = rememberStatusClock()
@@ -616,18 +624,19 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
 
         if (providerInfo == null) {
             addWidgetToTargetPage(widget, targetPageId, targetHomePageIndex)
+            showFeedback("${widget.title} added to $targetPageLabel.")
         } else {
             val host = LauncherApp.appWidgetHost()
             val manager = LauncherApp.appWidgetManager()
             if (host == null || manager == null) {
-                Toast.makeText(appContext, "Widget host is not ready yet.", Toast.LENGTH_SHORT).show()
+                showFeedback("Widget host is not ready yet.")
             } else {
                 val allocatedId = runCatching { host.allocateAppWidgetId() }.getOrElse { cause ->
                     Log.w("OneUiHome/widgets", "Widget id allocation failed (${cause.javaClass.simpleName})")
                     AppWidgetManager.INVALID_APPWIDGET_ID
                 }
                 if (allocatedId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-                    Toast.makeText(appContext, "Couldn't allocate a widget slot.", Toast.LENGTH_SHORT).show()
+                    showFeedback("Couldn't allocate a widget slot.")
                 } else {
                     val options = widgetBindOptions(widget)
                     val commitBoundWidget: (Int) -> Unit = { boundId ->
@@ -636,7 +645,7 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
                         boundModel.toBoundWidget(boundId, targetHomePageIndex)?.let { persisted ->
                             coroutineScope.launch { widgetPersistence.add(persisted) }
                         }
-                        Toast.makeText(appContext, "${widget.title} added to $targetPageLabel.", Toast.LENGTH_SHORT).show()
+                        showFeedback("${widget.title} added to $targetPageLabel.")
                     }
                     val alreadyAllowed = runCatching {
                         if (providerInfo.profile != null) {
@@ -664,13 +673,13 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
                             when (result) {
                                 is WidgetBindResult.Bound -> commitBoundWidget(result.widgetId)
                                 is WidgetBindResult.Declined -> {
-                                    Toast.makeText(appContext, "Widget was not added.", Toast.LENGTH_SHORT).show()
+                                    showFeedback("Widget was not added.")
                                 }
                             }
                         }
                         if (!launched) {
                             deleteWidgetId(allocatedId)
-                            Toast.makeText(appContext, "Widget picker is not ready yet.", Toast.LENGTH_SHORT).show()
+                            showFeedback("Widget picker is not ready yet.")
                         }
                     }
                 }
@@ -1068,6 +1077,20 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
                 onAddWidget = addWidgetFromPicker,
                 onClose = { activeOverlay = null },
             )
+        }
+
+        AnimatedVisibility(
+            visible = feedbackMessage != null,
+            enter = slideInVertically(initialOffsetY = { it / 2 }, animationSpec = tween(180)) + fadeIn(tween(120)),
+            exit = slideOutVertically(targetOffsetY = { it / 2 }, animationSpec = tween(140)) + fadeOut(tween(120)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(start = 24.dp, end = 24.dp, bottom = 112.dp),
+        ) {
+            feedbackMessage?.let { message ->
+                SystemFeedbackBanner(message = message)
+            }
         }
     }
     }

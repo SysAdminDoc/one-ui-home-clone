@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,6 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,9 +76,9 @@ internal fun FolderOverlay(
                 .pointerInput(Unit) {
                     detectTapGestures(onTap = {})
                 },
-            shape = RoundedCornerShape(34.dp),
+            shape = OneUiPanelShape,
             color = OneUiCard.copy(alpha = 0.98f),
-            shadowElevation = 12.dp,
+            shadowElevation = 6.dp,
         ) {
             Column(Modifier.padding(horizontal = 24.dp, vertical = 22.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -94,7 +96,7 @@ internal fun FolderOverlay(
                             placeholder = {
                                 Text("Folder name", color = OneUiTextSecondary)
                             },
-                            shape = RoundedCornerShape(22.dp),
+                            shape = OneUiControlShape,
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(folder.summary, color = OneUiTextSecondary, fontSize = 13.sp)
@@ -118,7 +120,7 @@ internal fun FolderOverlay(
                         },
                         accent = hasTitleChanges,
                     )
-                    DrawerPill("Samsung folder")
+                    DrawerPill("Folder")
                 }
                 Spacer(Modifier.height(18.dp))
                 val folderGridHeight = (folderGrid.rows * 78).dp
@@ -131,7 +133,9 @@ internal fun FolderOverlay(
                 ) {
                     items(folder.apps) { app ->
                         Column(
-                            modifier = Modifier.clickable { onOpenApp(app) },
+                            modifier = Modifier
+                                .semantics { contentDescription = app.name }
+                                .clickable(role = Role.Button) { onOpenApp(app) },
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             AppIconBubble(app = app, size = 60.dp)
@@ -151,7 +155,7 @@ internal fun FolderOverlay(
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Samsung-style folders feel like soft floating sheets with clean spacing and immediate drag targets.",
+                    "Folders keep related apps together without changing their position on the Home screen.",
                     color = OneUiTextSecondary,
                     fontSize = 12.sp,
                     lineHeight = 18.sp,
@@ -190,7 +194,7 @@ internal fun HideAppsOverlay(
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                "Hidden apps disappear from Home and Apps screens, which is how Samsung presents the feature.",
+                "Hidden apps disappear from Home and Apps screens until you restore them.",
                 color = OneUiTextSecondary,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
@@ -221,14 +225,15 @@ internal fun HideAppsOverlay(
             ) {
                 lazyItems(visibleApps + hiddenApps) { app ->
                     Surface(
-                        shape = RoundedCornerShape(24.dp),
+                        shape = OneUiPanelShape,
                         color = OneUiSurface,
-                        shadowElevation = 2.dp,
+                        shadowElevation = 1.dp,
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onToggleHidden(app) }
+                                .semantics { contentDescription = app.name }
+                                .clickable(role = Role.Button) { onToggleHidden(app) }
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

@@ -2,9 +2,9 @@
 
 <p align="center">
 
-[![Version](https://img.shields.io/badge/version-0.2.0-4A88FF)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.1-4A88FF)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-4A88FF)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-4A88FF)](prototype-android/app/build.gradle.kts)
+[![Platform](https://img.shields.io/badge/platform-Android%209.0%2B-4A88FF)](prototype-android/app/build.gradle.kts)
 [![Stack](https://img.shields.io/badge/stack-Kotlin%20%2B%20Compose-4A88FF)](prototype-android/)
 
 </p>
@@ -27,7 +27,7 @@ Unlike Lawnchair / Niagara / OpenLauncher, the project's north star is **Samsung
 - [ROADMAP.md](ROADMAP.md) — planned features + competitive research (3 rounds) + implementation deep dive
 - [prototype-android/](prototype-android/) — standalone Android Compose prototype (app package)
 
-## Current state (v0.2.0)
+## Current state (v0.2.1)
 
 Compose-first prototype covering:
 
@@ -40,6 +40,14 @@ Compose-first prototype covering:
 - Page manager panel with reorderable preview tiles
 - Notification shade overlay
 - Full settings surface with Samsung section ordering + terminology
+
+v0.2.1 adds a premium UI polish pass:
+
+- Shared control/surface geometry with consistent 10-12dp radii instead of mixed oversized rounded containers
+- Integrated in-app feedback for widget/app actions instead of abrupt Compose-owned toasts
+- Cleaner user-facing copy across Finder, widgets, folders, notifications, edit mode, and settings
+- Better empty-state handling in the widget picker
+- More accessible semantics for page dots, app/folder targets, Finder rows, edit tiles, and settings toggles
 
 v0.2.0 landed the widgets + persistence + motion primitives:
 
@@ -59,13 +67,13 @@ From repo root:
 ```bash
 # Git Bash / Linux / macOS
 cd prototype-android
-JAVA_HOME="/c/Program Files/Android/openjdk/jdk-21.0.8" ./gradlew assembleDebug
+JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew assembleDebug
 ```
 
 ```powershell
 # PowerShell
 cd prototype-android
-$env:JAVA_HOME='C:\Program Files\Android\openjdk\jdk-21.0.8'
+$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
 $env:Path="$env:JAVA_HOME\bin;$env:Path"
 .\gradlew.bat assembleDebug
 ```

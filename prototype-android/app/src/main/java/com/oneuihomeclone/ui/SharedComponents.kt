@@ -6,6 +6,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -23,6 +25,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -30,8 +36,14 @@ import androidx.compose.ui.unit.sp
 import com.oneuihomeclone.ui.theme.OneUiAccent
 import com.oneuihomeclone.ui.theme.OneUiAccentSoft
 import com.oneuihomeclone.ui.theme.OneUiSurface
+import com.oneuihomeclone.ui.theme.OneUiSurfaceSoft
 import com.oneuihomeclone.ui.theme.OneUiText
 import com.oneuihomeclone.ui.theme.OneUiTextSecondary
+
+internal val OneUiPanelShape = RoundedCornerShape(12.dp)
+internal val OneUiControlShape = RoundedCornerShape(10.dp)
+internal val OneUiIconShape = RoundedCornerShape(12.dp)
+internal val OneUiMicroShape = RoundedCornerShape(4.dp)
 
 @Composable
 internal fun SettingsCapsule(
@@ -39,20 +51,34 @@ internal fun SettingsCapsule(
     onClick: () -> Unit = {},
     accent: Boolean = true,
     enabled: Boolean = true,
+    selectedState: Boolean? = null,
 ) {
     Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = if (accent) OneUiAccentSoft else OneUiSurface,
-        shadowElevation = if (accent) 0.dp else 2.dp,
+        shape = OneUiControlShape,
+        color = when {
+            !enabled -> OneUiSurfaceSoft
+            accent -> OneUiAccentSoft
+            else -> OneUiSurface
+        },
+        shadowElevation = if (accent || !enabled) 0.dp else 1.dp,
     ) {
         Text(
             label,
-            color = if (accent) OneUiAccent else OneUiText,
+            color = when {
+                !enabled -> OneUiTextSecondary
+                accent -> OneUiAccent
+                else -> OneUiText
+            },
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier
-                .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
+                .defaultMinSize(minHeight = 44.dp)
+                .semantics {
+                    contentDescription = label
+                    selectedState?.let { selected = it }
+                }
+                .then(if (enabled) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
         )
     }
 }
@@ -67,9 +93,9 @@ internal fun <T> SettingsSelectorCard(
     onSelect: (T) -> Unit,
 ) {
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = OneUiPanelShape,
         color = OneUiSurface,
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
             Text(title, color = OneUiText, fontSize = 15.sp, fontWeight = FontWeight.Medium)
@@ -90,6 +116,7 @@ internal fun <T> SettingsSelectorCard(
                         label = labelOf(entry),
                         onClick = { onSelect(entry) },
                         accent = entry == selectedEntry,
+                        selectedState = entry == selectedEntry,
                     )
                 }
             }
@@ -114,9 +141,9 @@ internal fun AppIconBubble(app: CloneApp, size: Dp) {
     } else {
         Surface(
             modifier = Modifier.size(size),
-            shape = RoundedCornerShape(20.dp),
+            shape = OneUiIconShape,
             color = app.color,
-            shadowElevation = 2.dp,
+            shadowElevation = 1.dp,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
@@ -133,9 +160,9 @@ internal fun AppIconBubble(app: CloneApp, size: Dp) {
 @Composable
 internal fun DrawerPill(label: String) {
     Surface(
-        shape = RoundedCornerShape(18.dp),
+        shape = OneUiControlShape,
         color = OneUiSurface,
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
         Text(
             label,
@@ -163,18 +190,53 @@ internal fun SettingsToggleCard(
     title: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    summary: String? = null,
 ) {
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = OneUiPanelShape,
         color = OneUiSurface,
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
+            Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = checked,
+                    role = Role.Switch,
+                    onValueChange = onCheckedChange,
+                )
+                .padding(horizontal = 20.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, color = OneUiText, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-            Switch(checked = checked, onCheckedChange = onCheckedChange)
+            Column(Modifier.weight(1f)) {
+                Text(title, color = OneUiText, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                summary?.let {
+                    Spacer(Modifier.height(4.dp))
+                    Text(it, color = OneUiTextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                }
+            }
+            Switch(checked = checked, onCheckedChange = null)
         }
+    }
+}
+
+@Composable
+internal fun SystemFeedbackBanner(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = OneUiControlShape,
+        color = OneUiText.copy(alpha = 0.92f),
+        shadowElevation = 6.dp,
+    ) {
+        Text(
+            text = message,
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+        )
     }
 }

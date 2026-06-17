@@ -10,13 +10,7 @@ import android.util.Log
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.RemoteViews
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -31,8 +25,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Widgets
@@ -51,7 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
@@ -66,6 +57,10 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -165,23 +160,11 @@ internal fun WallpaperAtmosphere() {
         value = withContext(Dispatchers.IO) { readSystemWallpaper(context) }
     }
 
-    val transition = rememberInfiniteTransition(label = "wallpaper")
-    val pulse by transition.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(6000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse",
-    )
-
     Box(Modifier.fillMaxSize()) {
         // When the user has set us as HOME launcher we can read the system wallpaper
         // directly — render it as the full-bleed backdrop, then layer the One UI soft
-        // gradient glyphs on top. When no wallpaper is accessible we rely on the
-        // themes.xml transparent background + our glyphs alone, which matches the
-        // previous prototype feel.
+        // contrast wash on top. When no wallpaper is accessible, the app-level
+        // gradient remains the fallback.
         wallpaperBitmap?.let { wallpaper ->
             Image(
                 bitmap = wallpaper,
@@ -192,28 +175,16 @@ internal fun WallpaperAtmosphere() {
         }
         Box(
             Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 36.dp, end = 18.dp)
-                .size(220.dp)
-                .scale(pulse)
-                .clip(CircleShape)
-                .background(Color(0x33B5D0FF)),
-        )
-        Box(
-            Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 12.dp)
-                .size(180.dp)
-                .clip(CircleShape)
-                .background(Color(0x2AF7C6A3)),
-        )
-        Box(
-            Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 28.dp, bottom = 150.dp)
-                .size(140.dp)
-                .clip(CircleShape)
-                .background(Color(0x22A78BFA)),
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.20f),
+                            Color.White.copy(alpha = 0.06f),
+                            Color(0xFFEAF2FF).copy(alpha = 0.32f),
+                        ),
+                    ),
+                ),
         )
     }
 }
@@ -355,7 +326,7 @@ internal fun HomeSurface(
             onPageChange = onPageChange,
         )
         Spacer(Modifier.height(18.dp))
-        SearchPill(
+        SearchBarButton(
             label = if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) "Search apps" else "Finder",
             onOpenDrawer = onOpenDrawer,
         )
@@ -383,12 +354,12 @@ private fun StatusRow(
             Text(dateText, color = OneUiTextSecondary, fontSize = 11.sp)
         }
         Spacer(Modifier.weight(1f))
-        Surface(color = OneUiCard, shape = RoundedCornerShape(18.dp), shadowElevation = 2.dp) {
+        Surface(color = OneUiCard, shape = OneUiControlShape, shadowElevation = 1.dp) {
             Row(
                 Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(8.dp).clip(CircleShape).background(OneUiPositive))
+                Box(Modifier.size(8.dp).clip(OneUiMicroShape).background(OneUiPositive))
                 Spacer(Modifier.width(8.dp))
                 Text(
                     if (lockHomeScreenLayout) "Layout locked" else homeLayoutMode.title,
@@ -405,14 +376,14 @@ private fun StatusRow(
 private fun MediaPageHero() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
+        shape = OneUiPanelShape,
         color = OneUiCard,
-        shadowElevation = 6.dp,
+        shadowElevation = 2.dp,
     ) {
         Column(Modifier.padding(horizontal = 24.dp, vertical = 22.dp)) {
             Text("Media page", color = OneUiTextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(2.dp))
-            Text("Samsung Free", color = OneUiText, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+            Text("Media hub", color = OneUiText, fontSize = 34.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Text(
                 "News, watch, listen, and play surfaces belong here instead of crowding the default home page.",
@@ -445,11 +416,11 @@ private fun MediaPageCards() {
                 modifier = Modifier.weight(1f),
             )
         }
-        MediaMiniCard(
-            title = "Play next",
-            body = "A Samsung-like media page needs stacked cards, soft depth, and clear swipe destinations.",
-            modifier = Modifier.fillMaxWidth(),
-        )
+            MediaMiniCard(
+                title = "Play next",
+                body = "The media page keeps glanceable cards and clear swipe destinations without crowding Home.",
+                modifier = Modifier.fillMaxWidth(),
+            )
     }
 }
 
@@ -461,9 +432,9 @@ private fun MediaMiniCard(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(26.dp),
+        shape = OneUiPanelShape,
         color = OneUiSurface,
-        shadowElevation = 3.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
             Text(title, color = OneUiText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
@@ -477,9 +448,9 @@ private fun MediaMiniCard(
 private fun WidgetHeroCard(page: HomePageModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
+        shape = OneUiPanelShape,
         color = OneUiCard,
-        shadowElevation = 6.dp,
+        shadowElevation = 2.dp,
     ) {
         Column(Modifier.padding(horizontal = 24.dp, vertical = 22.dp)) {
             Text(page.eyebrow, color = OneUiTextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
@@ -487,7 +458,7 @@ private fun WidgetHeroCard(page: HomePageModel) {
             Text(page.value, color = OneUiText, fontSize = 50.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(10.dp).clip(CircleShape).background(OneUiAccent))
+                Box(Modifier.size(10.dp).clip(OneUiMicroShape).background(OneUiAccent))
                 Spacer(Modifier.width(8.dp))
                 Text(page.status, color = OneUiText, fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
@@ -512,9 +483,9 @@ private fun WidgetPreviewStrip(
         shownWidgets.forEach { widget ->
             Surface(
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(28.dp),
+                shape = OneUiPanelShape,
                 color = OneUiCard,
-                shadowElevation = 4.dp,
+                shadowElevation = 1.dp,
             ) {
                 Row(
                     modifier = Modifier
@@ -617,7 +588,7 @@ private fun BoundWidgetPreview(
 ) {
     AndroidView(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(OneUiPanelShape)
             .background(Color.White.copy(alpha = 0.82f)),
         factory = { context ->
             FrameLayout(context).apply {
@@ -641,7 +612,7 @@ private fun RemoteLayoutPreview(
 ) {
     AndroidView(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(OneUiPanelShape)
             .background(Color.White.copy(alpha = 0.82f)),
         factory = { context ->
             FrameLayout(context).apply {
@@ -682,15 +653,15 @@ private fun DrawableWidgetPreview(
         Image(
             bitmap = bitmap,
             contentDescription = null,
-            modifier = modifier
-                .clip(RoundedCornerShape(16.dp))
+                modifier = modifier
+                .clip(OneUiPanelShape)
                 .background(Color.White.copy(alpha = 0.82f)),
             contentScale = contentScale,
         )
     } else {
         Box(
             modifier = modifier
-                .clip(RoundedCornerShape(16.dp))
+                .clip(OneUiPanelShape)
                 .background(Color.White.copy(alpha = 0.82f)),
         )
     }
@@ -709,7 +680,7 @@ internal fun SyntheticWidgetPreview(
     }
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(OneUiPanelShape)
             .background(widget.accent.copy(alpha = 0.1f))
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
@@ -719,7 +690,7 @@ internal fun SyntheticWidgetPreview(
                 modifier = Modifier
                     .fillMaxWidth(if (thumb == 0) 1f else 0.72f)
                     .height(if (compact) 8.dp else 12.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(OneUiMicroShape)
                     .background(widget.accent.copy(alpha = 0.14f + (thumb * 0.04f))),
             )
         }
@@ -790,7 +761,7 @@ private fun HomeGrid(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(24.dp))
+                        .clip(OneUiPanelShape)
                         .background(
                             when {
                                 isCombineReady -> OneUiAccentSoft.copy(alpha = 0.9f)
@@ -873,7 +844,9 @@ private fun HomeGrid(
                         }
                         .then(
                             when (item) {
-                                is AppItemModel -> Modifier.clickable { onOpenApp(item.app) }
+                                is AppItemModel -> Modifier
+                                    .semantics { contentDescription = item.app.name }
+                                    .clickable(role = Role.Button) { onOpenApp(item.app) }
                                 is FolderModel -> Modifier
                             },
                         ),
@@ -915,14 +888,15 @@ private fun FolderBubble(
 ) {
     Surface(
         modifier = Modifier.size(62.dp),
-        shape = RoundedCornerShape(22.dp),
+        shape = OneUiIconShape,
         color = OneUiCard.copy(alpha = 0.94f),
-        shadowElevation = 3.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .clickable { onOpenFolder(folder) }
+                .semantics { contentDescription = "Open ${folder.title}" }
+                .clickable(role = Role.Button) { onOpenFolder(folder) }
                 .padding(9.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -945,7 +919,7 @@ private fun FolderBubble(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(18.dp)
-                                        .clip(RoundedCornerShape(7.dp))
+                                        .clip(OneUiMicroShape)
                                         .background(app.color),
                                 )
                             }
@@ -975,29 +949,34 @@ internal fun PageStrip(
                 modifier = Modifier
                     .padding(horizontal = 4.dp)
                     .size(width = if (selected) 20.dp else 7.dp, height = 7.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(OneUiMicroShape)
                     .background(if (selected) OneUiText.copy(alpha = 0.76f) else OneUiTextSecondary.copy(alpha = 0.22f))
-                    .clickable { onPageChange(index) },
+                    .semantics {
+                        contentDescription = "Page ${index + 1} of $pageCount"
+                        this.selected = selected
+                    }
+                    .clickable(role = Role.Button) { onPageChange(index) },
             )
         }
     }
 }
 
 @Composable
-private fun SearchPill(
+private fun SearchBarButton(
     label: String,
     onOpenDrawer: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
+        shape = OneUiControlShape,
         color = OneUiCard,
-        shadowElevation = 4.dp,
+        shadowElevation = 1.dp,
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onOpenDrawer)
+                .semantics { contentDescription = "Open $label" }
+                .clickable(role = Role.Button, onClick = onOpenDrawer)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1024,9 +1003,9 @@ private fun DockBar(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(34.dp),
+        shape = OneUiPanelShape,
         color = OneUiCard,
-        shadowElevation = 8.dp,
+        shadowElevation = 2.dp,
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
@@ -1036,17 +1015,20 @@ private fun DockBar(
             dockItems.forEach { app ->
                 val isAppsButton = app == null
                 Column(
-                    modifier = if (isAppsButton) Modifier else Modifier.clickable { app?.let(onOpenApp) },
+                    modifier = if (isAppsButton) Modifier else Modifier.clickable(role = Role.Button) { app?.let(onOpenApp) },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     if (isAppsButton) {
                         Surface(
                             modifier = Modifier.size(56.dp),
-                            shape = RoundedCornerShape(18.dp),
+                            shape = OneUiIconShape,
                             color = OneUiSurfaceSoft,
                         ) {
                             Box(
-                                modifier = Modifier.fillMaxSize().clickable(onClick = onOpenDrawer),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .semantics { contentDescription = "Open Apps screen" }
+                                    .clickable(role = Role.Button, onClick = onOpenDrawer),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(Icons.Default.Apps, contentDescription = null, tint = OneUiText)
@@ -1070,4 +1052,3 @@ private fun DockBar(
         }
     }
 }
-

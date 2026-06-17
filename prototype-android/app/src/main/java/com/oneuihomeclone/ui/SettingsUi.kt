@@ -14,9 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.oneuihomeclone.ui.theme.OneUiAccent
@@ -102,11 +103,11 @@ internal fun SettingsOverlay(
                 if (!focusedSettingTitle.isNullOrBlank()) {
                     item {
                         Surface(
-                            shape = RoundedCornerShape(24.dp),
+                            shape = OneUiPanelShape,
                             color = OneUiAccentSoft,
                         ) {
                             Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
-                                Text("Jumped from Finder", color = OneUiAccent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Finder result", color = OneUiAccent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     focusedSettingTitle,
@@ -116,7 +117,7 @@ internal fun SettingsOverlay(
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    "A later pass can scroll directly to this section or row, but the prototype now preserves the Finder handoff.",
+                                    "Review the matching setting below.",
                                     color = OneUiTextSecondary,
                                     fontSize = 12.sp,
                                     lineHeight = 18.sp,
@@ -128,7 +129,7 @@ internal fun SettingsOverlay(
                 item {
                     SettingsSection(
                         title = "Layout",
-                        summary = "Match Samsung defaults first",
+                        summary = "Default launcher structure and page behavior",
                         rows = layoutRows,
                     )
                 }
@@ -139,18 +140,60 @@ internal fun SettingsOverlay(
                         onSelectMode = onHomeLayoutModeChange,
                     )
                 }
-                item { SettingsToggleCard("Media page", mediaPageEnabled, onMediaPageChange) }
-                if (homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS) {
-                    item { SettingsToggleCard("Apps button on Home screen", appsButtonEnabled, onAppsButtonChange) }
+                item {
+                    SettingsToggleCard(
+                        title = "Media page",
+                        checked = mediaPageEnabled,
+                        onCheckedChange = onMediaPageChange,
+                        summary = "Show a left-side page for news, media, and daily cards.",
+                    )
                 }
-                item { SettingsToggleCard("App labels", appLabelsEnabled, onAppLabelsChange) }
-                item { SettingsToggleCard("Widget labels", widgetLabelsEnabled, onWidgetLabelsChange) }
-                item { SettingsToggleCard("Swipe down for notification panel", swipeDownForNotifications, onSwipeDownChange) }
-                item { SettingsToggleCard("Lock Home screen layout", lockHomeScreenLayout, onLockHomeScreenLayoutChange) }
+                if (homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS) {
+                    item {
+                        SettingsToggleCard(
+                            title = "Apps button on Home screen",
+                            checked = appsButtonEnabled,
+                            onCheckedChange = onAppsButtonChange,
+                            summary = "Keep an explicit Apps entry in the dock.",
+                        )
+                    }
+                }
+                item {
+                    SettingsToggleCard(
+                        "App labels",
+                        appLabelsEnabled,
+                        onAppLabelsChange,
+                        "Show names under Home, dock, and Apps screen icons.",
+                    )
+                }
+                item {
+                    SettingsToggleCard(
+                        "Widget labels",
+                        widgetLabelsEnabled,
+                        onWidgetLabelsChange,
+                        "Show provider labels on compact widget previews.",
+                    )
+                }
+                item {
+                    SettingsToggleCard(
+                        "Swipe down for notification panel",
+                        swipeDownForNotifications,
+                        onSwipeDownChange,
+                        "Open the notification shade from empty Home screen space.",
+                    )
+                }
+                item {
+                    SettingsToggleCard(
+                        "Lock Home screen layout",
+                        lockHomeScreenLayout,
+                        onLockHomeScreenLayoutChange,
+                        "Prevent accidental page, folder, and widget changes.",
+                    )
+                }
                 item {
                     SettingsSelectorCard(
                         title = "Folder grid",
-                        description = "Controls how many apps appear per folder page. Samsung defaults to 3x4.",
+                        description = "Controls how many apps appear per folder page. The default is 3x4.",
                         entries = FolderGridMode.entries,
                         selectedEntry = folderGrid,
                         labelOf = { it.title },
@@ -170,11 +213,11 @@ internal fun SettingsOverlay(
                 item {
                     SettingsSection(
                         title = "Behavior",
-                        summary = "Samsung naming and expected defaults",
+                        summary = "Expected launcher defaults",
                         rows = listOf(
                             SettingRowState("Add new apps to Home screen", "On"),
                             SettingRowState("Badge notifications", "Dots and number"),
-                            SettingRowState("About Home screen", "One UI Home clone prototype"),
+                            SettingRowState("About Home screen", "One UI Home Clone 0.2.1"),
                         ),
                     )
                 }
@@ -190,9 +233,9 @@ private fun SettingsSection(
     rows: List<SettingRowState>,
 ) {
     Surface(
-        shape = RoundedCornerShape(28.dp),
+        shape = OneUiPanelShape,
         color = OneUiSurface,
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
             Text(title, color = OneUiText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
@@ -200,10 +243,24 @@ private fun SettingsSection(
             Text(summary, color = OneUiTextSecondary, fontSize = 12.sp)
             Spacer(Modifier.height(16.dp))
             rows.forEachIndexed { index, row ->
-                Column {
-                    Text(row.title, color = OneUiText, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.height(2.dp))
-                    Text(row.value, color = OneUiAccent, fontSize = 12.sp)
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        row.title,
+                        color = OneUiText,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        row.value,
+                        color = OneUiAccent,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.widthIn(max = 180.dp),
+                    )
                 }
                 if (index != rows.lastIndex) {
                     Spacer(Modifier.height(14.dp))
@@ -222,15 +279,15 @@ private fun SettingsModeCard(
     onSelectMode: (HomeLayoutMode) -> Unit,
 ) {
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = OneUiPanelShape,
         color = OneUiSurface,
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
             Text(title, color = OneUiText, fontSize = 15.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(6.dp))
             Text(
-                "Switch between Samsung's traditional Home and Apps screens setup and the simpler Home screen only layout.",
+                "Switch between the traditional Home and Apps screens setup and the simpler Home screen only layout.",
                 color = OneUiTextSecondary,
                 fontSize = 12.sp,
                 lineHeight = 18.sp,

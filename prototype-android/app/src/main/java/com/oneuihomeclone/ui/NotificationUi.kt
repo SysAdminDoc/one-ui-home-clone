@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Icon
@@ -47,18 +45,18 @@ internal fun NotificationShadeOverlay(
     val notifications = remember {
         listOf(
             NotificationCardModel(
-                title = "Launcher parity checkpoint",
-                summary = "Home icons, dock targets, and folder entries now respond like real surfaces instead of dead mocks.",
+                title = "Home screen ready",
+                summary = "Icons, dock targets, folders, and widgets are available from the current Home layout.",
                 timestamp = "Just now",
             ),
             NotificationCardModel(
-                title = "Finder cleanup",
-                summary = "The extra drawer control that never changed state was removed to keep the prototype honest.",
+                title = "Finder is active",
+                summary = "Search apps, settings, widgets, and Home screen actions from one focused entry point.",
                 timestamp = "2 min ago",
             ),
             NotificationCardModel(
                 title = "Notification gesture active",
-                summary = "Swipe down from the home surface now opens this Samsung-style mock shade when the setting is enabled.",
+                summary = "Swipe down from empty Home screen space to return to this panel.",
                 timestamp = "5 min ago",
             ),
         )
@@ -86,7 +84,7 @@ internal fun NotificationShadeOverlay(
             }
             Spacer(Modifier.height(18.dp))
             Surface(
-                shape = RoundedCornerShape(28.dp),
+                shape = OneUiPanelShape,
                 color = OneUiSurfaceSoft,
             ) {
                 Row(
@@ -96,7 +94,7 @@ internal fun NotificationShadeOverlay(
                     Box(
                         modifier = Modifier
                             .size(42.dp)
-                            .clip(CircleShape)
+                            .clip(OneUiIconShape)
                             .background(OneUiAccentSoft),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -122,9 +120,9 @@ internal fun NotificationShadeOverlay(
             ) {
                 lazyItems(notifications) { notification ->
                     Surface(
-                        shape = RoundedCornerShape(28.dp),
+                        shape = OneUiPanelShape,
                         color = OneUiSurface,
-                        shadowElevation = 3.dp,
+                        shadowElevation = 1.dp,
                     ) {
                         Column(Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {

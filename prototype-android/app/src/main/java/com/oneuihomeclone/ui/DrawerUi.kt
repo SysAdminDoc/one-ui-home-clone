@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,8 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Apps
@@ -43,6 +42,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -173,7 +175,7 @@ internal fun DrawerOverlay(
                         FinderSectionHeader("Apps screen")
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "Custom order stays paged, just like Samsung's default One UI 7 apps screen.",
+                            "Custom order stays paged, matching the default Apps screen flow.",
                             color = OneUiTextSecondary,
                             fontSize = 12.sp,
                             lineHeight = 18.sp,
@@ -300,7 +302,7 @@ internal fun DrawerOverlay(
                         }
                         if (apps.isEmpty() && settingResults.isEmpty() && actionResults.isEmpty()) {
                             item {
-                                FinderEmptyState(query = query)
+                                FinderEmptyState()
                             }
                         }
                     }
@@ -315,8 +317,8 @@ internal fun DrawerOverlay(
                     Text(if (trimmedQuery.isBlank()) "Search from the bottom" else "Search apps and settings")
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(26.dp),
-                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                shape = OneUiControlShape,
+                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = "Search") },
             )
             Spacer(Modifier.height(12.dp))
             Text(
@@ -333,14 +335,13 @@ internal fun DrawerOverlay(
 
 @Composable
 private fun FinderEmptyState(
-    query: String,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
+        shape = OneUiPanelShape,
         color = OneUiSurface,
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(
             modifier = Modifier
@@ -349,10 +350,10 @@ private fun FinderEmptyState(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("No Finder results", color = OneUiText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("No matches", color = OneUiText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Try broader terms like \"$query settings\" or \"$query page\" to surface grouped actions and settings results.",
+                "Try a shorter term, or search for apps, settings, widgets, and pages.",
                 color = OneUiTextSecondary,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
@@ -411,21 +412,23 @@ private fun FinderActionList(
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         actions.forEach { action ->
             Surface(
-                shape = RoundedCornerShape(24.dp),
+                shape = OneUiPanelShape,
                 color = OneUiSurface,
-                shadowElevation = 2.dp,
+                shadowElevation = 1.dp,
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onOpenAction(action) }
+                        .defaultMinSize(minHeight = 72.dp)
+                        .semantics { contentDescription = action.title }
+                        .clickable(role = Role.Button) { onOpenAction(action) }
                         .padding(horizontal = 18.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
                         modifier = Modifier
                             .size(42.dp)
-                            .clip(CircleShape)
+                            .clip(OneUiIconShape)
                             .background(OneUiAccentSoft),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -443,7 +446,7 @@ private fun FinderActionList(
                     }
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
+                        contentDescription = "Open",
                         tint = OneUiTextSecondary,
                     )
                 }
@@ -460,14 +463,16 @@ private fun FinderSettingsList(
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         settings.forEach { setting ->
             Surface(
-                shape = RoundedCornerShape(24.dp),
+                shape = OneUiPanelShape,
                 color = OneUiSurface,
-                shadowElevation = 2.dp,
+                shadowElevation = 1.dp,
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onOpenSetting(setting) }
+                        .defaultMinSize(minHeight = 72.dp)
+                        .semantics { contentDescription = setting.title }
+                        .clickable(role = Role.Button) { onOpenSetting(setting) }
                         .padding(horizontal = 18.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -484,7 +489,7 @@ private fun FinderSettingsList(
                     }
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
+                        contentDescription = "Open",
                         tint = OneUiTextSecondary,
                     )
                 }
@@ -506,7 +511,8 @@ private fun FinderAppGrid(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { onOpenApp(app) }
+                            .semantics { contentDescription = app.name }
+                            .clickable(role = Role.Button) { onOpenApp(app) }
                             .padding(horizontal = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {

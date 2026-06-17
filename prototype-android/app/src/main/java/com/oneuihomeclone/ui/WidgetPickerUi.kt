@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,7 +65,7 @@ internal fun WidgetPickerOverlay(
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                "Recommended first, then grouped by the surfaces Samsung tends to emphasize.",
+                "Recommended widgets first, then grouped by provider and task.",
                 color = OneUiTextSecondary,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
@@ -96,8 +95,14 @@ internal fun WidgetPickerOverlay(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 28.dp),
             ) {
-                lazyItems(widgets) { widget ->
-                    WidgetTemplateCard(widget = widget, onAddWidget = onAddWidget)
+                if (widgets.isEmpty()) {
+                    item {
+                        WidgetPickerEmptyState(selectedCategory = selectedCategory)
+                    }
+                } else {
+                    lazyItems(widgets) { widget ->
+                        WidgetTemplateCard(widget = widget, onAddWidget = onAddWidget)
+                    }
                 }
             }
         }
@@ -110,9 +115,9 @@ internal fun WidgetTemplateCard(
     onAddWidget: (WidgetTemplateModel) -> Unit,
 ) {
     Surface(
-        shape = RoundedCornerShape(28.dp),
+        shape = OneUiPanelShape,
         color = OneUiSurface,
-        shadowElevation = 3.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -132,7 +137,7 @@ internal fun WidgetTemplateCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(if (widget.spanY == 1) 86.dp else 126.dp),
-                shape = RoundedCornerShape(24.dp),
+                shape = OneUiPanelShape,
                 color = Color.White,
                 border = BorderStroke(1.dp, widget.accent.copy(alpha = 0.18f)),
             ) {
@@ -171,6 +176,26 @@ internal fun WidgetTemplateCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun WidgetPickerEmptyState(selectedCategory: String) {
+    Surface(
+        shape = OneUiPanelShape,
+        color = OneUiSurface,
+        shadowElevation = 1.dp,
+    ) {
+        Column(Modifier.padding(horizontal = 22.dp, vertical = 22.dp)) {
+            Text("No widgets in $selectedCategory", color = OneUiText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Choose another category or install apps that expose widgets.",
+                color = OneUiTextSecondary,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+            )
         }
     }
 }
