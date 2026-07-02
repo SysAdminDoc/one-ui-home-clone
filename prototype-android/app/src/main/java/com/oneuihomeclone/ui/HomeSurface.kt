@@ -16,6 +16,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -240,10 +241,12 @@ internal fun HomeSurface(
     onAddAppToFolder: (String, String) -> Unit,
     onHomeItemDragStateChange: (Boolean) -> Unit,
     onOpenApp: (CloneApp) -> Unit,
+    onOpenAppActions: (CloneApp, AppContextSource) -> Unit,
     onOpenFolder: (FolderModel) -> Unit,
     onMoveWidget: (Int, Int, Int) -> Unit,
     onResizeWidget: (Int, Int, Int) -> Unit,
     onRemoveWidget: (Int) -> Unit,
+    onOpenWidgetActions: (WidgetTemplateModel) -> Unit,
     onPageChange: (Int) -> Unit,
 ) {
     val drawerGestureEnabled = homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS
@@ -313,6 +316,7 @@ internal fun HomeSurface(
                     onMoveWidget = onMoveWidget,
                     onResizeWidget = onResizeWidget,
                     onRemoveWidget = onRemoveWidget,
+                    onOpenWidgetActions = onOpenWidgetActions,
                 )
             }
             Spacer(Modifier.height(22.dp))
@@ -326,6 +330,7 @@ internal fun HomeSurface(
                 onAddAppToFolder = onAddAppToFolder,
                 onDragStateChange = onHomeItemDragStateChange,
                 onOpenApp = onOpenApp,
+                onOpenAppActions = onOpenAppActions,
                 onOpenFolder = onOpenFolder,
             )
             Spacer(Modifier.weight(1f))
@@ -346,6 +351,7 @@ internal fun HomeSurface(
             showLabels = appLabelsEnabled,
             appsButtonEnabled = homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS && appsButtonEnabled,
             onOpenApp = onOpenApp,
+            onOpenAppActions = onOpenAppActions,
             onOpenDrawer = onOpenDrawer,
         )
     }
@@ -491,6 +497,7 @@ private fun WidgetGrid(
     onMoveWidget: (Int, Int, Int) -> Unit,
     onResizeWidget: (Int, Int, Int) -> Unit,
     onRemoveWidget: (Int) -> Unit,
+    onOpenWidgetActions: (WidgetTemplateModel) -> Unit,
 ) {
     val placedWidgets = remember(widgets) { placeWidgetsInGrid(widgets) }
     val gridRows = (placedWidgets.maxOfOrNull { it.cellY + it.spanY } ?: 1).coerceIn(1, 6)
@@ -515,6 +522,7 @@ private fun WidgetGrid(
                 onMoveWidget = onMoveWidget,
                 onResizeWidget = onResizeWidget,
                 onRemoveWidget = onRemoveWidget,
+                onOpenWidgetActions = onOpenWidgetActions,
             )
         }
     }
@@ -528,13 +536,19 @@ private fun WidgetGridTile(
     onMoveWidget: (Int, Int, Int) -> Unit,
     onResizeWidget: (Int, Int, Int) -> Unit,
     onRemoveWidget: (Int) -> Unit,
+    onOpenWidgetActions: (WidgetTemplateModel) -> Unit,
 ) {
     val hostWidgetId = widget.hostWidgetId
     val boundProviderMissing = hostWidgetId != null && widget.providerInfo == null
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height((widget.spanY.coerceIn(1, 4) * 82).dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = {},
+                    onLongClick = { onOpenWidgetActions(widget) },
+                    role = Role.Button,
+                )
+                .height((widget.spanY.coerceIn(1, 4) * 82).dp),
         shape = OneUiPanelShape,
         color = OneUiCard,
         shadowElevation = 1.dp,
@@ -1007,6 +1021,7 @@ private fun HomeGrid(
     onAddAppToFolder: (String, String) -> Unit,
     onDragStateChange: (Boolean) -> Unit,
     onOpenApp: (CloneApp) -> Unit,
+    onOpenAppActions: (CloneApp, AppContextSource) -> Unit,
     onOpenFolder: (FolderModel) -> Unit,
 ) {
     val iconScale by animateFloatAsState(targetValue = 1f, label = "grid")
@@ -1109,6 +1124,8 @@ private fun HomeGrid(
 
                                             else -> onReorderItem(sourceItemId, targetItemId)
                                         }
+                                    } else if (!hasDragged && sourceItem is AppItemModel) {
+                                        onOpenAppActions(sourceItem.app, AppContextSource.HOME)
                                     }
 
                                     resetDragState()
@@ -1145,7 +1162,11 @@ private fun HomeGrid(
                             when (item) {
                                 is AppItemModel -> Modifier
                                     .semantics { contentDescription = item.app.accessibilityLabel() }
-                                    .clickable(role = Role.Button) { onOpenApp(item.app) }
+                                    .combinedClickable(
+                                        role = Role.Button,
+                                        onClick = { onOpenApp(item.app) },
+                                        onLongClick = { onOpenAppActions(item.app, AppContextSource.HOME) },
+                                    )
                                 is FolderModel -> Modifier
                             },
                         ),
@@ -1298,6 +1319,7 @@ private fun DockBar(
     showLabels: Boolean,
     appsButtonEnabled: Boolean,
     onOpenApp: (CloneApp) -> Unit,
+    onOpenAppActions: (CloneApp, AppContextSource) -> Unit,
     onOpenDrawer: () -> Unit,
 ) {
     val openAppsDescription = stringResource(R.string.a11y_open_apps_screen)
@@ -1322,7 +1344,15 @@ private fun DockBar(
             dockItems.forEach { app ->
                 val isAppsButton = app == null
                 Column(
-                    modifier = if (isAppsButton) Modifier else Modifier.clickable(role = Role.Button) { app?.let(onOpenApp) },
+                    modifier = if (isAppsButton) {
+                        Modifier
+                    } else {
+                        Modifier.combinedClickable(
+                            role = Role.Button,
+                            onClick = { app?.let(onOpenApp) },
+                            onLongClick = { app?.let { onOpenAppActions(it, AppContextSource.DOCK) } },
+                        )
+                    },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     if (isAppsButton) {

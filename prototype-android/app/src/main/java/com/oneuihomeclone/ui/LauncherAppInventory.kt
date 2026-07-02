@@ -5,11 +5,13 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
+import android.net.Uri
 import android.os.Build
 import android.os.Process
 import android.graphics.Bitmap
 import android.os.UserHandle
 import android.os.UserManager
+import android.provider.Settings
 import android.util.Log
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
@@ -177,6 +179,67 @@ internal class LauncherAppInventory(
 
         val launchIntent = app.launchIntent ?: return false
         return runCatching { appContext.startActivity(Intent(launchIntent)) }.isSuccess
+    }
+
+    fun openAppInfo(app: CloneApp): Boolean {
+        val target = app.launchTarget
+        val service = launcherApps
+        if (target != null && service != null) {
+            val opened = runCatching {
+                service.startAppDetailsActivity(target.componentName, target.user, null, null)
+            }.isSuccess
+            if (opened) return true
+        }
+
+        val packageName = target?.componentName?.packageName
+            ?: app.launchIntent?.component?.packageName
+            ?: return false
+        val detailsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData(Uri.parse("package:$packageName"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return runCatching { appContext.startActivity(detailsIntent) }.isSuccess
+    }
+
+    suspend fun loadDynamicShortcuts(app: CloneApp): List<LauncherShortcutAction> = withContext(Dispatchers.IO) {
+        val target = app.launchTarget ?: return@withContext emptyList()
+        val service = launcherApps ?: return@withContext emptyList()
+        val hasPermission = runCatching { service.hasShortcutHostPermission() }.getOrDefault(false)
+        if (!hasPermission) return@withContext emptyList()
+
+        runCatching {
+            val query = LauncherApps.ShortcutQuery()
+                .setPackage(target.componentName.packageName)
+                .setActivity(target.componentName)
+                .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC)
+            service.getShortcuts(query, target.user).orEmpty()
+                .asSequence()
+                .filter { shortcut -> shortcut.`package` == target.componentName.packageName }
+                .distinctBy { shortcut -> shortcut.id }
+                .sortedWith(compareBy({ it.rank }, { it.shortLabel?.toString().orEmpty() }))
+                .take(MAX_CONTEXT_SHORTCUTS)
+                .map { shortcut ->
+                    LauncherShortcutAction(
+                        id = shortcut.id,
+                        packageName = shortcut.`package`,
+                        shortLabel = shortcut.shortLabel?.toString()?.ifBlank { shortcut.id } ?: shortcut.id,
+                        longLabel = shortcut.longLabel?.toString()?.ifBlank { null },
+                        isEnabled = shortcut.isEnabled,
+                        disabledMessage = shortcut.disabledMessage?.toString()?.ifBlank { null },
+                        user = target.user,
+                    )
+                }
+                .toList()
+        }.getOrElse { cause ->
+            Log.w(TAG, "Shortcut query failed (${cause.javaClass.simpleName})")
+            emptyList()
+        }
+    }
+
+    fun launchShortcut(shortcut: LauncherShortcutAction): Boolean {
+        val service = launcherApps ?: return false
+        return runCatching {
+            service.startShortcut(shortcut.packageName, shortcut.id, null, null, shortcut.user)
+        }.isSuccess
     }
 
     private fun normalizedSources(sources: List<LauncherActivitySource>): List<LauncherActivitySource> {

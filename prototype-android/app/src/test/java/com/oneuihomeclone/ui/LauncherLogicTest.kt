@@ -241,6 +241,87 @@ class LauncherLogicTest {
     }
 
     @Test
+    fun addAppToHomePageItems_appendsOnlyWhenMissingAndSpaceAvailable() {
+        val original = listOf<HomeGridItemModel>(appItem("a"))
+        val result = addAppToHomePageItems(original, app("b", "Beta"))
+
+        assertEquals(listOf("a", "b"), result.map(HomeGridItemModel::id))
+        assertEquals(result, addAppToHomePageItems(result, app("b", "Beta")))
+    }
+
+    @Test
+    fun removeAppFromHomePageItems_removesDirectShortcutOnly() {
+        val items: List<HomeGridItemModel> = listOf(appItem("a"), folder("folder", "b"))
+        val result = removeAppFromHomePageItems(items, "a")
+
+        assertEquals(listOf("folder"), result.map(HomeGridItemModel::id))
+        assertEquals(items, removeAppFromHomePageItems(items, "b"))
+    }
+
+    @Test
+    fun buildAppContextActions_drawerAppIncludesAddHideAndAppInfo() {
+        val actions = buildAppContextActions(
+            source = AppContextSource.DRAWER,
+            isHidden = false,
+            canOpenAppInfo = true,
+            canAddToHome = true,
+            canRemoveFromHome = false,
+            shortcuts = emptyList(),
+        )
+
+        assertEquals(
+            listOf(
+                LauncherContextActionType.APP_INFO,
+                LauncherContextActionType.ADD_TO_HOME,
+                LauncherContextActionType.HIDE_APP,
+            ),
+            actions.map(LauncherContextAction::type),
+        )
+        assertTrue(actions.first { it.type == LauncherContextActionType.ADD_TO_HOME }.enabled)
+    }
+
+    @Test
+    fun buildAppContextActions_hiddenAppUsesRestore() {
+        val actions = buildAppContextActions(
+            source = AppContextSource.HIDE_APPS,
+            isHidden = true,
+            canOpenAppInfo = false,
+            canAddToHome = false,
+            canRemoveFromHome = false,
+            shortcuts = emptyList(),
+        )
+
+        assertTrue(actions.any { it.type == LauncherContextActionType.RESTORE_APP })
+        assertTrue(actions.none { it.type == LauncherContextActionType.HIDE_APP })
+    }
+
+    @Test
+    fun buildAppContextActions_homeAppIncludesRemoveWhenEditable() {
+        val actions = buildAppContextActions(
+            source = AppContextSource.HOME,
+            isHidden = false,
+            canOpenAppInfo = true,
+            canAddToHome = false,
+            canRemoveFromHome = true,
+            shortcuts = emptyList(),
+        )
+
+        assertTrue(actions.any { it.type == LauncherContextActionType.REMOVE_FROM_HOME })
+        assertTrue(actions.none { it.type == LauncherContextActionType.ADD_TO_HOME })
+    }
+
+    @Test
+    fun buildWidgetContextActions_disablesUnavailableSettingsAndLockedRemove() {
+        val actions = buildWidgetContextActions(widget("Calendar", hostWidgetId = 42), canEdit = false)
+
+        assertEquals(
+            listOf(LauncherContextActionType.WIDGET_SETTINGS, LauncherContextActionType.REMOVE_WIDGET),
+            actions.map(LauncherContextAction::type),
+        )
+        assertTrue(actions.none(LauncherContextAction::enabled))
+    }
+
+    @Test
     fun boundWidgetCount_countsOnlyHostBackedWidgets() {
         val pages = listOf(
             page(1, widgets = listOf(widget("Calendar"), widget("Clock", hostWidgetId = 42))),

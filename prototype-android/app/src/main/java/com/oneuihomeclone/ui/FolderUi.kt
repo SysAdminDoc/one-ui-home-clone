@@ -1,7 +1,9 @@
 package com.oneuihomeclone.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -51,12 +53,14 @@ import com.oneuihomeclone.ui.theme.OneUiSurface
 import com.oneuihomeclone.ui.theme.OneUiText
 import com.oneuihomeclone.ui.theme.OneUiTextSecondary
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun FolderOverlay(
     folder: FolderModel,
     appLabelsEnabled: Boolean,
     folderGrid: FolderGridMode,
     onOpenApp: (CloneApp) -> Unit,
+    onOpenAppActions: (CloneApp, AppContextSource) -> Unit,
     onRenameFolder: (String) -> Unit,
     onClose: () -> Unit,
 ) {
@@ -137,7 +141,11 @@ internal fun FolderOverlay(
                         Column(
                             modifier = Modifier
                                 .semantics { contentDescription = app.accessibilityLabel() }
-                                .clickable(role = Role.Button) { onOpenApp(app) },
+                                .combinedClickable(
+                                    role = Role.Button,
+                                    onClick = { onOpenApp(app) },
+                                    onLongClick = { onOpenAppActions(app, AppContextSource.FOLDER) },
+                                ),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             AppIconBubble(app = app, size = 60.dp)
@@ -168,11 +176,13 @@ internal fun FolderOverlay(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun HideAppsOverlay(
     apps: List<CloneApp>,
     hiddenAppIds: Set<String>,
     onToggleHidden: (CloneApp) -> Unit,
+    onOpenAppActions: (CloneApp, AppContextSource) -> Unit,
     onClose: () -> Unit,
 ) {
     val hiddenApps = remember(apps, hiddenAppIds) { apps.filter { it.id in hiddenAppIds } }
@@ -242,7 +252,11 @@ internal fun HideAppsOverlay(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .semantics { contentDescription = appDescription }
-                                .clickable(role = Role.Button) { onToggleHidden(app) }
+                                .combinedClickable(
+                                    role = Role.Button,
+                                    onClick = { onToggleHidden(app) },
+                                    onLongClick = { onOpenAppActions(app, AppContextSource.HIDE_APPS) },
+                                )
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

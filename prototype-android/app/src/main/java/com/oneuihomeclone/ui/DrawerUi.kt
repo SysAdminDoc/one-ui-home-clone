@@ -1,7 +1,9 @@
 package com.oneuihomeclone.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -82,6 +84,7 @@ internal fun DrawerOverlay(
     onOpenSettingResult: (FinderSettingResult) -> Unit,
     onOpenAction: (FinderActionItem) -> Unit,
     onOpenApp: (CloneApp) -> Unit,
+    onOpenAppActions: (CloneApp, AppContextSource) -> Unit,
     appLabelsEnabled: Boolean,
 ) {
     val trimmedQuery = query.trim()
@@ -187,6 +190,7 @@ internal fun DrawerOverlay(
                             apps = selectedDrawerPage,
                             showLabels = appLabelsEnabled,
                             onOpenApp = onOpenApp,
+                            onOpenAppActions = onOpenAppActions,
                         )
                         if (drawerPages.size > 1) {
                             Spacer(Modifier.height(16.dp))
@@ -234,6 +238,7 @@ internal fun DrawerOverlay(
                                         apps = appsScreenApps.take(8),
                                         showLabels = appLabelsEnabled,
                                         onOpenApp = onOpenApp,
+                                        onOpenAppActions = onOpenAppActions,
                                     )
                                 }
                             }
@@ -256,6 +261,7 @@ internal fun DrawerOverlay(
                                         apps = section.second,
                                         showLabels = appLabelsEnabled,
                                         onOpenApp = onOpenApp,
+                                        onOpenAppActions = onOpenAppActions,
                                     )
                                 }
                             }
@@ -299,6 +305,7 @@ internal fun DrawerOverlay(
                                     apps = apps,
                                     showLabels = appLabelsEnabled,
                                     onOpenApp = onOpenApp,
+                                    onOpenAppActions = onOpenAppActions,
                                 )
                             }
                         }
@@ -502,11 +509,13 @@ private fun FinderSettingsList(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FinderAppGrid(
     apps: List<CloneApp>,
     showLabels: Boolean,
     onOpenApp: (CloneApp) -> Unit,
+    onOpenAppActions: (CloneApp, AppContextSource) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         apps.chunked(4).forEach { rowApps ->
@@ -516,7 +525,11 @@ private fun FinderAppGrid(
                         modifier = Modifier
                             .weight(1f)
                             .semantics { contentDescription = app.accessibilityLabel() }
-                            .clickable(role = Role.Button) { onOpenApp(app) }
+                            .combinedClickable(
+                                role = Role.Button,
+                                onClick = { onOpenApp(app) },
+                                onLongClick = { onOpenAppActions(app, AppContextSource.DRAWER) },
+                            )
                             .padding(horizontal = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {

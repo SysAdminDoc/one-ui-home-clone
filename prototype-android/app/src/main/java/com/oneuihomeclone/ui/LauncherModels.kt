@@ -39,6 +39,16 @@ internal data class LauncherAppLaunchTarget(
     val user: UserHandle,
 )
 
+internal data class LauncherShortcutAction(
+    val id: String,
+    val packageName: String,
+    val shortLabel: String,
+    val longLabel: String?,
+    val isEnabled: Boolean,
+    val disabledMessage: String?,
+    val user: UserHandle,
+)
+
 internal sealed interface HomeGridItemModel {
     val id: String
 }
@@ -94,6 +104,54 @@ internal data class FinderActionItem(
     val type: FinderActionType,
     val title: String,
     val summary: String,
+)
+
+internal enum class AppContextSource {
+    HOME,
+    DOCK,
+    DRAWER,
+    FOLDER,
+    HIDE_APPS,
+}
+
+internal enum class LauncherContextActionType {
+    APP_INFO,
+    ADD_TO_HOME,
+    HIDE_APP,
+    RESTORE_APP,
+    REMOVE_FROM_HOME,
+    WIDGET_SETTINGS,
+    REMOVE_WIDGET,
+    SHORTCUT,
+}
+
+internal data class LauncherContextAction(
+    val type: LauncherContextActionType,
+    val title: String,
+    val summary: String,
+    val enabled: Boolean = true,
+    val shortcut: LauncherShortcutAction? = null,
+)
+
+internal data class LauncherContextActionText(
+    val appInfo: String = "App info",
+    val appInfoSummary: String = "Open Android's app details screen",
+    val appInfoUnavailableSummary: String = "App details are unavailable for this sample app",
+    val addToHome: String = "Add to Home",
+    val addToHomeSummary: String = "Place this app on the current Home page",
+    val addToHomeUnavailableSummary: String = "This app is already on Home or the page is full",
+    val hideApp: String = "Hide",
+    val hideAppSummary: String = "Hide from Home and Apps screens",
+    val restoreApp: String = "Restore",
+    val restoreAppSummary: String = "Show in Home and Apps screens again",
+    val removeFromHome: String = "Remove from Home",
+    val removeFromHomeSummary: String = "Keep the app installed and remove only this Home shortcut",
+    val widgetSettings: String = "Widget settings",
+    val widgetSettingsSummary: String = "Open this widget's configuration screen",
+    val widgetSettingsUnavailableSummary: String = "This widget does not expose settings",
+    val removeWidget: String = "Remove widget",
+    val removeWidgetSummary: String = "Remove this widget from Home",
+    val shortcutSummary: String = "Dynamic shortcut",
 )
 
 internal data class WidgetTemplateModel(
@@ -249,3 +307,5 @@ internal fun PersistedToggles.toLauncherState(): LauncherState = LauncherState(
 
 internal const val MAX_ICONS_LOADED_EAGERLY = 300
 internal const val MAX_WIDGET_PROVIDERS_LOADED = 150
+internal const val MAX_HOME_GRID_ITEMS = 16
+internal const val MAX_CONTEXT_SHORTCUTS = 4

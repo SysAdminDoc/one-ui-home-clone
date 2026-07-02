@@ -163,6 +163,17 @@ private fun sampleApps(): List<CloneApp> {
     )
 }
 
+private sealed interface LauncherContextTarget {
+    data class App(
+        val app: CloneApp,
+        val source: AppContextSource,
+    ) : LauncherContextTarget
+
+    data class Widget(
+        val widget: WidgetTemplateModel,
+    ) : LauncherContextTarget
+}
+
 private suspend fun loadWidgetProviderTemplates(
     context: Context,
     fallbackWidgets: List<WidgetTemplateModel>,
@@ -252,6 +263,8 @@ fun OneUiHomeCloneApp(
     var widgetTemplates by remember { mutableStateOf(fallbackWidgetTemplates) }
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
     var defaultLauncherPromptDismissed by remember { mutableStateOf(false) }
+    var contextTarget by remember { mutableStateOf<LauncherContextTarget?>(null) }
+    var contextShortcuts by remember { mutableStateOf(emptyList<LauncherShortcutAction>()) }
     val homeScreenSettingsTitle = stringResource(R.string.settings_title_home_screen)
     val hideAppsTitle = stringResource(R.string.settings_hide_apps)
     val lockLayoutTitle = stringResource(R.string.settings_lock_layout)
@@ -307,6 +320,26 @@ fun OneUiHomeCloneApp(
         manageHiddenSummary = stringResource(R.string.finder_action_manage_hidden_summary),
         hideAppsSummary = stringResource(R.string.finder_action_hide_apps_summary),
     )
+    val contextActionText = LauncherContextActionText(
+        appInfo = stringResource(R.string.context_action_app_info),
+        appInfoSummary = stringResource(R.string.context_action_app_info_summary),
+        appInfoUnavailableSummary = stringResource(R.string.context_action_app_info_unavailable),
+        addToHome = stringResource(R.string.context_action_add_to_home),
+        addToHomeSummary = stringResource(R.string.context_action_add_to_home_summary),
+        addToHomeUnavailableSummary = stringResource(R.string.context_action_add_to_home_unavailable),
+        hideApp = stringResource(R.string.action_hide),
+        hideAppSummary = stringResource(R.string.context_action_hide_summary),
+        restoreApp = stringResource(R.string.action_restore),
+        restoreAppSummary = stringResource(R.string.context_action_restore_summary),
+        removeFromHome = stringResource(R.string.context_action_remove_from_home),
+        removeFromHomeSummary = stringResource(R.string.context_action_remove_from_home_summary),
+        widgetSettings = stringResource(R.string.context_action_widget_settings),
+        widgetSettingsSummary = stringResource(R.string.context_action_widget_settings_summary),
+        widgetSettingsUnavailableSummary = stringResource(R.string.context_action_widget_settings_unavailable),
+        removeWidget = stringResource(R.string.context_action_remove_widget),
+        removeWidgetSummary = stringResource(R.string.context_action_remove_widget_summary),
+        shortcutSummary = stringResource(R.string.context_action_shortcut_summary),
+    )
 
     fun showFeedback(message: String) {
         feedbackMessage = message
@@ -328,6 +361,14 @@ fun OneUiHomeCloneApp(
     LaunchedEffect(defaultLauncherState.isDefaultLauncher) {
         if (defaultLauncherState.isDefaultLauncher) {
             defaultLauncherPromptDismissed = false
+        }
+    }
+
+    LaunchedEffect(contextTarget) {
+        val appTarget = contextTarget as? LauncherContextTarget.App
+        contextShortcuts = emptyList()
+        if (appTarget != null) {
+            contextShortcuts = appInventory.loadDynamicShortcuts(appTarget.app)
         }
     }
 
@@ -510,6 +551,7 @@ fun OneUiHomeCloneApp(
     // from the home-app picker again). Collapse every overlay + scroll to default page.
     LaunchedEffect(homeIntentTick) {
         if (homeIntentTick > 0) {
+            contextTarget = null
             activeOverlay = null
             openFolderTarget = null
             searchQuery = ""
@@ -523,6 +565,7 @@ fun OneUiHomeCloneApp(
     // then absorb further back presses — HOME is the bottom of the nav stack.
     BackHandler(enabled = true) {
         when {
+            contextTarget != null -> contextTarget = null
             activeOverlay != null -> activeOverlay = null
             openFolderTarget != null -> openFolderTarget = null
             searchQuery.isNotEmpty() -> searchQuery = ""
@@ -864,6 +907,163 @@ fun OneUiHomeCloneApp(
         }
     }
 
+    val openAppActions: (CloneApp, AppContextSource) -> Unit = { app, source ->
+        contextTarget = LauncherContextTarget.App(app = app, source = source)
+    }
+    val openWidgetActions: (WidgetTemplateModel) -> Unit = { widget ->
+        contextTarget = LauncherContextTarget.Widget(widget)
+    }
+
+    fun addAppToCurrentHome(app: CloneApp) {
+        val targetHomePageIndex = currentHomePageIndex ?: defaultHomePageIndex
+        val targetPage = homePages.getOrNull(targetHomePageIndex)
+        if (!canAddAppToHomePage(targetPage, homePages, app, lockHomeScreenLayout)) {
+            showFeedback(appContext.getString(R.string.feedback_app_already_on_home, app.name))
+            return
+        }
+        homePages = homePages.mapIndexed { index, page ->
+            if (index == targetHomePageIndex) {
+                page.copy(items = addAppToHomePageItems(page.items, app))
+            } else {
+                page
+            }
+        }
+        pageIndex = visualIndexForHomePage(targetHomePageIndex, mediaPageEnabled)
+        activeOverlay = null
+        showFeedback(appContext.getString(R.string.feedback_app_added_to_home, app.name))
+    }
+
+    fun removeAppFromCurrentHome(app: CloneApp) {
+        val targetHomePageIndex = currentHomePageIndex ?: return
+        val targetPage = homePages.getOrNull(targetHomePageIndex) ?: return
+        homePages = homePages.map { page ->
+            if (page.id == targetPage.id) {
+                page.copy(items = removeAppFromHomePageItems(page.items, app.id))
+            } else {
+                page
+            }
+        }
+        showFeedback(appContext.getString(R.string.feedback_app_removed_from_home, app.name))
+    }
+
+    fun setAppHidden(app: CloneApp, hidden: Boolean) {
+        hiddenAppIds = if (hidden) {
+            hiddenAppIds + app.id
+        } else {
+            hiddenAppIds - app.id
+        }
+        showFeedback(
+            appContext.getString(
+                if (hidden) R.string.feedback_app_hidden else R.string.feedback_app_restored,
+                app.name,
+            ),
+        )
+    }
+
+    fun removeWidgetFromHome(widget: WidgetTemplateModel) {
+        val targetHomePageIndex = currentHomePageIndex ?: return
+        val targetPage = homePages.getOrNull(targetHomePageIndex) ?: return
+        val stableKey = widget.stableWidgetKey()
+        homePages = homePages.map { page ->
+            if (page.id == targetPage.id) {
+                page.copy(widgets = removeWidgetFromPageByKey(page.widgets, stableKey))
+            } else {
+                page
+            }
+        }
+        widget.hostWidgetId?.let { hostWidgetId ->
+            deleteWidgetId(hostWidgetId)
+            coroutineScope.launch { widgetPersistence.remove(hostWidgetId) }
+        }
+        showFeedback(appContext.getString(R.string.feedback_widget_removed))
+    }
+
+    fun openWidgetSettings(widget: WidgetTemplateModel) {
+        val intent = widgetConfigureIntent(widget)
+        val opened = intent != null && runCatching { appContext.startActivity(intent) }.isSuccess
+        if (!opened) {
+            showFeedback(appContext.getString(R.string.feedback_widget_settings_unavailable, widget.title))
+        }
+    }
+
+    val contextActions = remember(
+        contextTarget,
+        contextShortcuts,
+        hiddenAppIds,
+        homePages,
+        currentHomePageIndex,
+        widgetTargetHomePageIndex,
+        lockHomeScreenLayout,
+        contextActionText,
+    ) {
+        when (val target = contextTarget) {
+            is LauncherContextTarget.App -> {
+                val targetPage = homePages.getOrNull(widgetTargetHomePageIndex)
+                val canRemoveFromHome = target.source == AppContextSource.HOME && !lockHomeScreenLayout
+                buildAppContextActions(
+                    source = target.source,
+                    isHidden = target.app.id in hiddenAppIds,
+                    canOpenAppInfo = target.app.launchTarget != null || target.app.launchIntent?.component != null,
+                    canAddToHome = canAddAppToHomePage(targetPage, homePages, target.app, lockHomeScreenLayout),
+                    canRemoveFromHome = canRemoveFromHome,
+                    shortcuts = contextShortcuts,
+                    text = contextActionText,
+                )
+            }
+            is LauncherContextTarget.Widget -> buildWidgetContextActions(
+                widget = target.widget,
+                canEdit = !lockHomeScreenLayout,
+                text = contextActionText,
+            )
+            null -> emptyList()
+        }
+    }
+
+    val handleContextAction: (LauncherContextAction) -> Unit = { action ->
+        val target = contextTarget
+        contextTarget = null
+        when (target) {
+            is LauncherContextTarget.App -> {
+                when (action.type) {
+                    LauncherContextActionType.APP_INFO -> {
+                        if (!appInventory.openAppInfo(target.app)) {
+                            showFeedback(appContext.getString(R.string.feedback_app_info_unavailable, target.app.name))
+                        }
+                    }
+                    LauncherContextActionType.ADD_TO_HOME -> addAppToCurrentHome(target.app)
+                    LauncherContextActionType.HIDE_APP -> setAppHidden(target.app, hidden = true)
+                    LauncherContextActionType.RESTORE_APP -> setAppHidden(target.app, hidden = false)
+                    LauncherContextActionType.REMOVE_FROM_HOME -> removeAppFromCurrentHome(target.app)
+                    LauncherContextActionType.SHORTCUT -> {
+                        val shortcut = action.shortcut
+                        if (shortcut == null || !appInventory.launchShortcut(shortcut)) {
+                            showFeedback(appContext.getString(R.string.feedback_shortcut_open_failed, action.title))
+                        } else {
+                            activeOverlay = null
+                            openFolderTarget = null
+                            searchQuery = ""
+                        }
+                    }
+                    LauncherContextActionType.WIDGET_SETTINGS,
+                    LauncherContextActionType.REMOVE_WIDGET -> Unit
+                }
+            }
+            is LauncherContextTarget.Widget -> {
+                when (action.type) {
+                    LauncherContextActionType.WIDGET_SETTINGS -> openWidgetSettings(target.widget)
+                    LauncherContextActionType.REMOVE_WIDGET -> removeWidgetFromHome(target.widget)
+                    LauncherContextActionType.APP_INFO,
+                    LauncherContextActionType.ADD_TO_HOME,
+                    LauncherContextActionType.HIDE_APP,
+                    LauncherContextActionType.RESTORE_APP,
+                    LauncherContextActionType.REMOVE_FROM_HOME,
+                    LauncherContextActionType.SHORTCUT -> Unit
+                }
+            }
+            null -> Unit
+        }
+    }
+
     val motionPresetKey = remember(motionPreset) {
         when (motionPreset) {
             MotionPresetMode.STANDARD -> MotionPresetKey.STANDARD
@@ -961,6 +1161,7 @@ fun OneUiHomeCloneApp(
             },
             onHomeItemDragStateChange = { isHomeItemDragActive = it },
             onOpenApp = { app -> launchSelectedApp(app) },
+            onOpenAppActions = openAppActions,
             onOpenFolder = { folder ->
                 currentHomePage?.let { page ->
                     openFolderTarget = OpenFolderTarget(pageId = page.id, folderId = folder.id)
@@ -970,6 +1171,7 @@ fun OneUiHomeCloneApp(
             onMoveWidget = moveBoundWidget,
             onResizeWidget = resizeBoundWidget,
             onRemoveWidget = removeBoundWidget,
+            onOpenWidgetActions = openWidgetActions,
             onPageChange = { pageIndex = it },
         )
 
@@ -1079,6 +1281,7 @@ fun OneUiHomeCloneApp(
                     searchQuery = ""
                     launchSelectedApp(app)
                 },
+                onOpenAppActions = openAppActions,
                 appLabelsEnabled = appLabelsEnabled,
             )
         }
@@ -1224,8 +1427,9 @@ fun OneUiHomeCloneApp(
                 apps = allApps,
                 hiddenAppIds = hiddenAppIds,
                 onToggleHidden = { app ->
-                    hiddenAppIds = hiddenAppIds.toggle(app.id)
+                    setAppHidden(app, hidden = app.id !in hiddenAppIds)
                 },
+                onOpenAppActions = openAppActions,
                 onClose = { activeOverlay = null },
             )
         }
@@ -1241,6 +1445,7 @@ fun OneUiHomeCloneApp(
                     appLabelsEnabled = appLabelsEnabled,
                     folderGrid = folderGrid,
                     onOpenApp = { app -> launchSelectedApp(app) },
+                    onOpenAppActions = openAppActions,
                     onRenameFolder = { newTitle ->
                         homePages = homePages.map { page ->
                             if (page.id == openFolderTarget?.pageId) {
@@ -1280,6 +1485,35 @@ fun OneUiHomeCloneApp(
                 onAddWidget = addWidgetFromPicker,
                 onClose = { activeOverlay = null },
             )
+        }
+
+        AnimatedVisibility(
+            visible = contextTarget != null,
+            enter = slideInVertically(initialOffsetY = { it / 5 }, animationSpec = tween(220)) + fadeIn(tween(140)),
+            exit = slideOutVertically(targetOffsetY = { it / 5 }, animationSpec = tween(160)) + fadeOut(tween(120)),
+        ) {
+            contextTarget?.let { target ->
+                when (target) {
+                    is LauncherContextTarget.App -> ContextActionSheet(
+                        title = target.app.name,
+                        summary = target.app.statusText() ?: stringResource(R.string.context_action_app_sheet_summary),
+                        app = target.app,
+                        widget = null,
+                        actions = contextActions,
+                        onAction = handleContextAction,
+                        onDismiss = { contextTarget = null },
+                    )
+                    is LauncherContextTarget.Widget -> ContextActionSheet(
+                        title = target.widget.title,
+                        summary = target.widget.summary,
+                        app = null,
+                        widget = target.widget,
+                        actions = contextActions,
+                        onAction = handleContextAction,
+                        onDismiss = { contextTarget = null },
+                    )
+                }
+            }
         }
 
         AnimatedVisibility(

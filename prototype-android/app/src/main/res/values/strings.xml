@@ -111,6 +111,24 @@
     <string name="finder_action_manage_hidden_summary">Review which apps are hidden from Home and Apps screens</string>
     <string name="finder_action_hide_apps_summary">Choose which apps disappear from Home and Apps screens</string>
 
+    <string name="context_action_app_sheet_summary">App actions</string>
+    <string name="context_action_app_info">App info</string>
+    <string name="context_action_app_info_summary">Open Android app details.</string>
+    <string name="context_action_app_info_unavailable">App details are unavailable for this sample app.</string>
+    <string name="context_action_add_to_home">Add to Home</string>
+    <string name="context_action_add_to_home_summary">Place this app on the current Home page.</string>
+    <string name="context_action_add_to_home_unavailable">This app is already on Home, the layout is locked, or the page is full.</string>
+    <string name="context_action_hide_summary">Hide from Home and Apps screens.</string>
+    <string name="context_action_restore_summary">Show in Home and Apps screens again.</string>
+    <string name="context_action_remove_from_home">Remove from Home</string>
+    <string name="context_action_remove_from_home_summary">Keep the app installed and remove only this Home shortcut.</string>
+    <string name="context_action_widget_settings">Widget settings</string>
+    <string name="context_action_widget_settings_summary">Open this widget configuration screen.</string>
+    <string name="context_action_widget_settings_unavailable">This widget does not expose settings.</string>
+    <string name="context_action_remove_widget">Remove widget</string>
+    <string name="context_action_remove_widget_summary">Remove this widget from Home.</string>
+    <string name="context_action_shortcut_summary">Dynamic shortcut</string>
+
     <string name="widgets_title">Widgets</string>
     <string name="widgets_intro">Recommended widgets first, then grouped by provider and task.</string>
     <string name="widgets_adding_to">Adding to %1$s</string>
@@ -172,6 +190,13 @@
     <string name="feedback_app_loading">%1$s is available after device app loading finishes.</string>
     <string name="feedback_app_open_failed">Couldn\'t open %1$s.</string>
     <string name="feedback_app_unavailable">%1$s is %2$s.</string>
+    <string name="feedback_app_info_unavailable">App info is unavailable for %1$s.</string>
+    <string name="feedback_app_added_to_home">%1$s added to Home.</string>
+    <string name="feedback_app_already_on_home">Couldn\'t add %1$s to Home.</string>
+    <string name="feedback_app_removed_from_home">%1$s removed from Home.</string>
+    <string name="feedback_app_hidden">%1$s hidden from Home and Apps screens.</string>
+    <string name="feedback_app_restored">%1$s restored to Home and Apps screens.</string>
+    <string name="feedback_shortcut_open_failed">Couldn\'t open %1$s.</string>
     <string name="safe_mode_checking_title">Checking recovery state</string>
     <string name="safe_mode_checking_summary">Preparing the launcher before Home loads.</string>
     <string name="safe_mode_title">Recovery mode</string>
@@ -207,6 +232,7 @@
     <string name="feedback_widget_reset_one">Reset 1 widget.</string>
     <string name="feedback_widget_reset_many">Reset %1$d widgets.</string>
     <string name="feedback_widget_removed">Widget removed.</string>
+    <string name="feedback_widget_settings_unavailable">%1$s settings are unavailable.</string>
     <string name="a11y_page_indicator">Page %1$d of %2$d</string>
     <string name="a11y_open_label">Open %1$s</string>
     <string name="a11y_open_apps_screen">Open Apps screen</string>

@@ -1,6 +1,7 @@
 package com.oneuihomeclone.ui
 
 import android.appwidget.AppWidgetManager
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -88,6 +89,111 @@ internal fun applyHiddenAppsToPages(
     }
 }
 
+internal fun homeGridContainsApp(items: List<HomeGridItemModel>, appId: String): Boolean =
+    items.any { item ->
+        when (item) {
+            is AppItemModel -> item.app.id == appId
+            is FolderModel -> item.apps.any { app -> app.id == appId }
+        }
+    }
+
+internal fun homePagesContainApp(pages: List<HomePageModel>, appId: String): Boolean =
+    pages.any { page -> homeGridContainsApp(page.items, appId) }
+
+internal fun canAddAppToHomePage(
+    page: HomePageModel?,
+    pages: List<HomePageModel>,
+    app: CloneApp,
+    layoutLocked: Boolean,
+): Boolean =
+    page != null &&
+        !layoutLocked &&
+        !homePagesContainApp(pages, app.id) &&
+        page.items.size < MAX_HOME_GRID_ITEMS
+
+internal fun addAppToHomePageItems(
+    items: List<HomeGridItemModel>,
+    app: CloneApp,
+): List<HomeGridItemModel> {
+    if (homeGridContainsApp(items, app.id) || items.size >= MAX_HOME_GRID_ITEMS) {
+        return items
+    }
+    return items + AppItemModel(app)
+}
+
+internal fun removeAppFromHomePageItems(
+    items: List<HomeGridItemModel>,
+    appId: String,
+): List<HomeGridItemModel> =
+    items.filterNot { item -> item is AppItemModel && item.app.id == appId }
+
+internal fun buildAppContextActions(
+    source: AppContextSource,
+    isHidden: Boolean,
+    canOpenAppInfo: Boolean,
+    canAddToHome: Boolean,
+    canRemoveFromHome: Boolean,
+    shortcuts: List<LauncherShortcutAction>,
+    text: LauncherContextActionText = LauncherContextActionText(),
+): List<LauncherContextAction> =
+    buildList {
+        add(
+            LauncherContextAction(
+                type = LauncherContextActionType.APP_INFO,
+                title = text.appInfo,
+                summary = if (canOpenAppInfo) text.appInfoSummary else text.appInfoUnavailableSummary,
+                enabled = canOpenAppInfo,
+            ),
+        )
+        shortcuts.take(MAX_CONTEXT_SHORTCUTS).forEach { shortcut ->
+            add(
+                LauncherContextAction(
+                    type = LauncherContextActionType.SHORTCUT,
+                    title = shortcut.shortLabel,
+                    summary = shortcut.longLabel?.takeIf { it != shortcut.shortLabel }
+                        ?: shortcut.disabledMessage
+                        ?: text.shortcutSummary,
+                    enabled = shortcut.isEnabled,
+                    shortcut = shortcut,
+                ),
+            )
+        }
+        if (source != AppContextSource.HOME && !isHidden) {
+            add(
+                LauncherContextAction(
+                    type = LauncherContextActionType.ADD_TO_HOME,
+                    title = text.addToHome,
+                    summary = if (canAddToHome) text.addToHomeSummary else text.addToHomeUnavailableSummary,
+                    enabled = canAddToHome,
+                ),
+            )
+        }
+        if (canRemoveFromHome) {
+            add(
+                LauncherContextAction(
+                    type = LauncherContextActionType.REMOVE_FROM_HOME,
+                    title = text.removeFromHome,
+                    summary = text.removeFromHomeSummary,
+                ),
+            )
+        }
+        add(
+            if (isHidden) {
+                LauncherContextAction(
+                    type = LauncherContextActionType.RESTORE_APP,
+                    title = text.restoreApp,
+                    summary = text.restoreAppSummary,
+                )
+            } else {
+                LauncherContextAction(
+                    type = LauncherContextActionType.HIDE_APP,
+                    title = text.hideApp,
+                    summary = text.hideAppSummary,
+                )
+            },
+        )
+    }
+
 internal fun buildVisibleDockApps(
     preferredDockApps: List<CloneApp>,
     allApps: List<CloneApp>,
@@ -111,6 +217,37 @@ internal fun removeWidgetFromPage(
     hostWidgetId: Int,
 ): List<WidgetTemplateModel> =
     widgets.filterNot { it.hostWidgetId == hostWidgetId }
+
+internal fun removeWidgetFromPageByKey(
+    widgets: List<WidgetTemplateModel>,
+    stableWidgetKey: String,
+): List<WidgetTemplateModel> =
+    widgets.filterNot { it.stableWidgetKey() == stableWidgetKey }
+
+internal fun buildWidgetContextActions(
+    widget: WidgetTemplateModel,
+    canEdit: Boolean,
+    text: LauncherContextActionText = LauncherContextActionText(),
+): List<LauncherContextAction> =
+    buildList {
+        val canOpenSettings = widgetConfigureIntent(widget) != null
+        add(
+            LauncherContextAction(
+                type = LauncherContextActionType.WIDGET_SETTINGS,
+                title = text.widgetSettings,
+                summary = if (canOpenSettings) text.widgetSettingsSummary else text.widgetSettingsUnavailableSummary,
+                enabled = canOpenSettings,
+            ),
+        )
+        add(
+            LauncherContextAction(
+                type = LauncherContextActionType.REMOVE_WIDGET,
+                title = text.removeWidget,
+                summary = text.removeWidgetSummary,
+                enabled = canEdit,
+            ),
+        )
+    }
 
 internal fun resizeWidgetInPage(
     widgets: List<WidgetTemplateModel>,
@@ -298,6 +435,16 @@ internal fun widgetBindOptions(widget: WidgetTemplateModel): Bundle =
         putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidth * 2)
         putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight * 2)
     }
+
+internal fun widgetConfigureIntent(widget: WidgetTemplateModel): Intent? {
+    val widgetId = widget.hostWidgetId ?: return null
+    val configure = widget.providerInfo?.configure ?: return null
+    return Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).apply {
+        component = configure
+        putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+}
 
 internal fun widgetSpanLabel(spanX: Int, spanY: Int): String = "$spanX x $spanY"
 

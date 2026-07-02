@@ -62,6 +62,7 @@ Unreleased work moves launcher settings onto a single DataStore path:
 - Motion preset changes now feed `ProvideMotionScheme` live without requiring Activity recreation
 - Crash-safe recovery mode opens after a previous crash with local reset layout, reset settings, clear widgets, sanitized diagnostics export, and continue-to-Home actions
 - Default-launcher onboarding detects when Android is using another Home app and opens the system Home role/settings flow without blocking the launcher
+- Long-press app and widget action sheets expose App info, Home add/remove, hide/restore, widget settings/remove, and Android dynamic shortcuts where available
 
 v0.2.0 landed the widgets + persistence + motion primitives:
 
