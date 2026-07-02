@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.Log
+import android.util.LruCache
 import androidx.core.content.res.ResourcesCompat
 
 /**
@@ -47,9 +48,32 @@ sealed class PreviewSource {
 object WidgetPreviewLoader {
 
     private const val TAG = "WidgetPreviewLoader"
+    private const val MAX_PREVIEW_CACHE_ENTRIES = 48
+    private val previewCache = object : LruCache<String, PreviewSource>(MAX_PREVIEW_CACHE_ENTRIES) {}
 
     fun load(context: Context, info: AppWidgetProviderInfo): PreviewSource {
         val providerPackage = info.provider?.packageName ?: return PreviewSource.Empty
+        val cacheKey = listOf(
+            info.provider.flattenToShortString(),
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) info.previewLayout else 0,
+            info.previewImage,
+            info.icon,
+        ).joinToString("|")
+        synchronized(previewCache) {
+            previewCache.get(cacheKey)?.let { return it }
+        }
+        val source = loadUncached(context, info, providerPackage)
+        synchronized(previewCache) {
+            previewCache.put(cacheKey, source)
+        }
+        return source
+    }
+
+    private fun loadUncached(
+        context: Context,
+        info: AppWidgetProviderInfo,
+        providerPackage: String,
+    ): PreviewSource {
         // Prefer previewLayout on API 31+ where declared.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val layoutId = info.previewLayout

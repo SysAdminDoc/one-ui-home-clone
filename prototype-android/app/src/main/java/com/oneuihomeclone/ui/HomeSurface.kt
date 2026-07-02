@@ -86,6 +86,7 @@ import com.oneuihomeclone.ui.theme.OneUiSurfaceSoft
 import com.oneuihomeclone.ui.theme.OneUiText
 import com.oneuihomeclone.ui.theme.OneUiTextSecondary
 import com.oneuihomeclone.widgets.PreviewSource
+import com.oneuihomeclone.widgets.WidgetPreviewLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -863,25 +864,37 @@ internal fun WidgetPreviewPane(
     modifier: Modifier,
     compact: Boolean,
 ) {
+    val context = LocalContext.current.applicationContext
     val hostWidgetId = widget.hostWidgetId
     val providerInfo = widget.providerInfo
+    val resolvedPreview: PreviewSource by produceState(
+        initialValue = widget.previewSource,
+        key1 = providerInfo?.provider?.flattenToShortString(),
+        key2 = widget.previewSource,
+    ) {
+        if (providerInfo != null && hostWidgetId == null && widget.previewSource == PreviewSource.Empty) {
+            value = withContext(Dispatchers.IO) {
+                WidgetPreviewLoader.load(context, providerInfo)
+            }
+        }
+    }
     when {
         hostWidgetId != null && providerInfo != null -> BoundWidgetPreview(
             widgetId = hostWidgetId,
             providerInfo = providerInfo,
             modifier = modifier,
         )
-        widget.previewSource is PreviewSource.RemoteLayout -> RemoteLayoutPreview(
-            preview = widget.previewSource,
+        resolvedPreview is PreviewSource.RemoteLayout -> RemoteLayoutPreview(
+            preview = resolvedPreview as PreviewSource.RemoteLayout,
             modifier = modifier,
         )
-        widget.previewSource is PreviewSource.PreviewImage -> DrawableWidgetPreview(
-            preview = widget.previewSource,
+        resolvedPreview is PreviewSource.PreviewImage -> DrawableWidgetPreview(
+            preview = resolvedPreview,
             modifier = modifier,
             contentScale = ContentScale.Crop,
         )
-        widget.previewSource is PreviewSource.ProviderIcon -> DrawableWidgetPreview(
-            preview = widget.previewSource,
+        resolvedPreview is PreviewSource.ProviderIcon -> DrawableWidgetPreview(
+            preview = resolvedPreview,
             modifier = modifier,
             contentScale = ContentScale.Fit,
         )

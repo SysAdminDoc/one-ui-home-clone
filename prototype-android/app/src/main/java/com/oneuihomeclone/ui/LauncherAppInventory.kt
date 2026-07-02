@@ -8,13 +8,10 @@ import android.content.pm.LauncherApps
 import android.net.Uri
 import android.os.Build
 import android.os.Process
-import android.graphics.Bitmap
 import android.os.UserHandle
 import android.os.UserManager
 import android.provider.Settings
 import android.util.Log
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.core.graphics.drawable.toBitmap
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -152,8 +149,8 @@ internal class LauncherAppInventory(
                     emptyList()
                 }
             }
-            normalizedSources(sources).mapIndexed { index, source ->
-                source.toCloneApp(index)
+            normalizedSources(sources).map { source ->
+                source.toCloneApp()
             }
         }.getOrElse { cause ->
             Log.w(TAG, "Launcher app query failed (${cause.javaClass.simpleName})")
@@ -262,7 +259,7 @@ internal class LauncherAppInventory(
             .getOrDefault(user.hashCode().toLong())
     }
 
-    private fun LauncherActivitySource.toCloneApp(index: Int): CloneApp {
+    private fun LauncherActivitySource.toCloneApp(): CloneApp {
         val component = activityInfo.componentName
         val componentId = record.stableId()
         val loadingProgress = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -292,16 +289,6 @@ internal class LauncherAppInventory(
         }
         val profileBadge = profileBadgeFor(user, record.userSerial)
         val displayLabel = packageManager.getUserBadgedLabel(record.displayLabel(), user).toString()
-        val iconBitmap = if (index < MAX_ICONS_LOADED_EAGERLY) {
-            runCatching {
-                packageManager
-                    .getUserBadgedIcon(activityInfo.getIcon(0), user)
-                    .toBitmap(width = ICON_SIZE_PX, height = ICON_SIZE_PX, config = Bitmap.Config.ARGB_8888)
-                    .asImageBitmap()
-            }.getOrNull()
-        } else {
-            null
-        }
         return CloneApp(
             id = componentId,
             name = displayLabel,
@@ -311,7 +298,7 @@ internal class LauncherAppInventory(
                 componentName = component,
                 user = user,
             ),
-            icon = iconBitmap,
+            icon = null,
             color = fallbackColorFor(componentId),
             profileBadge = profileBadge,
             statusLabel = statusLabel,
@@ -343,6 +330,5 @@ internal class LauncherAppInventory(
 
     private companion object {
         private const val TAG = "OneUiHome/apps"
-        private const val ICON_SIZE_PX = 144
     }
 }

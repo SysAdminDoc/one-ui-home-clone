@@ -305,7 +305,7 @@ internal fun PersistedToggles.toLauncherState(): LauncherState = LauncherState(
     },
 )
 
-internal const val MAX_ICONS_LOADED_EAGERLY = 300
 internal const val MAX_WIDGET_PROVIDERS_LOADED = 150
 internal const val MAX_HOME_GRID_ITEMS = 16
 internal const val MAX_CONTEXT_SHORTCUTS = 4
+internal const val MAX_APP_ICON_CACHE_ENTRIES = 96

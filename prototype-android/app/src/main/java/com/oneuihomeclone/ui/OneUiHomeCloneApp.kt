@@ -135,7 +135,6 @@ import kotlin.math.roundToInt
 import com.oneuihomeclone.widgets.PreviewSource
 import com.oneuihomeclone.widgets.WidgetBindRequest
 import com.oneuihomeclone.widgets.WidgetBindResult
-import com.oneuihomeclone.widgets.WidgetPreviewLoader
 import com.oneuihomeclone.shouldShowDefaultLauncherPrompt
 
 private fun sampleApps(): List<CloneApp> {
@@ -213,7 +212,6 @@ private suspend fun loadWidgetProviderTemplates(
                 span = "$spanX x $spanY",
                 accent = fallbackColorFor(info.provider.flattenToShortString()),
                 providerInfo = info,
-                previewSource = WidgetPreviewLoader.load(context, info),
                 spanX = spanX,
                 spanY = spanY,
                 minSpanX = widgetMinResizeSpanX(info, spanX),

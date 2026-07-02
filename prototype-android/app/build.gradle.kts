@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("androidx.baselineprofile")
 }
 
 // Signing config is opt-in: if keystore.properties exists at repo root or module, wire it up.
@@ -109,6 +110,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
 
     // DataStore — typed async persistence for launcher toggles + widget IDs (v0.2.0)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
@@ -126,4 +128,6 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    baselineProfile(project(":baselineprofile"))
 }

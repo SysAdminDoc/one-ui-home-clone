@@ -63,6 +63,7 @@ Unreleased work moves launcher settings onto a single DataStore path:
 - Crash-safe recovery mode opens after a previous crash with local reset layout, reset settings, clear widgets, sanitized diagnostics export, and continue-to-Home actions
 - Default-launcher onboarding detects when Android is using another Home app and opens the system Home role/settings flow without blocking the launcher
 - Long-press app and widget action sheets expose App info, Home add/remove, hide/restore, widget settings/remove, and Android dynamic shortcuts where available
+- Launcher icons and widget previews load lazily through bounded caches, and release builds consume a generated Baseline Profile for the core launcher journey
 
 v0.2.0 landed the widgets + persistence + motion primitives:
 
@@ -110,6 +111,19 @@ The report lands in `prototype-android/app/build/reports/device-gates/` with
 Home/Apps screenshots, cold-launch timing, drawer frame pacing, RSS, app-launch
 tap timing, and pass/fail status against the roadmap thresholds. Use
 `deviceGatesEnforced` on Pixel-class hardware when threshold misses should fail.
+
+Generate the release Baseline Profile after changing startup, drawer, Finder, or
+app-launch behavior:
+
+```powershell
+cd prototype-android
+.\gradlew.bat :app:generateBaselineProfile
+```
+
+The profile generator installs the non-minified release variant on a connected
+device or emulator, exercises cold Home start, Apps drawer open, Finder search,
+and an app launch path, then writes
+`prototype-android/app/src/release/generated/baselineProfiles/baseline-prof.txt`.
 
 ## Install as launcher
 

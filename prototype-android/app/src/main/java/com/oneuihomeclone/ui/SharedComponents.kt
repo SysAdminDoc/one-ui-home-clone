@@ -22,11 +22,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -128,17 +132,30 @@ internal fun <T> SettingsSelectorCard(
 
 @Composable
 internal fun AppIconBubble(app: CloneApp, size: Dp) {
+    val context = LocalContext.current.applicationContext
+    val loadedIcon: ImageBitmap? by produceState(
+        initialValue = app.icon,
+        key1 = app.id,
+        key2 = app.launchTarget,
+        key3 = app.icon,
+    ) {
+        if (app.icon == null) {
+            value = LauncherVisualAssetCache.loadAppIcon(context, app)
+        }
+    }
+    val icon = app.icon ?: loadedIcon
+
     Box(modifier = Modifier.size(size)) {
         val iconModifier = Modifier
             .fillMaxSize()
             .graphicsLayer(alpha = if (app.isLaunchable) 1f else 0.45f)
-        if (app.icon != null) {
+        if (icon != null) {
             Box(
                 modifier = iconModifier,
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
-                    bitmap = app.icon,
+                    bitmap = icon,
                     contentDescription = app.accessibilityLabel(),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit,

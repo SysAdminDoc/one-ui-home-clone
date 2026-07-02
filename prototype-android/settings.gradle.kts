@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "one-ui-home-clone"
 include(":app")
+include(":baselineprofile")
