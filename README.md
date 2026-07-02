@@ -170,13 +170,9 @@ Store listing copy: no data is collected, shared, or transmitted by the app; lau
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md). Near-term themes:
-
-1. Real `AppWidgetHost` integration (v0.2.x)
-2. Drop-to-edge page creation (v0.2.x)
-3. Motion parity — 240fps reference captures → Compose `spring()` parameters (v0.3.x)
-4. Finder expansion with Samsung-like on-device sources (v0.4.x)
-5. Optional `tribalfs/oneui-design` AndroidView interop for SwitchBar / ToolbarLayout fidelity (v0.5.x)
+See [ROADMAP.md](ROADMAP.md). The active roadmap is currently drained after
+the v0.2.3 pass; add net-new incomplete items there before starting the next
+implementation loop.
 
 ## Legal
 
