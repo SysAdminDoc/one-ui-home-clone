@@ -11,6 +11,12 @@
     <string name="apps">Apps</string>
     <string name="settings">Settings</string>
     <string name="search">Search</string>
+    <string name="profile_badge_profile">Profile</string>
+    <string name="profile_badge_work">Work</string>
+    <string name="profile_badge_private">Private</string>
+    <string name="profile_badge_clone">Clone</string>
+    <string name="app_status_installing">Installing</string>
+    <string name="app_status_unavailable">Unavailable</string>
     <string name="state_off">Off</string>
     <string name="state_unavailable">Unavailable</string>
 
@@ -164,6 +170,7 @@
 
     <string name="feedback_app_loading">%1$s is available after device app loading finishes.</string>
     <string name="feedback_app_open_failed">Couldn\'t open %1$s.</string>
+    <string name="feedback_app_unavailable">%1$s is %2$s.</string>
     <string name="feedback_widget_added">%1$s added to %2$s.</string>
     <string name="feedback_widget_needs_setup">%1$s needs setup before it can be added.</string>
     <string name="feedback_widget_host_not_ready">Widget host is not ready yet.</string>

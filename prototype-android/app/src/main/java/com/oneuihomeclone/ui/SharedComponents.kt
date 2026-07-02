@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -126,33 +128,100 @@ internal fun <T> SettingsSelectorCard(
 
 @Composable
 internal fun AppIconBubble(app: CloneApp, size: Dp) {
-    if (app.icon != null) {
-        Box(
-            modifier = Modifier.size(size),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                bitmap = app.icon,
-                contentDescription = app.name,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-            )
-        }
-    } else {
-        Surface(
-            modifier = Modifier.size(size),
-            shape = OneUiIconShape,
-            color = app.color,
-            shadowElevation = 1.dp,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = app.name.take(1),
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+    Box(modifier = Modifier.size(size)) {
+        val iconModifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer(alpha = if (app.isLaunchable) 1f else 0.45f)
+        if (app.icon != null) {
+            Box(
+                modifier = iconModifier,
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    bitmap = app.icon,
+                    contentDescription = app.accessibilityLabel(),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
                 )
             }
+        } else {
+            Surface(
+                modifier = iconModifier,
+                shape = OneUiIconShape,
+                color = app.color,
+                shadowElevation = 1.dp,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = app.name.take(1),
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+        app.profileBadge?.let { badge ->
+            AppIconBadge(
+                label = badge,
+                modifier = Modifier.align(Alignment.TopEnd),
+                color = OneUiAccent,
+            )
+        }
+        app.installProgressPercent?.let { progress ->
+            AppIconBadge(
+                label = "$progress%",
+                modifier = Modifier.align(Alignment.BottomEnd),
+                color = OneUiText.copy(alpha = 0.92f),
+            )
+        } ?: app.statusLabel?.let {
+            AppIconBadge(
+                label = "!",
+                modifier = Modifier.align(Alignment.BottomEnd),
+                color = OneUiText.copy(alpha = 0.92f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AppIconBadge(
+    label: String,
+    modifier: Modifier,
+    color: Color,
+) {
+    Surface(
+        modifier = modifier.widthIn(min = 18.dp, max = 44.dp),
+        shape = OneUiMicroShape,
+        color = color,
+        shadowElevation = 1.dp,
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+        )
+    }
+}
+
+@Composable
+internal fun AppStatusText(app: CloneApp) {
+    app.statusText()?.let { status ->
+        Surface(
+            shape = OneUiMicroShape,
+            color = OneUiSurfaceSoft,
+        ) {
+            Text(
+                text = status,
+                color = OneUiTextSecondary,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+            )
         }
     }
 }

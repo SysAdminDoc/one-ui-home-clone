@@ -20,7 +20,19 @@ internal data class CloneApp(
     val launchTarget: LauncherAppLaunchTarget? = null,
     val icon: ImageBitmap? = null,
     val color: Color,
+    val profileBadge: String? = null,
+    val statusLabel: String? = null,
+    val installProgressPercent: Int? = null,
+    val isLaunchable: Boolean = true,
 )
+
+internal fun CloneApp.statusText(): String? =
+    installProgressPercent?.let { progress ->
+        statusLabel?.let { "$it $progress%" } ?: "$progress%"
+    } ?: statusLabel
+
+internal fun CloneApp.accessibilityLabel(): String =
+    listOfNotNull(name, profileBadge, statusText()).joinToString(", ")
 
 internal data class LauncherAppLaunchTarget(
     val componentName: ComponentName,

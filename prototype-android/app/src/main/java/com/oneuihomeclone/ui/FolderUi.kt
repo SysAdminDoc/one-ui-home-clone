@@ -136,7 +136,7 @@ internal fun FolderOverlay(
                     items(folder.apps) { app ->
                         Column(
                             modifier = Modifier
-                                .semantics { contentDescription = app.name }
+                                .semantics { contentDescription = app.accessibilityLabel() }
                                 .clickable(role = Role.Button) { onOpenApp(app) },
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -145,12 +145,13 @@ internal fun FolderOverlay(
                                 Spacer(Modifier.height(6.dp))
                                 Text(
                                     text = app.name,
-                                    color = OneUiText,
+                                    color = if (app.isLaunchable) OneUiText else OneUiTextSecondary,
                                     fontSize = 12.sp,
                                     textAlign = TextAlign.Center,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
+                                AppStatusText(app)
                             }
                         }
                     }

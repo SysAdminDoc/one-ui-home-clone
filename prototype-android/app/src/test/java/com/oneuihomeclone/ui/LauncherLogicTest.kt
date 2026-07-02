@@ -186,6 +186,20 @@ class LauncherLogicTest {
     }
 
     @Test
+    fun cloneAppStatusText_includesInstallProgress() {
+        val installing = app("installing").copy(statusLabel = "Installing", installProgressPercent = 42)
+
+        assertEquals("Installing 42%", installing.statusText())
+    }
+
+    @Test
+    fun cloneAppAccessibilityLabel_includesProfileAndStatus() {
+        val workApp = app("work", "Mail").copy(profileBadge = "Work", statusLabel = "Unavailable")
+
+        assertEquals("Mail, Work, Unavailable", workApp.accessibilityLabel())
+    }
+
+    @Test
     fun applyHiddenAppsToPages_removesHiddenApps() {
         val items: List<HomeGridItemModel> = listOf(appItem("a"), appItem("b"), appItem("c"))
         val pages = listOf(page(1, items))

@@ -356,7 +356,7 @@ private fun PreviewItem(item: HomeGridItemModel, modifier: Modifier = Modifier) 
         when (item) {
             is AppItemModel -> {
                 if (item.app.icon != null) {
-                    Image(bitmap = item.app.icon, contentDescription = item.app.name, modifier = Modifier.size(22.dp), contentScale = ContentScale.Fit)
+                    Image(bitmap = item.app.icon, contentDescription = item.app.accessibilityLabel(), modifier = Modifier.size(22.dp), contentScale = ContentScale.Fit)
                 } else {
                     Box(modifier = Modifier.size(22.dp).clip(OneUiMicroShape).background(item.app.color))
                 }
@@ -369,7 +369,7 @@ private fun PreviewItem(item: HomeGridItemModel, modifier: Modifier = Modifier) 
                                 item.apps.drop(row * 2).take(2).forEach { app ->
                                     Box(modifier = Modifier.weight(1f).height(6.dp), contentAlignment = Alignment.Center) {
                                         if (app.icon != null) {
-                                            Image(bitmap = app.icon, contentDescription = app.name, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                                            Image(bitmap = app.icon, contentDescription = app.accessibilityLabel(), modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                                         } else {
                                             Box(modifier = Modifier.fillMaxSize().clip(OneUiMicroShape).background(app.color))
                                         }

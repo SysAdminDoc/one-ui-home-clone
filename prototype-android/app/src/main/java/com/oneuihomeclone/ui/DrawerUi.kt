@@ -515,7 +515,7 @@ private fun FinderAppGrid(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .semantics { contentDescription = app.name }
+                            .semantics { contentDescription = app.accessibilityLabel() }
                             .clickable(role = Role.Button) { onOpenApp(app) }
                             .padding(horizontal = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -525,12 +525,13 @@ private fun FinderAppGrid(
                             Spacer(Modifier.height(6.dp))
                             Text(
                                 app.name,
-                                color = OneUiText,
+                                color = if (app.isLaunchable) OneUiText else OneUiTextSecondary,
                                 fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 textAlign = TextAlign.Center,
                             )
+                            AppStatusText(app)
                         }
                     }
                 }

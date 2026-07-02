@@ -1144,7 +1144,7 @@ private fun HomeGrid(
                         .then(
                             when (item) {
                                 is AppItemModel -> Modifier
-                                    .semantics { contentDescription = item.app.name }
+                                    .semantics { contentDescription = item.app.accessibilityLabel() }
                                     .clickable(role = Role.Button) { onOpenApp(item.app) }
                                 is FolderModel -> Modifier
                             },
@@ -1159,7 +1159,7 @@ private fun HomeGrid(
                         Spacer(Modifier.height(6.dp))
                         Text(
                             text = homeItemLabel(item),
-                            color = OneUiText,
+                            color = if (item is AppItemModel && !item.app.isLaunchable) OneUiTextSecondary else OneUiText,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
@@ -1173,6 +1173,9 @@ private fun HomeGrid(
                                 ),
                             ),
                         )
+                        if (item is AppItemModel) {
+                            AppStatusText(item.app)
+                        }
                     }
                 }
             }
@@ -1210,7 +1213,7 @@ private fun FolderBubble(
                             if (app.icon != null) {
                                 Image(
                                     bitmap = app.icon,
-                                    contentDescription = app.name,
+                                    contentDescription = app.accessibilityLabel(),
                                     modifier = Modifier.size(18.dp),
                                     contentScale = ContentScale.Fit,
                                 )

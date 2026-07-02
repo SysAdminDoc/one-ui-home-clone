@@ -2,8 +2,11 @@ package com.oneuihomeclone.ui
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
+import android.os.Build
+import android.os.Process
 import android.graphics.Bitmap
 import android.os.UserHandle
 import android.os.UserManager
@@ -20,6 +23,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
+import com.oneuihomeclone.R
 
 internal data class LauncherAppRecord(
     val userSerial: Long,
@@ -71,6 +76,8 @@ internal class LauncherAppInventory(
     private val appContext = context.applicationContext
     private val launcherApps: LauncherApps? = appContext.getSystemService(LauncherApps::class.java)
     private val userManager: UserManager? = appContext.getSystemService(UserManager::class.java)
+    private val packageManager = appContext.packageManager
+    private val currentUserSerial: Long by lazy { userSerial(Process.myUserHandle()) }
 
     fun apps(): Flow<List<CloneApp>> = callbackFlow {
         val service = launcherApps
@@ -155,6 +162,8 @@ internal class LauncherAppInventory(
     }
 
     fun launch(app: CloneApp): Boolean {
+        if (!app.isLaunchable) return false
+
         val target = app.launchTarget
         if (target != null) {
             val service = launcherApps
@@ -193,10 +202,37 @@ internal class LauncherAppInventory(
     private fun LauncherActivitySource.toCloneApp(index: Int): CloneApp {
         val component = activityInfo.componentName
         val componentId = record.stableId()
+        val loadingProgress = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            runCatching { activityInfo.loadingProgress }.getOrDefault(1f)
+        } else {
+            1f
+        }
+        val installProgressPercent = loadingProgress
+            .takeIf { it >= 0f && it < 1f }
+            ?.let { (it * 100).roundToInt().coerceIn(0, 99) }
+        val isPackageEnabled = runCatching {
+            launcherApps?.isPackageEnabled(component.packageName, user) ?: true
+        }.getOrDefault(true)
+        val isActivityEnabled = runCatching {
+            launcherApps?.isActivityEnabled(component, user) ?: true
+        }.getOrDefault(true)
+        val isSuspended = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            runCatching { activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SUSPENDED != 0 }
+                .getOrDefault(false)
+        } else {
+            false
+        }
+        val statusLabel = when {
+            installProgressPercent != null -> appContext.getString(R.string.app_status_installing)
+            !isPackageEnabled || !isActivityEnabled || isSuspended -> appContext.getString(R.string.app_status_unavailable)
+            else -> null
+        }
+        val profileBadge = profileBadgeFor(user, record.userSerial)
+        val displayLabel = packageManager.getUserBadgedLabel(record.displayLabel(), user).toString()
         val iconBitmap = if (index < MAX_ICONS_LOADED_EAGERLY) {
             runCatching {
-                activityInfo
-                    .getIcon(0)
+                packageManager
+                    .getUserBadgedIcon(activityInfo.getIcon(0), user)
                     .toBitmap(width = ICON_SIZE_PX, height = ICON_SIZE_PX, config = Bitmap.Config.ARGB_8888)
                     .asImageBitmap()
             }.getOrNull()
@@ -205,7 +241,7 @@ internal class LauncherAppInventory(
         }
         return CloneApp(
             id = componentId,
-            name = record.displayLabel(),
+            name = displayLabel,
             launchIntent = Intent.makeMainActivity(component)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED),
             launchTarget = LauncherAppLaunchTarget(
@@ -214,6 +250,10 @@ internal class LauncherAppInventory(
             ),
             icon = iconBitmap,
             color = fallbackColorFor(componentId),
+            profileBadge = profileBadge,
+            statusLabel = statusLabel,
+            installProgressPercent = installProgressPercent,
+            isLaunchable = statusLabel == null,
         )
     }
 
@@ -222,6 +262,21 @@ internal class LauncherAppInventory(
         val activityInfo: LauncherActivityInfo,
         val user: UserHandle,
     )
+
+    private fun profileBadgeFor(user: UserHandle, userSerial: Long): String? {
+        if (userSerial == currentUserSerial) return null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            val userType = runCatching { launcherApps?.getLauncherUserInfo(user)?.userType }.getOrNull()
+            val labelRes = when (userType) {
+                UserManager.USER_TYPE_PROFILE_MANAGED -> R.string.profile_badge_work
+                UserManager.USER_TYPE_PROFILE_PRIVATE -> R.string.profile_badge_private
+                UserManager.USER_TYPE_PROFILE_CLONE -> R.string.profile_badge_clone
+                else -> R.string.profile_badge_profile
+            }
+            return appContext.getString(labelRes)
+        }
+        return appContext.getString(R.string.profile_badge_profile)
+    }
 
     private companion object {
         private const val TAG = "OneUiHome/apps"

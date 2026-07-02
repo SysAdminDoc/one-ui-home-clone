@@ -322,7 +322,10 @@ fun OneUiHomeCloneApp(
 
     val launchSelectedApp: (CloneApp) -> Unit = { app ->
         if (!appInventory.launch(app)) {
-            if (app.launchIntent == null && app.launchTarget == null) {
+            val statusText = app.statusText()
+            if (statusText != null) {
+                showFeedback(appContext.getString(R.string.feedback_app_unavailable, app.name, statusText))
+            } else if (app.launchIntent == null && app.launchTarget == null) {
                 showFeedback(appContext.getString(R.string.feedback_app_loading, app.name))
             } else {
                 showFeedback(appContext.getString(R.string.feedback_app_open_failed, app.name))
