@@ -6,6 +6,8 @@
     <string name="action_hide">Hide</string>
     <string name="action_open">Open</string>
     <string name="action_later">Later</string>
+    <string name="action_export">Export</string>
+    <string name="action_import">Import</string>
     <string name="action_remove">Remove</string>
     <string name="action_reset">Reset</string>
     <string name="action_restore">Restore</string>
@@ -66,6 +68,10 @@
     <string name="settings_reset_widgets_empty">Clear the launcher widget host and remove stale provider state.</string>
     <string name="settings_reset_widgets_one">Remove 1 bound widget and clear stale provider state.</string>
     <string name="settings_reset_widgets_many">Remove %1$d bound widgets and clear stale provider state.</string>
+    <string name="settings_export_backup">Back up launcher</string>
+    <string name="settings_export_backup_summary">Write settings, pages, folders, hidden apps, and widget metadata to %1$s.</string>
+    <string name="settings_restore_backup">Restore backup</string>
+    <string name="settings_restore_backup_summary">Read %1$s and restore missing apps or widgets as repairable Home placeholders.</string>
     <string name="settings_section_behavior">Behavior</string>
     <string name="settings_summary_behavior">Expected launcher defaults</string>
     <string name="settings_add_new_apps">Add new apps to Home screen</string>
@@ -233,6 +239,11 @@
     <string name="feedback_widget_reset_many">Reset %1$d widgets.</string>
     <string name="feedback_widget_removed">Widget removed.</string>
     <string name="feedback_widget_settings_unavailable">%1$s settings are unavailable.</string>
+    <string name="feedback_backup_exported">Backup written to %1$s.</string>
+    <string name="feedback_backup_export_failed">Couldn\'t write launcher backup.</string>
+    <string name="feedback_backup_missing">No launcher backup found at %1$s.</string>
+    <string name="feedback_backup_restored">Backup restored. Missing apps and widgets stay on Home as repairable placeholders.</string>
+    <string name="feedback_backup_restore_failed">Couldn\'t restore launcher backup.</string>
     <string name="a11y_page_indicator">Page %1$d of %2$d</string>
     <string name="a11y_open_label">Open %1$s</string>
     <string name="a11y_open_apps_screen">Open Apps screen</string>

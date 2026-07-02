@@ -396,6 +396,8 @@ internal fun BoundWidget.toWidgetModel(templates: List<WidgetTemplateModel>): Wi
             minSpanY = 1,
             maxSpanX = 4,
             maxSpanY = 4,
+            restoredProviderPackage = providerPackage,
+            restoredProviderClass = providerClass,
         )
     }
 }
@@ -404,11 +406,13 @@ internal fun WidgetTemplateModel.toBoundWidget(
     widgetId: Int,
     pageIndex: Int,
 ): BoundWidget? {
-    val provider = providerInfo?.provider ?: return null
+    val provider = providerInfo?.provider
+    val providerPackage = provider?.packageName ?: restoredProviderPackage ?: return null
+    val providerClass = provider?.className ?: restoredProviderClass ?: return null
     return BoundWidget(
         hostWidgetId = widgetId,
-        providerPackage = provider.packageName,
-        providerClass = provider.className,
+        providerPackage = providerPackage,
+        providerClass = providerClass,
         pageIndex = pageIndex,
         cellX = cellX,
         cellY = cellY,
@@ -419,6 +423,9 @@ internal fun WidgetTemplateModel.toBoundWidget(
 
 internal fun WidgetTemplateModel.providerKey(): String? =
     providerInfo?.provider?.let { provider -> "${provider.packageName}/${provider.className}" }
+        ?: restoredProviderPackage?.let { providerPackage ->
+            restoredProviderClass?.let { providerClass -> "$providerPackage/$providerClass" }
+        }
 
 internal fun WidgetTemplateModel.stableWidgetKey(): String {
     hostWidgetId?.let { return "bound:$it" }
@@ -531,6 +538,13 @@ internal fun clearBoundWidgetsFromPages(pages: List<HomePageModel>): List<HomePa
         page.copy(widgets = page.widgets.filter { it.hostWidgetId == null })
     }
 
+internal fun boundWidgetsFromPages(pages: List<HomePageModel>): List<BoundWidget> =
+    pages.flatMapIndexed { pageIndex, page ->
+        page.widgets.mapNotNull { widget ->
+            widget.hostWidgetId?.let { widgetId -> widget.toBoundWidget(widgetId, pageIndex) }
+        }
+    }
+
 internal fun buildPersistedLauncherLayout(
     pages: List<HomePageModel>,
     defaultHomePageIndex: Int,
@@ -573,21 +587,21 @@ internal fun restorePersistedHomePages(
 ): List<HomePageModel> {
     val appsById = allApps.associateBy(CloneApp::id)
     return layout.pages.map { page ->
-        val restoredItems = page.items.mapNotNull { item ->
+        val restoredItems = page.items.map { item ->
             when (item) {
-                is PersistedHomeItem.App -> appsById[item.appId]?.let(::AppItemModel)
+                is PersistedHomeItem.App -> AppItemModel(
+                    appsById[item.appId] ?: restoredMissingAppPlaceholder(item.appId),
+                )
                 is PersistedHomeItem.Folder -> {
-                    val apps = item.appIds.mapNotNull(appsById::get).distinctBy(CloneApp::id)
-                    if (apps.isEmpty()) {
-                        null
-                    } else {
-                        FolderModel(
-                            id = item.id,
-                            title = item.title.ifBlank { "Folder" },
-                            summary = folderSummaryFor(apps),
-                            apps = apps,
-                        )
-                    }
+                    val apps = item.appIds
+                        .map { appId -> appsById[appId] ?: restoredMissingAppPlaceholder(appId) }
+                        .distinctBy(CloneApp::id)
+                    FolderModel(
+                        id = item.id,
+                        title = item.title.ifBlank { "Folder" },
+                        summary = folderSummaryFor(apps),
+                        apps = apps,
+                    )
                 }
             }
         }
@@ -614,8 +628,11 @@ internal fun reconcileHomePagesWithApps(
         val reconciledItems = page.items.mapNotNull { item ->
             when (item) {
                 is AppItemModel -> appsById[item.app.id]?.let(::AppItemModel)
+                    ?: item.takeIf { it.app.isRestoredPlaceholder }
                 is FolderModel -> {
-                    val apps = item.apps.mapNotNull { app -> appsById[app.id] }.distinctBy(CloneApp::id)
+                    val apps = item.apps
+                        .mapNotNull { app -> appsById[app.id] ?: app.takeIf { it.isRestoredPlaceholder } }
+                        .distinctBy(CloneApp::id)
                     if (apps.isEmpty()) {
                         null
                     } else {
@@ -648,6 +665,30 @@ internal fun homeItemLabel(item: HomeGridItemModel): String {
         is AppItemModel -> item.app.name
         is FolderModel -> item.title
     }
+}
+
+internal fun restoredMissingAppPlaceholder(appId: String): CloneApp =
+    CloneApp(
+        id = appId,
+        name = restoredMissingAppLabel(appId),
+        color = fallbackColorFor(appId),
+        statusLabel = "Not installed",
+        isLaunchable = false,
+        isRestoredPlaceholder = true,
+    )
+
+private fun restoredMissingAppLabel(appId: String): String {
+    val component = appId.substringAfter(':', appId)
+    val className = component.substringAfter('/', "")
+    val packageName = component.substringBefore('/', component)
+    val raw = className.substringAfterLast('.').takeIf { it.isNotBlank() }
+        ?: packageName.substringAfterLast('.').takeIf { it.isNotBlank() }
+        ?: appId
+    return raw
+        .replace('_', ' ')
+        .replace('-', ' ')
+        .replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
+        .replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.getDefault()) else char.toString() }
 }
 
 internal fun folderSummaryFor(apps: List<CloneApp>): String {

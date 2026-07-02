@@ -64,6 +64,7 @@ Unreleased work moves launcher settings onto a single DataStore path:
 - Default-launcher onboarding detects when Android is using another Home app and opens the system Home role/settings flow without blocking the launcher
 - Long-press app and widget action sheets expose App info, Home add/remove, hide/restore, widget settings/remove, and Android dynamic shortcuts where available
 - Launcher icons and widget previews load lazily through bounded caches, and release builds consume a generated Baseline Profile for the core launcher journey
+- Home screen settings can export/import `one-ui-home-clone-backup.json` for settings, pages, folders, hidden apps, recent searches, and bound-widget metadata; unavailable restored apps/widgets stay visible as repairable placeholders
 
 v0.2.0 landed the widgets + persistence + motion primitives:
 

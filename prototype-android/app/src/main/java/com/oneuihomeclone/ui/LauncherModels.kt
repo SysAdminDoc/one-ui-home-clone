@@ -24,6 +24,7 @@ internal data class CloneApp(
     val statusLabel: String? = null,
     val installProgressPercent: Int? = null,
     val isLaunchable: Boolean = true,
+    val isRestoredPlaceholder: Boolean = false,
 )
 
 internal fun CloneApp.statusText(): String? =
@@ -173,6 +174,8 @@ internal data class WidgetTemplateModel(
     val maxSpanY: Int = 4,
     val canResizeHorizontal: Boolean = true,
     val canResizeVertical: Boolean = true,
+    val restoredProviderPackage: String? = null,
+    val restoredProviderClass: String? = null,
 )
 
 internal data class NotificationCardModel(

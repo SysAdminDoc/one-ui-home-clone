@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
@@ -58,6 +59,8 @@ class WidgetPersistence(context: Context) {
         }
         .map { prefs -> decode(prefs[Keys.SCHEMA], prefs[Keys.WIDGETS_JSON]) }
 
+    suspend fun read(): List<BoundWidget> = widgets.first()
+
     suspend fun add(widget: BoundWidget) {
         dataStore.edit { prefs ->
             val current = decode(prefs[Keys.SCHEMA], prefs[Keys.WIDGETS_JSON]).toMutableList()
@@ -77,6 +80,13 @@ class WidgetPersistence(context: Context) {
             if (removed) {
                 prefs[Keys.WIDGETS_JSON] = encode(current)
             }
+        }
+    }
+
+    suspend fun replaceAll(widgets: List<BoundWidget>) {
+        dataStore.edit { prefs ->
+            prefs[Keys.SCHEMA] = SCHEMA_VERSION
+            prefs[Keys.WIDGETS_JSON] = encode(widgets)
         }
     }
 

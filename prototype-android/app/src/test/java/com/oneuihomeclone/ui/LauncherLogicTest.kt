@@ -11,6 +11,7 @@ import com.oneuihomeclone.data.PersistedHomeItem
 import com.oneuihomeclone.data.PersistedHomePage
 import com.oneuihomeclone.data.PersistedLauncherLayout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -470,7 +471,7 @@ class LauncherLogicTest {
     }
 
     @Test
-    fun restorePersistedHomePages_reconcilesAppsAndDropsEmptyFolders() {
+    fun restorePersistedHomePages_reconcilesAppsAndKeepsMissingPlaceholders() {
         val layout = PersistedLauncherLayout(
             pages = listOf(
                 PersistedHomePage(
@@ -496,19 +497,30 @@ class LauncherLogicTest {
 
         val restored = restorePersistedHomePages(layout, listOf(app("keep", "Current label")))
 
-        assertEquals(listOf("keep"), restored.single().items.map { it.id })
-        assertEquals("Current label", (restored.single().items.single() as AppItemModel).app.name)
+        val items = restored.single().items
+        assertEquals(listOf("keep", "missing", "folder"), items.map { it.id })
+        assertEquals("Current label", (items[0] as AppItemModel).app.name)
+        val missing = (items[1] as AppItemModel).app
+        assertTrue(missing.isRestoredPlaceholder)
+        assertFalse(missing.isLaunchable)
+        assertEquals("Not installed", missing.statusLabel)
+        val folder = items[2] as FolderModel
+        assertEquals(listOf("missing"), folder.apps.map { it.id })
+        assertTrue(folder.apps.single().isRestoredPlaceholder)
         assertTrue(restored.single().widgets.isNotEmpty())
     }
 
     @Test
-    fun reconcileHomePagesWithApps_replacesCurrentAppRecordsAndPrunesMissing() {
+    fun reconcileHomePagesWithApps_replacesCurrentAppRecordsAndKeepsPlaceholders() {
         val pages = listOf(
             page(
                 id = 1,
                 items = listOf(
                     appItem("old", "Old name"),
-                    folder("folder", "old", "gone"),
+                    AppItemModel(restoredMissingAppPlaceholder("gone")),
+                    folder("folder", "old").copy(
+                        apps = listOf(app("old", "Old name"), restoredMissingAppPlaceholder("gone-folder")),
+                    ),
                 ),
             ),
         )
@@ -516,9 +528,44 @@ class LauncherLogicTest {
         val result = reconcileHomePagesWithApps(pages, listOf(app("old", "New name")))
 
         assertEquals("New name", ((result.single().items[0] as AppItemModel).app.name))
-        val folder = result.single().items[1] as FolderModel
-        assertEquals(listOf("old"), folder.apps.map { it.id })
-        assertEquals("New name", folder.apps.single().name)
+        val missing = (result.single().items[1] as AppItemModel).app
+        assertEquals("gone", missing.id)
+        assertTrue(missing.isRestoredPlaceholder)
+        val folder = result.single().items[2] as FolderModel
+        assertEquals(listOf("old", "gone-folder"), folder.apps.map { it.id })
+        assertEquals("New name", folder.apps.first().name)
+        assertTrue(folder.apps.last().isRestoredPlaceholder)
+    }
+
+    @Test
+    fun boundWidgetsFromPages_preservesRestoredProviderMetadata() {
+        val pages = listOf(
+            page(
+                id = 1,
+                widgets = listOf(
+                    widget("Restored", hostWidgetId = 77).copy(
+                        restoredProviderPackage = "com.example",
+                        restoredProviderClass = "com.example.ClockWidget",
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                BoundWidget(
+                    hostWidgetId = 77,
+                    providerPackage = "com.example",
+                    providerClass = "com.example.ClockWidget",
+                    pageIndex = 0,
+                    cellX = 0,
+                    cellY = 0,
+                    spanX = 2,
+                    spanY = 1,
+                ),
+            ),
+            boundWidgetsFromPages(pages),
+        )
     }
 
     @Test

@@ -105,6 +105,8 @@ import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.DrawerSortKey
 import com.oneuihomeclone.data.FolderGridKey
 import com.oneuihomeclone.data.HomeLayoutKey
+import com.oneuihomeclone.data.LauncherBackup
+import com.oneuihomeclone.data.LauncherBackupFileStore
 import com.oneuihomeclone.data.LauncherDataStore
 import com.oneuihomeclone.data.LauncherLayoutStore
 import com.oneuihomeclone.data.LauncherState
@@ -239,6 +241,7 @@ fun OneUiHomeCloneApp(
     val launcherState: LauncherState? by launcherDataStore.state.collectAsStateWithLifecycle(initialValue = null)
     val widgetPersistence = remember(appContext) { WidgetPersistence(appContext) }
     val layoutStore = remember(appContext) { LauncherLayoutStore(appContext) }
+    val backupStore = remember(appContext) { LauncherBackupFileStore(appContext) }
     val coroutineScope = rememberCoroutineScope()
     var hasAppliedPersistedSettings by remember { mutableStateOf(false) }
     val initialPrefs = LauncherState()
@@ -735,6 +738,106 @@ fun OneUiHomeCloneApp(
             pageIndex = adjustedPage.coerceIn(0, totalPageCount(homePages.size, enabled) - 1)
         }
     }
+    fun currentLauncherState(): LauncherState =
+        PersistedToggles(
+            mediaPageEnabled = mediaPageEnabled,
+            appsButtonEnabled = appsButtonEnabled,
+            appLabelsEnabled = appLabelsEnabled,
+            widgetLabelsEnabled = widgetLabelsEnabled,
+            swipeDownForNotifications = swipeDownForNotifications,
+            lockHomeScreenLayout = lockHomeScreenLayout,
+            homeLayoutMode = homeLayoutMode,
+            drawerSortMode = drawerSortMode,
+            motionPreset = motionPreset,
+            folderGrid = folderGrid,
+        ).toLauncherState()
+
+    fun currentPersistedLayout() =
+        buildPersistedLauncherLayout(
+            pages = homePages,
+            defaultHomePageIndex = defaultHomePageIndex,
+            hiddenAppIds = hiddenAppIds,
+            recentSearches = recentSearches,
+            nextPageId = nextPageId,
+            nextFolderId = nextFolderId,
+        )
+
+    fun applyLauncherState(state: LauncherState) {
+        val toggles = state.toPersistedToggles()
+        mediaPageEnabled = toggles.mediaPageEnabled
+        appsButtonEnabled = toggles.appsButtonEnabled
+        appLabelsEnabled = toggles.appLabelsEnabled
+        widgetLabelsEnabled = toggles.widgetLabelsEnabled
+        swipeDownForNotifications = toggles.swipeDownForNotifications
+        lockHomeScreenLayout = toggles.lockHomeScreenLayout
+        homeLayoutMode = toggles.homeLayoutMode
+        drawerSortMode = toggles.drawerSortMode
+        motionPreset = toggles.motionPreset
+        folderGrid = toggles.folderGrid
+        hasAppliedPersistedSettings = true
+    }
+
+    fun exportLauncherBackup() {
+        coroutineScope.launch {
+            val backup = LauncherBackup(
+                settings = currentLauncherState(),
+                layout = currentPersistedLayout(),
+                widgets = boundWidgetsFromPages(homePages),
+                exportedAtMillis = System.currentTimeMillis(),
+            )
+            runCatching { backupStore.export(backup) }
+                .onSuccess { file ->
+                    showFeedback(appContext.getString(R.string.feedback_backup_exported, file.name))
+                }
+                .onFailure { cause ->
+                    Log.e("OneUiHome/backup", "Backup export failed", cause)
+                    showFeedback(appContext.getString(R.string.feedback_backup_export_failed))
+                }
+        }
+    }
+
+    fun importLauncherBackup() {
+        coroutineScope.launch {
+            val backup = runCatching { backupStore.import() }
+                .onFailure { cause -> Log.e("OneUiHome/backup", "Backup import failed", cause) }
+                .getOrNull()
+            if (backup == null) {
+                showFeedback(appContext.getString(R.string.feedback_backup_missing, backupStore.backupFileName))
+                return@launch
+            }
+
+            runCatching {
+                launcherDataStore.update { setLauncherState(backup.settings) }
+                layoutStore.save(backup.layout)
+                widgetPersistence.replaceAll(backup.widgets)
+            }.onSuccess {
+                val restoreApps = allApps.ifEmpty { fallbackApps }
+                val restoredPages = restorePersistedHomePages(backup.layout, restoreApps).ifEmpty {
+                    listOf(
+                        buildHomePage(1, restoreApps),
+                        buildHomePage(2, restoreApps),
+                    )
+                }
+                val pagesWithWidgets = mergeBoundWidgetsIntoPages(restoredPages, backup.widgets, widgetTemplates)
+                applyLauncherState(backup.settings)
+                homePages = pagesWithWidgets
+                hiddenAppIds = backup.layout.hiddenAppIds
+                recentSearches = backup.layout.recentSearches.ifEmpty { recentSearches }
+                defaultHomePageIndex = backup.layout.defaultHomePageIndex.coerceIn(pagesWithWidgets.indices)
+                nextPageId = maxOf(
+                    backup.layout.nextPageId,
+                    pagesWithWidgets.maxOfOrNull { it.id + 1 } ?: 1,
+                )
+                nextFolderId = backup.layout.nextFolderId.coerceAtLeast(1)
+                pageIndex = visualIndexForHomePage(defaultHomePageIndex, mediaPageEnabled)
+                showFeedback(appContext.getString(R.string.feedback_backup_restored))
+            }.onFailure { cause ->
+                Log.e("OneUiHome/backup", "Backup restore failed", cause)
+                showFeedback(appContext.getString(R.string.feedback_backup_restore_failed))
+            }
+        }
+    }
+
     val rememberSearch: (String) -> Unit = { query ->
         recentSearches = rememberRecentSearch(query, recentSearches)
     }
@@ -1315,6 +1418,7 @@ fun OneUiHomeCloneApp(
                 appsScreenSortTitle = localizedDrawerSortTitle,
                 hiddenAppCount = hiddenAppIds.size,
                 boundWidgetCount = activeBoundWidgetCount,
+                backupFileName = backupStore.backupFileName,
                 defaultLauncherState = defaultLauncherState,
                 focusedSettingTitle = settingsFocusTitle,
                 onClose = {
@@ -1331,6 +1435,8 @@ fun OneUiHomeCloneApp(
                 onMotionPresetChange = { motionPreset = it },
                 onFolderGridChange = { folderGrid = it },
                 onResetWidgets = resetWidgets,
+                onExportBackup = ::exportLauncherBackup,
+                onImportBackup = ::importLauncherBackup,
                 onOpenDefaultLauncherSettings = onOpenDefaultLauncherSettings,
             )
         }
