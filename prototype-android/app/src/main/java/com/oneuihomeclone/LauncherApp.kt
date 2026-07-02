@@ -3,6 +3,7 @@ package com.oneuihomeclone
 import android.app.Application
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
+import android.os.Build
 import android.os.Process
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
@@ -33,6 +34,31 @@ data class PreviousCrashSummary(
         exceptionClass?.let { "exception=$it" },
     ).joinToString(separator = " ").ifBlank { "summary=unavailable" }
 }
+
+internal fun buildRecoveryDiagnostics(
+    summary: PreviousCrashSummary,
+    sdkInt: Int,
+    versionName: String,
+    versionCode: Int,
+): String = buildString {
+    appendLine("One UI Home Clone recovery diagnostics")
+    appendLine("versionName=${versionName.sanitizedDiagnosticValue()}")
+    appendLine("versionCode=$versionCode")
+    appendLine("sdk=$sdkInt")
+    appendLine("previousCrash.timestamp=${summary.timestamp.sanitizedDiagnosticValue()}")
+    appendLine("previousCrash.thread=${summary.thread.sanitizedDiagnosticValue()}")
+    appendLine("previousCrash.versionName=${summary.versionName.sanitizedDiagnosticValue()}")
+    appendLine("previousCrash.versionCode=${summary.versionCode.sanitizedDiagnosticValue()}")
+    appendLine("previousCrash.exception=${summary.exceptionClass.sanitizedDiagnosticValue()}")
+}
+
+private fun String?.sanitizedDiagnosticValue(): String =
+    this
+        ?.lineSequence()
+        ?.firstOrNull()
+        ?.take(160)
+        ?.ifBlank { null }
+        ?: "unknown"
 
 internal fun summarizeCrashLog(content: String): PreviousCrashSummary {
     val fields = content
@@ -144,9 +170,23 @@ class LauncherApp : Application() {
         return content?.let(::summarizeCrashLog)
     }
 
+    fun writeRecoveryDiagnostics(summary: PreviousCrashSummary): File {
+        val file = File(filesDir, RECOVERY_DIAGNOSTICS_NAME)
+        file.writeText(
+            buildRecoveryDiagnostics(
+                summary = summary,
+                sdkInt = Build.VERSION.SDK_INT,
+                versionName = BuildConfig.VERSION_NAME,
+                versionCode = BuildConfig.VERSION_CODE,
+            ),
+        )
+        return file
+    }
+
     companion object {
         private const val TAG = "LauncherApp"
         private const val CRASH_LOG_NAME = "crash-log.txt"
+        private const val RECOVERY_DIAGNOSTICS_NAME = "safe-recovery-diagnostics.txt"
         private const val TIMESTAMP_PATTERN = "yyyy-MM-dd HH:mm:ss.SSS"
 
         /**
@@ -184,6 +224,9 @@ class LauncherApp : Application() {
         }
 
         fun consumePreviousCrashLog(): PreviousCrashSummary? = instance?.consumePreviousCrashLog()
+
+        fun writeRecoveryDiagnostics(summary: PreviousCrashSummary): File? =
+            instance?.writeRecoveryDiagnostics(summary)
 
         /** Called once per Activity creation so Compose-layer code can dispatch a bind. */
         internal fun registerWidgetBindLauncher(launcher: ActivityResultLauncher<WidgetBindRequest>) {

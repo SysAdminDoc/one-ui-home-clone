@@ -12,7 +12,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
+import com.oneuihomeclone.data.LauncherDataStore
+import com.oneuihomeclone.data.LauncherLayoutStore
+import com.oneuihomeclone.data.WidgetPersistence
 import com.oneuihomeclone.ui.OneUiHomeCloneApp
+import com.oneuihomeclone.ui.SafeRecoveryCheckingScreen
+import com.oneuihomeclone.ui.SafeRecoveryScreen
 import com.oneuihomeclone.ui.theme.OneUiHomeCloneTheme
 import com.oneuihomeclone.widgets.WidgetBindContract
 import com.oneuihomeclone.widgets.WidgetBindRequest
@@ -29,7 +34,7 @@ class MainActivity : ComponentActivity() {
      * overlay state and scroll back to the default home page.
      */
     private var homeIntentTick by mutableIntStateOf(0)
-    private var previousCrashRecoveryMessage by mutableStateOf<String?>(null)
+    private var recoveryGate by mutableStateOf<RecoveryGate>(RecoveryGate.Checking)
 
     /**
      * ActivityResultLauncher for `ACTION_APPWIDGET_BIND`. Registered before `setContent`
@@ -55,14 +60,31 @@ class MainActivity : ComponentActivity() {
         }
         LauncherApp.registerWidgetBindLauncher(widgetBindLauncher)
 
-        // Crash recovery is loaded below after composition starts, keeping disk IO off
-        // cleared atomically in consume — user only sees this once per crash.
+        // Keep disk IO off the main thread, but do not mount the full launcher tree
+        // until the previous crash log check opens recovery mode or releases Home.
         setContent {
             OneUiHomeCloneTheme {
-                OneUiHomeCloneApp(
-                    homeIntentTick = homeIntentTick,
-                    recoveryNotice = previousCrashRecoveryMessage,
-                )
+                when (val gate = recoveryGate) {
+                    RecoveryGate.Checking -> SafeRecoveryCheckingScreen()
+                    is RecoveryGate.Ready -> {
+                        OneUiHomeCloneApp(
+                            homeIntentTick = homeIntentTick,
+                            recoveryNotice = gate.recoveryNotice,
+                        )
+                    }
+                    is RecoveryGate.SafeMode -> {
+                        SafeRecoveryScreen(
+                            summary = gate.summary,
+                            actionMessage = gate.actionMessage,
+                            actionInProgress = gate.actionInProgress,
+                            onResetLayout = ::resetLayoutFromSafeMode,
+                            onResetSettings = ::resetSettingsFromSafeMode,
+                            onClearWidgets = ::clearWidgetsFromSafeMode,
+                            onExportDiagnostics = { exportDiagnosticsFromSafeMode(gate.summary) },
+                            onContinue = ::continueFromSafeMode,
+                        )
+                    }
+                }
             }
         }
 
@@ -72,7 +94,9 @@ class MainActivity : ComponentActivity() {
             }
             if (summary != null) {
                 Log.w(TAG, "Previous crash recovered: ${summary.toLogLine()}")
-                previousCrashRecoveryMessage = "One UI Home Clone recovered from a crash on its previous run."
+                recoveryGate = RecoveryGate.SafeMode(summary)
+            } else {
+                recoveryGate = RecoveryGate.Ready()
             }
         }
     }
@@ -117,7 +141,116 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
     }
+
+    private fun continueFromSafeMode() {
+        recoveryGate = RecoveryGate.Ready(getString(R.string.feedback_recovery_continue))
+    }
+
+    private fun resetLayoutFromSafeMode() {
+        runRecoveryAction(
+            actionLogName = "reset-layout",
+            actionLabel = getString(R.string.safe_mode_reset_layout),
+            successMessage = getString(R.string.safe_mode_layout_reset_done),
+        ) {
+            LauncherLayoutStore(applicationContext).clear()
+        }
+    }
+
+    private fun resetSettingsFromSafeMode() {
+        runRecoveryAction(
+            actionLogName = "reset-settings",
+            actionLabel = getString(R.string.safe_mode_reset_settings),
+            successMessage = getString(R.string.safe_mode_settings_reset_done),
+        ) {
+            LauncherDataStore(applicationContext).clear()
+        }
+    }
+
+    private fun clearWidgetsFromSafeMode() {
+        runRecoveryAction(
+            actionLogName = "clear-widgets",
+            actionLabel = getString(R.string.safe_mode_clear_widgets),
+            successMessage = getString(R.string.safe_mode_widgets_cleared_done),
+        ) {
+            LauncherApp.resetWidgetHost()
+            WidgetPersistence(applicationContext).clear()
+        }
+    }
+
+    private fun exportDiagnosticsFromSafeMode(summary: PreviousCrashSummary) {
+        val current = recoveryGate as? RecoveryGate.SafeMode ?: return
+        val actionLabel = getString(R.string.safe_mode_export_diagnostics)
+        recoveryGate = current.copy(
+            actionInProgress = true,
+            actionMessage = getString(R.string.safe_mode_action_running),
+        )
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    LauncherApp.writeRecoveryDiagnostics(summary)?.name
+                        ?: error("LauncherApp unavailable")
+                }
+            }
+            recoveryGate = result.fold(
+                onSuccess = { fileName ->
+                    Log.w(TAG, "Recovery action completed: export-diagnostics")
+                    current.copy(
+                        actionInProgress = false,
+                        actionMessage = getString(R.string.safe_mode_diagnostics_exported, fileName),
+                    )
+                },
+                onFailure = { cause ->
+                    Log.e(TAG, "Recovery action failed: export-diagnostics", cause)
+                    current.copy(
+                        actionInProgress = false,
+                        actionMessage = getString(R.string.safe_mode_action_failed, actionLabel),
+                    )
+                },
+            )
+        }
+    }
+
+    private fun runRecoveryAction(
+        actionLogName: String,
+        actionLabel: String,
+        successMessage: String,
+        block: suspend () -> Unit,
+    ) {
+        val current = recoveryGate as? RecoveryGate.SafeMode ?: return
+        recoveryGate = current.copy(
+            actionInProgress = true,
+            actionMessage = getString(R.string.safe_mode_action_running),
+        )
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching { block() } }
+            recoveryGate = result.fold(
+                onSuccess = {
+                    Log.w(TAG, "Recovery action completed: $actionLogName")
+                    current.copy(actionInProgress = false, actionMessage = successMessage)
+                },
+                onFailure = { cause ->
+                    Log.e(TAG, "Recovery action failed: $actionLogName", cause)
+                    current.copy(
+                        actionInProgress = false,
+                        actionMessage = getString(R.string.safe_mode_action_failed, actionLabel),
+                    )
+                },
+            )
+        }
+    }
 }
 
 /** Callback shape returned after an ACTION_APPWIDGET_BIND flow completes. */
 typealias WidgetBindCallback = (WidgetBindResult) -> Unit
+
+private sealed interface RecoveryGate {
+    data object Checking : RecoveryGate
+
+    data class Ready(val recoveryNotice: String? = null) : RecoveryGate
+
+    data class SafeMode(
+        val summary: PreviousCrashSummary,
+        val actionMessage: String? = null,
+        val actionInProgress: Boolean = false,
+    ) : RecoveryGate
+}

@@ -69,6 +69,10 @@ class LauncherDataStore(context: Context) {
         }
     }
 
+    suspend fun clear() {
+        dataStore.edit { prefs -> prefs.clear() }
+    }
+
     class Mutator internal constructor(private val prefs: androidx.datastore.preferences.core.MutablePreferences) {
         fun setLauncherState(state: LauncherState) {
             setMediaPageEnabled(state.mediaPageEnabled)

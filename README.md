@@ -60,6 +60,7 @@ Unreleased work moves launcher settings onto a single DataStore path:
 - `LauncherDataStore.state` is collected by Compose and is now the only writer for media page, Apps button, labels, notification swipe, locked layout, home layout, drawer sort, motion preset, and folder grid toggles
 - The old SharedPreferences file is used only as a one-shot migration source on first DataStore read
 - Motion preset changes now feed `ProvideMotionScheme` live without requiring Activity recreation
+- Crash-safe recovery mode opens after a previous crash with local reset layout, reset settings, clear widgets, sanitized diagnostics export, and continue-to-Home actions
 
 v0.2.0 landed the widgets + persistence + motion primitives:
 
