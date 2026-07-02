@@ -72,6 +72,7 @@ internal data class OpenFolderTarget(
 )
 
 internal data class FinderSettingResult(
+    val type: FinderSettingType,
     val title: String,
     val category: String,
     val value: String,
@@ -118,6 +119,24 @@ internal enum class FinderActionType {
     MEDIA_PAGE,
     HOME_PAGE,
     HIDE_APPS,
+}
+
+internal enum class FinderSettingType {
+    HOME_SCREEN_LAYOUT,
+    HOME_SCREEN_GRID,
+    APPS_SCREEN_GRID,
+    FOLDER_GRID,
+    DEFAULT_HOME_PAGE,
+    VISIBLE_PAGES,
+    MEDIA_PAGE,
+    APPS_BUTTON,
+    APP_LABELS,
+    WIDGET_LABELS,
+    SWIPE_DOWN_NOTIFICATIONS,
+    HIDE_APPS,
+    LOCK_LAYOUT,
+    ADD_NEW_APPS,
+    BADGE_NOTIFICATIONS,
 }
 
 internal enum class HomeLayoutMode(val title: String) {

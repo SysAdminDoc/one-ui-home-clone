@@ -89,7 +89,7 @@ internal fun <T> SettingsSelectorCard(
     description: String,
     entries: List<T>,
     selectedEntry: T,
-    labelOf: (T) -> String,
+    labelOf: @Composable (T) -> String,
     onSelect: (T) -> Unit,
 ) {
     Surface(

@@ -657,6 +657,58 @@ internal fun buildHomePage(id: Int, allApps: List<CloneApp>): HomePageModel {
     )
 }
 
+internal data class FinderSettingText(
+    val homeScreenLayout: String = "Home screen layout",
+    val homeScreenGrid: String = "Home screen grid",
+    val appsScreenGrid: String = "Apps screen grid",
+    val folderGrid: String = "Folder grid",
+    val defaultHomePage: String = "Default home page",
+    val visiblePages: String = "Visible pages",
+    val mediaPage: String = "Media page",
+    val appsButton: String = "Apps button on Home screen",
+    val appLabels: String = "App labels",
+    val widgetLabels: String = "Widget labels",
+    val swipeDownNotifications: String = "Swipe down for notification panel",
+    val hideApps: String = "Hide apps",
+    val lockLayout: String = "Lock Home screen layout",
+    val addNewApps: String = "Add new apps to Home screen",
+    val badgeNotifications: String = "Badge notifications",
+    val layoutCategory: String = "Layout",
+    val behaviorCategory: String = "Behavior",
+    val gesturesCategory: String = "Gestures",
+    val appsScreenCategory: String = "Apps screen",
+    val onValue: String = "On",
+    val offValue: String = "Off",
+    val noneValue: String = "None",
+    val dotsAndNumberValue: String = "Dots and number",
+    val appsSortUnavailable: String = "Unavailable in Home screen only mode",
+    val hiddenCount: (Int) -> String = { count -> "$count hidden" },
+)
+
+internal data class FinderActionText(
+    val homeScreenSettingsTitle: String = "Home screen settings",
+    val settingsHomeOnlySummary: String = "Adjust the launcher while Home screen only mode is active",
+    val settingsDefaultSummary: String = "Adjust layout, labels, badges, and gestures",
+    val wallpapersTitle: String = "Wallpapers and style",
+    val wallpaperLockedSummary: String = "Layout is locked, so wallpaper controls route through settings first",
+    val wallpaperDefaultSummary: String = "Open edit mode for wallpaper and theme controls",
+    val widgetsTitle: String = "Widgets",
+    val widgetsSummary: String = "Open the widget picker",
+    val pageManagerTitle: String = "Page manager",
+    val pageManagerLockedSummary: String = "Layout is locked, so page management is currently disabled",
+    val pageManagerDefaultSummary: String = "Preview pages, set default home, and add screens",
+    val mediaGoTitle: String = "Go to media page",
+    val mediaEnableTitle: String = "Enable media page",
+    val mediaGoSummary: String = "Jump to the media page",
+    val mediaEnableSummary: String = "Turn on the left media page and open it",
+    val defaultHomeTitle: String = "Go to default home page",
+    val defaultHomeSummary: String = "Return to the main home screen immediately",
+    val manageHiddenTitle: String = "Manage hidden apps",
+    val hideAppsTitle: String = "Hide apps",
+    val manageHiddenSummary: String = "Review which apps are hidden from Home and Apps screens",
+    val hideAppsSummary: String = "Choose which apps disappear from Home and Apps screens",
+)
+
 internal fun buildFinderSettingResults(
     query: String,
     homeLayoutMode: HomeLayoutMode,
@@ -669,27 +721,31 @@ internal fun buildFinderSettingResults(
     homePageCount: Int,
     defaultHomePageLabel: String,
     hiddenAppCount: Int,
+    text: FinderSettingText = FinderSettingText(),
+    homeLayoutModeTitle: String = homeLayoutMode.title,
+    hiddenAppsValue: String = if (hiddenAppCount == 0) text.noneValue else text.hiddenCount(hiddenAppCount),
 ): List<FinderSettingResult> {
     val settings = listOf(
-        FinderSettingResult("Home screen layout", "Layout", homeLayoutMode.title),
-        FinderSettingResult("Home screen grid", "Layout", "4x6"),
-        FinderSettingResult("Apps screen grid", "Layout", "4x6"),
-        FinderSettingResult("Folder grid", "Layout", "3x4"),
-        FinderSettingResult("Default home page", "Layout", defaultHomePageLabel),
-        FinderSettingResult("Visible pages", "Layout", homePageCount.toString()),
-        FinderSettingResult("Media page", "Behavior", if (mediaPageEnabled) "On" else "Off"),
+        FinderSettingResult(FinderSettingType.HOME_SCREEN_LAYOUT, text.homeScreenLayout, text.layoutCategory, homeLayoutModeTitle),
+        FinderSettingResult(FinderSettingType.HOME_SCREEN_GRID, text.homeScreenGrid, text.layoutCategory, "4x6"),
+        FinderSettingResult(FinderSettingType.APPS_SCREEN_GRID, text.appsScreenGrid, text.layoutCategory, "4x6"),
+        FinderSettingResult(FinderSettingType.FOLDER_GRID, text.folderGrid, text.layoutCategory, "3x4"),
+        FinderSettingResult(FinderSettingType.DEFAULT_HOME_PAGE, text.defaultHomePage, text.layoutCategory, defaultHomePageLabel),
+        FinderSettingResult(FinderSettingType.VISIBLE_PAGES, text.visiblePages, text.layoutCategory, homePageCount.toString()),
+        FinderSettingResult(FinderSettingType.MEDIA_PAGE, text.mediaPage, text.behaviorCategory, if (mediaPageEnabled) text.onValue else text.offValue),
         FinderSettingResult(
-            "Apps button on Home screen",
-            "Behavior",
-            if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) "Unavailable in Home screen only mode" else if (appsButtonEnabled) "On" else "Off",
+            FinderSettingType.APPS_BUTTON,
+            text.appsButton,
+            text.behaviorCategory,
+            if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) text.appsSortUnavailable else if (appsButtonEnabled) text.onValue else text.offValue,
         ),
-        FinderSettingResult("App labels", "Behavior", if (appLabelsEnabled) "On" else "Off"),
-        FinderSettingResult("Widget labels", "Behavior", if (widgetLabelsEnabled) "On" else "Off"),
-        FinderSettingResult("Swipe down for notification panel", "Gestures", if (swipeDownForNotifications) "On" else "Off"),
-        FinderSettingResult("Hide apps", "Apps screen", if (hiddenAppCount == 0) "None" else "$hiddenAppCount hidden"),
-        FinderSettingResult("Lock Home screen layout", "Behavior", if (lockHomeScreenLayout) "On" else "Off"),
-        FinderSettingResult("Add new apps to Home screen", "Behavior", "On"),
-        FinderSettingResult("Badge notifications", "Behavior", "Dots and number"),
+        FinderSettingResult(FinderSettingType.APP_LABELS, text.appLabels, text.behaviorCategory, if (appLabelsEnabled) text.onValue else text.offValue),
+        FinderSettingResult(FinderSettingType.WIDGET_LABELS, text.widgetLabels, text.behaviorCategory, if (widgetLabelsEnabled) text.onValue else text.offValue),
+        FinderSettingResult(FinderSettingType.SWIPE_DOWN_NOTIFICATIONS, text.swipeDownNotifications, text.gesturesCategory, if (swipeDownForNotifications) text.onValue else text.offValue),
+        FinderSettingResult(FinderSettingType.HIDE_APPS, text.hideApps, text.appsScreenCategory, hiddenAppsValue),
+        FinderSettingResult(FinderSettingType.LOCK_LAYOUT, text.lockLayout, text.behaviorCategory, if (lockHomeScreenLayout) text.onValue else text.offValue),
+        FinderSettingResult(FinderSettingType.ADD_NEW_APPS, text.addNewApps, text.behaviorCategory, text.onValue),
+        FinderSettingResult(FinderSettingType.BADGE_NOTIFICATIONS, text.badgeNotifications, text.behaviorCategory, text.dotsAndNumberValue),
     )
     val normalizedQuery = query.trim().lowercase()
     return if (normalizedQuery.isBlank()) {
@@ -709,34 +765,35 @@ internal fun buildFinderActionResults(
     lockHomeScreenLayout: Boolean,
     mediaPageEnabled: Boolean,
     hasHiddenApps: Boolean,
+    text: FinderActionText = FinderActionText(),
 ): List<FinderActionItem> {
     val actions = listOf(
         FinderActionItem(
             FinderActionType.SETTINGS,
-            "Home screen settings",
-            if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) "Adjust the launcher while Home screen only mode is active" else "Adjust layout, labels, badges, and gestures",
+            text.homeScreenSettingsTitle,
+            if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) text.settingsHomeOnlySummary else text.settingsDefaultSummary,
         ),
         FinderActionItem(
             FinderActionType.WALLPAPERS,
-            "Wallpapers and style",
-            if (lockHomeScreenLayout) "Layout is locked, so wallpaper controls route through settings first" else "Open edit mode for wallpaper and theme controls",
+            text.wallpapersTitle,
+            if (lockHomeScreenLayout) text.wallpaperLockedSummary else text.wallpaperDefaultSummary,
         ),
-        FinderActionItem(FinderActionType.WIDGETS, "Widgets", "Open the widget picker"),
+        FinderActionItem(FinderActionType.WIDGETS, text.widgetsTitle, text.widgetsSummary),
         FinderActionItem(
             FinderActionType.PAGE_MANAGER,
-            "Page manager",
-            if (lockHomeScreenLayout) "Layout is locked, so page management is currently disabled" else "Preview pages, set default home, and add screens",
+            text.pageManagerTitle,
+            if (lockHomeScreenLayout) text.pageManagerLockedSummary else text.pageManagerDefaultSummary,
         ),
         FinderActionItem(
             FinderActionType.MEDIA_PAGE,
-            if (mediaPageEnabled) "Go to media page" else "Enable media page",
-            if (mediaPageEnabled) "Jump to the media page" else "Turn on the left media page and open it",
+            if (mediaPageEnabled) text.mediaGoTitle else text.mediaEnableTitle,
+            if (mediaPageEnabled) text.mediaGoSummary else text.mediaEnableSummary,
         ),
-        FinderActionItem(FinderActionType.HOME_PAGE, "Go to default home page", "Return to the main home screen immediately"),
+        FinderActionItem(FinderActionType.HOME_PAGE, text.defaultHomeTitle, text.defaultHomeSummary),
         FinderActionItem(
             FinderActionType.HIDE_APPS,
-            if (hasHiddenApps) "Manage hidden apps" else "Hide apps",
-            if (hasHiddenApps) "Review which apps are hidden from Home and Apps screens" else "Choose which apps disappear from Home and Apps screens",
+            if (hasHiddenApps) text.manageHiddenTitle else text.hideAppsTitle,
+            if (hasHiddenApps) text.manageHiddenSummary else text.hideAppsSummary,
         ),
     )
     val normalizedQuery = query.trim().lowercase()
@@ -782,9 +839,10 @@ internal fun widgetProviderLabel(
 internal fun widgetProviderAppLabel(
     packageManager: PackageManager,
     info: AppWidgetProviderInfo,
+    fallbackLabel: String = "Widgets",
 ): String {
     val packageName = info.provider?.packageName.orEmpty()
-    if (packageName.isBlank()) return "Widgets"
+    if (packageName.isBlank()) return fallbackLabel
     return runCatching {
         val appInfo = packageManager.getApplicationInfo(packageName, 0)
         packageManager.getApplicationLabel(appInfo).toString()

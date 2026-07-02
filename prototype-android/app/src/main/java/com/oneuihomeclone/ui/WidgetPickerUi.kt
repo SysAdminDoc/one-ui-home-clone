@@ -26,9 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.oneuihomeclone.R
 import com.oneuihomeclone.ui.theme.OneUiAccent
 import com.oneuihomeclone.ui.theme.OneUiBackground
 import com.oneuihomeclone.ui.theme.OneUiSurface
@@ -59,20 +61,20 @@ internal fun WidgetPickerOverlay(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Widgets", color = OneUiText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.widgets_title), color = OneUiText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
-                SettingsCapsule(label = "Close", onClick = onClose, accent = false)
+                SettingsCapsule(label = stringResource(R.string.action_close), onClick = onClose, accent = false)
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                "Recommended widgets first, then grouped by provider and task.",
+                stringResource(R.string.widgets_intro),
                 color = OneUiTextSecondary,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Adding to $targetPageLabel",
+                stringResource(R.string.widgets_adding_to, targetPageLabel),
                 color = OneUiAccent,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -129,7 +131,7 @@ internal fun WidgetTemplateCard(
                 Column(horizontalAlignment = Alignment.End) {
                     SettingsCapsule(label = widget.span, accent = false, enabled = false)
                     Spacer(Modifier.height(8.dp))
-                    SettingsCapsule(label = "Add", onClick = { onAddWidget(widget) })
+                    SettingsCapsule(label = stringResource(R.string.action_add), onClick = { onAddWidget(widget) })
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -188,10 +190,10 @@ private fun WidgetPickerEmptyState(selectedCategory: String) {
         shadowElevation = 1.dp,
     ) {
         Column(Modifier.padding(horizontal = 22.dp, vertical = 22.dp)) {
-            Text("No widgets in $selectedCategory", color = OneUiText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.widgets_empty_title, selectedCategory), color = OneUiText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Choose another category or install apps that expose widgets.",
+                stringResource(R.string.widgets_empty_summary),
                 color = OneUiTextSecondary,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,

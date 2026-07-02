@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.oneuihomeclone.R
 import com.oneuihomeclone.ui.theme.OneUiAccent
 import com.oneuihomeclone.ui.theme.OneUiAccentSoft
 import com.oneuihomeclone.ui.theme.OneUiBorder
@@ -93,30 +95,30 @@ internal fun EditModeTray(
                     Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Home screen", color = OneUiText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.edit_home_screen), color = OneUiText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.weight(1f))
-                    SettingsCapsule(label = "Done", onClick = onClose, accent = false)
+                    SettingsCapsule(label = stringResource(R.string.action_done), onClick = onClose, accent = false)
                 }
                 Spacer(Modifier.height(18.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         EditTile(
-                            title = "Wallpapers and style",
+                            title = stringResource(R.string.edit_wallpapers_style),
                             icon = Icons.Default.Image,
                             modifier = Modifier.weight(1f),
                             enabled = false,
-                            supportingText = "Unavailable",
+                            supportingText = stringResource(R.string.state_unavailable),
                         )
-                        EditTile("Widgets", Icons.Default.Widgets, modifier = Modifier.weight(1f), onClick = onOpenWidgetPicker)
+                        EditTile(stringResource(R.string.widgets_title), Icons.Default.Widgets, modifier = Modifier.weight(1f), onClick = onOpenWidgetPicker)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        EditTile("Home settings", Icons.Default.Settings, modifier = Modifier.weight(1f), onClick = onOpenSettings)
+                        EditTile(stringResource(R.string.edit_home_settings), Icons.Default.Settings, modifier = Modifier.weight(1f), onClick = onOpenSettings)
                         EditTile(
-                            title = "Page manager",
+                            title = stringResource(R.string.edit_page_manager),
                             icon = Icons.Default.Tune,
                             modifier = Modifier.weight(1f),
                             enabled = false,
-                            supportingText = "Controls below",
+                            supportingText = stringResource(R.string.edit_controls_below),
                         )
                     }
                 }
@@ -135,40 +137,40 @@ internal fun EditModeTray(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     SettingsCapsule(
-                        label = if (mediaPageEnabled) "Hide media page" else "Show media page",
+                        label = if (mediaPageEnabled) stringResource(R.string.edit_hide_media_page) else stringResource(R.string.edit_show_media_page),
                         onClick = onToggleMediaPage,
                         accent = mediaPageEnabled,
                     )
                     if (!selectedIsMedia) {
                         SettingsCapsule(
-                            label = if (selectedHomePageIndex == defaultHomePageIndex) "Default home" else "Set as home",
+                            label = if (selectedHomePageIndex == defaultHomePageIndex) stringResource(R.string.edit_default_home) else stringResource(R.string.edit_set_as_home),
                             onClick = onSetCurrentPageAsDefault,
                             accent = selectedHomePageIndex != defaultHomePageIndex,
                         )
                         if (selectedHomePageIndex != null && selectedHomePageIndex > 0) {
                             SettingsCapsule(
-                                label = "Move left",
+                                label = stringResource(R.string.edit_move_left),
                                 onClick = onMoveCurrentPageLeft,
                                 accent = false,
                             )
                         }
                         if (selectedHomePageIndex != null && selectedHomePageIndex < pages.lastIndex) {
                             SettingsCapsule(
-                                label = "Move right",
+                                label = stringResource(R.string.edit_move_right),
                                 onClick = onMoveCurrentPageRight,
                                 accent = false,
                             )
                         }
                         if (currentWidgetCount > 0) {
                             SettingsCapsule(
-                                label = "Remove widget",
+                                label = stringResource(R.string.edit_remove_widget),
                                 onClick = onRemoveLastWidget,
                                 accent = false,
                             )
                         }
                         if (pages.size > 1) {
                             SettingsCapsule(
-                                label = "Remove page",
+                                label = stringResource(R.string.edit_remove_page),
                                 onClick = onRemoveCurrentPage,
                                 accent = false,
                             )
@@ -194,10 +196,10 @@ private fun PageManagerPanel(
         color = OneUiSurfaceSoft,
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
-            Text("Pages", color = OneUiText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.edit_pages), color = OneUiText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Page controls use real thumbnails, a default home marker, and a dedicated media surface.",
+                stringResource(R.string.edit_pages_summary),
                 color = OneUiTextSecondary,
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
@@ -209,8 +211,8 @@ private fun PageManagerPanel(
             ) {
                 if (mediaPageEnabled) {
                     PagePreviewTile(
-                        title = "Media",
-                        subtitle = "Media hub",
+                        title = stringResource(R.string.edit_media_preview_title),
+                        subtitle = stringResource(R.string.home_media_hub),
                         selected = pageIndex == 0,
                         onClick = { onSelectPage(0) },
                     ) {
@@ -233,7 +235,7 @@ private fun PageManagerPanel(
                 pages.forEachIndexed { index, page ->
                     PagePreviewTile(
                         title = page.label,
-                        subtitle = if (index == defaultHomePageIndex) "Default home" else "Tap to preview",
+                        subtitle = if (index == defaultHomePageIndex) stringResource(R.string.edit_default_home) else stringResource(R.string.edit_tap_to_preview),
                         selected = pageIndex == visualIndexForHomePage(index, mediaPageEnabled),
                         onClick = { onSelectPage(visualIndexForHomePage(index, mediaPageEnabled)) },
                     ) {
@@ -245,8 +247,8 @@ private fun PageManagerPanel(
                 }
 
                 PagePreviewTile(
-                    title = "New page",
-                    subtitle = "Add",
+                    title = stringResource(R.string.edit_new_page),
+                    subtitle = stringResource(R.string.action_add),
                     selected = false,
                     onClick = onAddPage,
                 ) {
@@ -333,7 +335,7 @@ private fun HomePagePreview(
                     modifier = Modifier.fillMaxWidth().height(34.dp).padding(horizontal = 10.dp),
                     contentAlignment = Alignment.CenterStart,
                 ) {
-                    Text("Widget", color = OneUiTextSecondary, fontSize = 10.sp)
+                    Text(stringResource(R.string.home_widget_preview), color = OneUiTextSecondary, fontSize = 10.sp)
                 }
             }
             Spacer(Modifier.height(10.dp))

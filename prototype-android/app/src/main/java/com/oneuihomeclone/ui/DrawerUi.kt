@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.oneuihomeclone.R
 import com.oneuihomeclone.ui.theme.OneUiAccent
 import com.oneuihomeclone.ui.theme.OneUiAccentSoft
 import com.oneuihomeclone.ui.theme.OneUiBackground
@@ -107,16 +109,16 @@ internal fun DrawerOverlay(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = when {
-                        trimmedQuery.isNotBlank() -> "Finder"
-                        isHomeOnly -> "Search"
-                        else -> "Apps"
+                        trimmedQuery.isNotBlank() -> stringResource(R.string.drawer_title_finder)
+                        isHomeOnly -> stringResource(R.string.drawer_title_search)
+                        else -> stringResource(R.string.apps)
                     },
                     color = OneUiText,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Spacer(Modifier.weight(1f))
-                SettingsCapsule(label = "Settings", onClick = onOpenSettings)
+                SettingsCapsule(label = stringResource(R.string.settings), onClick = onOpenSettings)
             }
             Spacer(Modifier.height(12.dp))
             if (trimmedQuery.isBlank() && !isHomeOnly) {
@@ -172,10 +174,10 @@ internal fun DrawerOverlay(
                     Column(
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        FinderSectionHeader("Apps screen")
+                        FinderSectionHeader(stringResource(R.string.drawer_section_apps_screen))
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "Custom order stays paged, matching the default Apps screen flow.",
+                            stringResource(R.string.drawer_custom_order_summary),
                             color = OneUiTextSecondary,
                             fontSize = 12.sp,
                             lineHeight = 18.sp,
@@ -196,7 +198,7 @@ internal fun DrawerOverlay(
                         }
                         Spacer(Modifier.weight(1f))
                         if (recentSearches.isNotEmpty()) {
-                            FinderSectionHeader("Recent searches")
+                            FinderSectionHeader(stringResource(R.string.drawer_recent_searches))
                             Spacer(Modifier.height(10.dp))
                             FinderRecentSearches(
                                 searches = recentSearches,
@@ -215,10 +217,10 @@ internal fun DrawerOverlay(
                     if (trimmedQuery.isBlank()) {
                         if (isHomeOnly) {
                             item {
-                                FinderSectionHeader("Home screen only")
+                                FinderSectionHeader(stringResource(R.string.drawer_home_only))
                                 Spacer(Modifier.height(10.dp))
                                 Text(
-                                    "All apps live on Home pages in this mode. Finder stays available for search and quick launch.",
+                                    stringResource(R.string.drawer_home_only_summary),
                                     color = OneUiTextSecondary,
                                     fontSize = 12.sp,
                                     lineHeight = 18.sp,
@@ -226,7 +228,7 @@ internal fun DrawerOverlay(
                             }
                             if (appsScreenApps.isNotEmpty()) {
                                 item {
-                                    FinderSectionHeader("Suggested apps")
+                                    FinderSectionHeader(stringResource(R.string.drawer_suggested_apps))
                                     Spacer(Modifier.height(12.dp))
                                     FinderAppGrid(
                                         apps = appsScreenApps.take(8),
@@ -237,10 +239,10 @@ internal fun DrawerOverlay(
                             }
                         } else {
                             item {
-                                FinderSectionHeader("Apps screen")
+                                FinderSectionHeader(stringResource(R.string.drawer_section_apps_screen))
                                 Spacer(Modifier.height(10.dp))
                                 Text(
-                                    "Alphabetical order switches to a vertically scrolling apps list.",
+                                    stringResource(R.string.drawer_alphabetical_summary),
                                     color = OneUiTextSecondary,
                                     fontSize = 12.sp,
                                     lineHeight = 18.sp,
@@ -260,7 +262,7 @@ internal fun DrawerOverlay(
                         }
                         if (recentSearches.isNotEmpty()) {
                             item {
-                                FinderSectionHeader("Recent searches")
+                                FinderSectionHeader(stringResource(R.string.drawer_recent_searches))
                                 Spacer(Modifier.height(10.dp))
                                 FinderRecentSearches(
                                     searches = recentSearches,
@@ -271,7 +273,7 @@ internal fun DrawerOverlay(
                     } else {
                         if (actionResults.isNotEmpty()) {
                             item {
-                                FinderSectionHeader("Suggested actions")
+                                FinderSectionHeader(stringResource(R.string.drawer_suggested_actions))
                                 Spacer(Modifier.height(10.dp))
                                 FinderActionList(
                                     actions = actionResults,
@@ -281,7 +283,7 @@ internal fun DrawerOverlay(
                         }
                         if (settingResults.isNotEmpty()) {
                             item {
-                                FinderSectionHeader("Settings")
+                                FinderSectionHeader(stringResource(R.string.settings))
                                 Spacer(Modifier.height(10.dp))
                                 FinderSettingsList(
                                     settings = settingResults,
@@ -291,7 +293,7 @@ internal fun DrawerOverlay(
                         }
                         if (apps.isNotEmpty()) {
                             item {
-                                FinderSectionHeader("Apps")
+                                FinderSectionHeader(stringResource(R.string.apps))
                                 Spacer(Modifier.height(12.dp))
                                 FinderAppGrid(
                                     apps = apps,
@@ -314,21 +316,21 @@ internal fun DrawerOverlay(
                 onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
-                    Text(if (trimmedQuery.isBlank()) "Search from the bottom" else "Search apps and settings")
+                    Text(if (trimmedQuery.isBlank()) stringResource(R.string.drawer_search_from_bottom) else stringResource(R.string.drawer_search_apps_settings))
                 },
                 singleLine = true,
                 shape = OneUiControlShape,
-                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = "Search") },
+                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.search)) },
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                "Swipe down or tap Close to return home",
+                stringResource(R.string.drawer_close_hint),
                 color = OneUiTextSecondary,
                 fontSize = 12.sp,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
             Spacer(Modifier.height(12.dp))
-            SettingsCapsule(label = "Close", onClick = onClose, accent = false)
+            SettingsCapsule(label = stringResource(R.string.action_close), onClick = onClose, accent = false)
         }
     }
 }
@@ -350,10 +352,10 @@ private fun FinderEmptyState(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("No matches", color = OneUiText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.drawer_no_matches), color = OneUiText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Try a shorter term, or search for apps, settings, widgets, and pages.",
+                stringResource(R.string.drawer_no_matches_summary),
                 color = OneUiTextSecondary,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
@@ -376,13 +378,13 @@ private fun AppsScreenControlRow(
     ) {
         DrawerSortMode.entries.forEach { mode ->
             SettingsCapsule(
-                label = mode.title,
+                label = mode.localizedTitle(),
                 onClick = { onSelectSortMode(mode) },
                 accent = drawerSortMode == mode,
             )
         }
         SettingsCapsule(
-            label = if (hiddenAppCount == 0) "Hide apps" else "Hide apps ($hiddenAppCount)",
+            label = if (hiddenAppCount == 0) stringResource(R.string.settings_hide_apps) else stringResource(R.string.drawer_hide_apps_count, hiddenAppCount),
             onClick = onOpenHideApps,
             accent = false,
         )
@@ -411,6 +413,7 @@ private fun FinderActionList(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         actions.forEach { action ->
+            val actionDescription = stringResource(R.string.a11y_finder_action_result, action.title, action.summary)
             Surface(
                 shape = OneUiPanelShape,
                 color = OneUiSurface,
@@ -420,7 +423,7 @@ private fun FinderActionList(
                     modifier = Modifier
                         .fillMaxWidth()
                         .defaultMinSize(minHeight = 72.dp)
-                        .semantics { contentDescription = action.title }
+                        .semantics { contentDescription = actionDescription }
                         .clickable(role = Role.Button) { onOpenAction(action) }
                         .padding(horizontal = 18.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -446,7 +449,7 @@ private fun FinderActionList(
                     }
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Open",
+                        contentDescription = stringResource(R.string.action_open),
                         tint = OneUiTextSecondary,
                     )
                 }
@@ -462,6 +465,7 @@ private fun FinderSettingsList(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         settings.forEach { setting ->
+            val settingDescription = stringResource(R.string.a11y_finder_setting_result, setting.title, setting.category, setting.value)
             Surface(
                 shape = OneUiPanelShape,
                 color = OneUiSurface,
@@ -471,7 +475,7 @@ private fun FinderSettingsList(
                     modifier = Modifier
                         .fillMaxWidth()
                         .defaultMinSize(minHeight = 72.dp)
-                        .semantics { contentDescription = setting.title }
+                        .semantics { contentDescription = settingDescription }
                         .clickable(role = Role.Button) { onOpenSetting(setting) }
                         .padding(horizontal = 18.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -489,7 +493,7 @@ private fun FinderSettingsList(
                     }
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Open",
+                        contentDescription = stringResource(R.string.action_open),
                         tint = OneUiTextSecondary,
                     )
                 }

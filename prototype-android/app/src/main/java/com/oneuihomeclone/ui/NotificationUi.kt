@@ -22,13 +22,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.oneuihomeclone.R
 import com.oneuihomeclone.ui.theme.OneUiAccent
 import com.oneuihomeclone.ui.theme.OneUiAccentSoft
 import com.oneuihomeclone.ui.theme.OneUiBackground
@@ -42,25 +43,23 @@ internal fun NotificationShadeOverlay(
     clock: StatusClock,
     onClose: () -> Unit,
 ) {
-    val notifications = remember {
-        listOf(
-            NotificationCardModel(
-                title = "Home screen ready",
-                summary = "Icons, dock targets, folders, and widgets are available from the current Home layout.",
-                timestamp = "Just now",
-            ),
-            NotificationCardModel(
-                title = "Finder is active",
-                summary = "Search apps, settings, widgets, and Home screen actions from one focused entry point.",
-                timestamp = "2 min ago",
-            ),
-            NotificationCardModel(
-                title = "Notification gesture active",
-                summary = "Swipe down from empty Home screen space to return to this panel.",
-                timestamp = "5 min ago",
-            ),
-        )
-    }
+    val notifications = listOf(
+        NotificationCardModel(
+            title = stringResource(R.string.notification_home_ready_title),
+            summary = stringResource(R.string.notification_home_ready_summary),
+            timestamp = stringResource(R.string.notification_timestamp_now),
+        ),
+        NotificationCardModel(
+            title = stringResource(R.string.notification_finder_active_title),
+            summary = stringResource(R.string.notification_finder_active_summary),
+            timestamp = stringResource(R.string.notification_timestamp_two_min),
+        ),
+        NotificationCardModel(
+            title = stringResource(R.string.notification_gesture_active_title),
+            summary = stringResource(R.string.notification_gesture_active_summary),
+            timestamp = stringResource(R.string.notification_timestamp_five_min),
+        ),
+    )
 
     Box(
         modifier = Modifier
@@ -80,7 +79,7 @@ internal fun NotificationShadeOverlay(
                     Spacer(Modifier.height(2.dp))
                     Text(clock.fullDateText, color = OneUiTextSecondary, fontSize = 13.sp)
                 }
-                SettingsCapsule(label = "Close", onClick = onClose, accent = false)
+                SettingsCapsule(label = stringResource(R.string.action_close), onClick = onClose, accent = false)
             }
             Spacer(Modifier.height(18.dp))
             Surface(
@@ -102,10 +101,10 @@ internal fun NotificationShadeOverlay(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Notifications", color = OneUiText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.notification_panel_title), color = OneUiText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            "This keeps the swipe-down toggle testable instead of leaving it as display-only state.",
+                            stringResource(R.string.notification_panel_summary),
                             color = OneUiTextSecondary,
                             fontSize = 12.sp,
                             lineHeight = 18.sp,

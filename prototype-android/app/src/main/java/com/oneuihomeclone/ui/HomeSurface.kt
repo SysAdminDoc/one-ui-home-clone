@@ -58,6 +58,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -72,6 +73,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toBitmap
 import com.oneuihomeclone.LauncherApp
+import com.oneuihomeclone.R
 import com.oneuihomeclone.ui.theme.OneUiAccent
 import com.oneuihomeclone.ui.theme.OneUiAccentSoft
 import com.oneuihomeclone.ui.theme.OneUiBackground
@@ -335,7 +337,7 @@ internal fun HomeSurface(
         )
         Spacer(Modifier.height(18.dp))
         SearchBarButton(
-            label = if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) "Search apps" else "Finder",
+            label = if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) stringResource(R.string.home_search_apps) else stringResource(R.string.drawer_title_finder),
             onOpenDrawer = onOpenDrawer,
         )
         Spacer(Modifier.height(14.dp))
@@ -370,7 +372,7 @@ private fun StatusRow(
                 Box(Modifier.size(8.dp).clip(OneUiMicroShape).background(OneUiPositive))
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    if (lockHomeScreenLayout) "Layout locked" else homeLayoutMode.title,
+                    if (lockHomeScreenLayout) stringResource(R.string.home_layout_locked) else homeLayoutMode.localizedTitle(),
                     color = OneUiText,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
@@ -389,12 +391,12 @@ private fun MediaPageHero() {
         shadowElevation = 2.dp,
     ) {
         Column(Modifier.padding(horizontal = 24.dp, vertical = 22.dp)) {
-            Text("Media page", color = OneUiTextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text(stringResource(R.string.settings_media_page), color = OneUiTextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(2.dp))
-            Text("Media hub", color = OneUiText, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.home_media_hub), color = OneUiText, fontSize = 34.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Text(
-                "News, watch, listen, and play surfaces belong here instead of crowding the default home page.",
+                stringResource(R.string.home_media_body),
                 color = OneUiText,
                 fontSize = 15.sp,
                 lineHeight = 22.sp,
@@ -426,7 +428,7 @@ private fun MediaPageCards() {
         }
             MediaMiniCard(
                 title = "Play next",
-                body = "The media page keeps glanceable cards and clear swipe destinations without crowding Home.",
+                body = stringResource(R.string.home_media_card_body),
                 modifier = Modifier.fillMaxWidth(),
             )
     }
@@ -609,6 +611,15 @@ private fun WidgetGridControls(
     onRemoveWidget: (Int) -> Unit,
 ) {
     val hostWidgetId = widget.hostWidgetId ?: return
+    val moveLeftDescription = stringResource(R.string.a11y_widget_move_left)
+    val moveRightDescription = stringResource(R.string.a11y_widget_move_right)
+    val moveUpDescription = stringResource(R.string.a11y_widget_move_up)
+    val moveDownDescription = stringResource(R.string.a11y_widget_move_down)
+    val resizeNarrowerDescription = stringResource(R.string.a11y_widget_resize_narrower)
+    val resizeWiderDescription = stringResource(R.string.a11y_widget_resize_wider)
+    val resizeShorterDescription = stringResource(R.string.a11y_widget_resize_shorter)
+    val resizeTallerDescription = stringResource(R.string.a11y_widget_resize_taller)
+    val removeDescription = stringResource(R.string.a11y_widget_remove)
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -616,46 +627,55 @@ private fun WidgetGridControls(
     ) {
         WidgetGridControlButton(
             label = "<",
+            contentDescription = moveLeftDescription,
             enabled = widget.cellX > 0,
             onClick = { onMoveWidget(hostWidgetId, -1, 0) },
         )
         WidgetGridControlButton(
             label = ">",
+            contentDescription = moveRightDescription,
             enabled = widget.cellX + widget.spanX < 4,
             onClick = { onMoveWidget(hostWidgetId, 1, 0) },
         )
         WidgetGridControlButton(
             label = "^",
+            contentDescription = moveUpDescription,
             enabled = widget.cellY > 0,
             onClick = { onMoveWidget(hostWidgetId, 0, -1) },
         )
         WidgetGridControlButton(
             label = "v",
+            contentDescription = moveDownDescription,
             enabled = widget.cellY + widget.spanY < 6,
             onClick = { onMoveWidget(hostWidgetId, 0, 1) },
         )
         WidgetGridControlButton(
             label = "-",
+            contentDescription = resizeNarrowerDescription,
             enabled = widget.canResizeHorizontal && widget.spanX > widget.minSpanX,
             onClick = { onResizeWidget(hostWidgetId, -1, 0) },
         )
         WidgetGridControlButton(
             label = "+",
+            contentDescription = resizeWiderDescription,
             enabled = widget.canResizeHorizontal && widget.spanX < widget.maxSpanX,
             onClick = { onResizeWidget(hostWidgetId, 1, 0) },
         )
         WidgetGridControlButton(
             label = "V-",
+            contentDescription = resizeShorterDescription,
             enabled = widget.canResizeVertical && widget.spanY > widget.minSpanY,
             onClick = { onResizeWidget(hostWidgetId, 0, -1) },
         )
         WidgetGridControlButton(
             label = "V+",
+            contentDescription = resizeTallerDescription,
             enabled = widget.canResizeVertical && widget.spanY < widget.maxSpanY,
             onClick = { onResizeWidget(hostWidgetId, 0, 1) },
         )
         WidgetGridControlButton(
             label = "X",
+            contentDescription = removeDescription,
             enabled = true,
             onClick = { onRemoveWidget(hostWidgetId) },
         )
@@ -665,6 +685,7 @@ private fun WidgetGridControls(
 @Composable
 private fun WidgetGridControlButton(
     label: String,
+    contentDescription: String,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
@@ -677,6 +698,7 @@ private fun WidgetGridControlButton(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .semantics { this.contentDescription = contentDescription }
                 .then(if (enabled) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
@@ -704,7 +726,7 @@ private fun WidgetUnavailablePane(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = "Widget unavailable",
+            text = stringResource(R.string.home_widget_unavailable),
             color = OneUiText,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
@@ -725,7 +747,7 @@ private fun WidgetUnavailablePane(
             border = BorderStroke(1.dp, OneUiBorder.copy(alpha = 0.45f)),
         ) {
             Text(
-                text = "Remove",
+                text = stringResource(R.string.action_remove),
                 color = OneUiText,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -1163,6 +1185,7 @@ private fun FolderBubble(
     folder: FolderModel,
     onOpenFolder: (FolderModel) -> Unit,
 ) {
+    val openFolderDescription = stringResource(R.string.a11y_open_folder, folder.title)
     Surface(
         modifier = Modifier.size(62.dp),
         shape = OneUiIconShape,
@@ -1172,7 +1195,7 @@ private fun FolderBubble(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .semantics { contentDescription = "Open ${folder.title}" }
+                .semantics { contentDescription = openFolderDescription }
                 .clickable(role = Role.Button) { onOpenFolder(folder) }
                 .padding(9.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -1222,6 +1245,7 @@ internal fun PageStrip(
     ) {
         repeat(pageCount) { index ->
             val selected = index == pageIndex
+            val pageDescription = stringResource(R.string.a11y_page_indicator, index + 1, pageCount)
             Box(
                 modifier = Modifier
                     .padding(horizontal = 4.dp)
@@ -1229,7 +1253,7 @@ internal fun PageStrip(
                     .clip(OneUiMicroShape)
                     .background(if (selected) OneUiText.copy(alpha = 0.76f) else OneUiTextSecondary.copy(alpha = 0.22f))
                     .semantics {
-                        contentDescription = "Page ${index + 1} of $pageCount"
+                        contentDescription = pageDescription
                         this.selected = selected
                     }
                     .clickable(role = Role.Button) { onPageChange(index) },
@@ -1243,6 +1267,7 @@ private fun SearchBarButton(
     label: String,
     onOpenDrawer: () -> Unit,
 ) {
+    val openDescription = stringResource(R.string.a11y_open_label, label)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = OneUiControlShape,
@@ -1252,7 +1277,7 @@ private fun SearchBarButton(
         Row(
             Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = "Open $label" }
+                .semantics { contentDescription = openDescription }
                 .clickable(role = Role.Button, onClick = onOpenDrawer)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1272,6 +1297,8 @@ private fun DockBar(
     onOpenApp: (CloneApp) -> Unit,
     onOpenDrawer: () -> Unit,
 ) {
+    val openAppsDescription = stringResource(R.string.a11y_open_apps_screen)
+    val appsLabel = stringResource(R.string.apps)
     val dockItems: List<CloneApp?> = if (appsButtonEnabled) {
         apps + listOf<CloneApp?>(null)
     } else {
@@ -1304,7 +1331,7 @@ private fun DockBar(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .semantics { contentDescription = "Open Apps screen" }
+                                    .semantics { contentDescription = openAppsDescription }
                                     .clickable(role = Role.Button, onClick = onOpenDrawer),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -1317,7 +1344,7 @@ private fun DockBar(
                     if (showLabels) {
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = if (isAppsButton) "Apps" else app?.name.orEmpty(),
+                            text = if (isAppsButton) appsLabel else app?.name.orEmpty(),
                             color = OneUiText,
                             fontSize = 11.sp,
                             maxLines = 1,

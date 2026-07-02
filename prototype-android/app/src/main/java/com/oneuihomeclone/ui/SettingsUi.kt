@@ -23,10 +23,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.oneuihomeclone.R
 import com.oneuihomeclone.ui.theme.OneUiAccent
 import com.oneuihomeclone.ui.theme.OneUiAccentSoft
 import com.oneuihomeclone.ui.theme.OneUiBackground
@@ -64,19 +68,63 @@ internal fun SettingsOverlay(
     onFolderGridChange: (FolderGridMode) -> Unit,
     onResetWidgets: () -> Unit,
 ) {
-    val layoutRows = remember(defaultHomePageLabel, homePageCount, homeLayoutMode, appsScreenSortTitle, hiddenAppCount, folderGrid) {
+    val homeScreenLayoutLabel = stringResource(R.string.settings_home_screen_layout)
+    val homeScreenGridLabel = stringResource(R.string.settings_home_screen_grid)
+    val appsScreenGridLabel = stringResource(R.string.settings_apps_screen_grid)
+    val appsScreenSortLabel = stringResource(R.string.settings_apps_screen_sort)
+    val appsScreenSortUnavailable = stringResource(R.string.settings_sort_unavailable_home_only)
+    val hideAppsLabel = stringResource(R.string.settings_hide_apps)
+    val hiddenAppsValue = if (hiddenAppCount == 0) {
+        stringResource(R.string.settings_value_none)
+    } else {
+        stringResource(R.string.settings_value_hidden_count, hiddenAppCount)
+    }
+    val folderGridLabel = stringResource(R.string.settings_folder_grid)
+    val homeLayoutModeTitle = homeLayoutMode.localizedTitle()
+    val folderGridTitle = folderGrid.localizedTitle()
+    val defaultHomePageLabelText = stringResource(R.string.settings_default_home_page)
+    val visiblePagesLabel = stringResource(R.string.settings_visible_pages)
+    val resetWidgetsDescription = when {
+        boundWidgetCount == 0 -> stringResource(R.string.settings_reset_widgets_empty)
+        boundWidgetCount == 1 -> stringResource(R.string.settings_reset_widgets_one)
+        else -> stringResource(R.string.settings_reset_widgets_many, boundWidgetCount)
+    }
+    val behaviorRows = listOf(
+        SettingRowState(stringResource(R.string.settings_add_new_apps), stringResource(R.string.settings_value_on)),
+        SettingRowState(stringResource(R.string.settings_badge_notifications), stringResource(R.string.settings_value_dots_and_number)),
+        SettingRowState(stringResource(R.string.settings_about_home_screen), stringResource(R.string.settings_about_version)),
+    )
+    val layoutRows = remember(
+        defaultHomePageLabel,
+        homePageCount,
+        homeLayoutMode,
+        appsScreenSortTitle,
+        folderGrid,
+        homeScreenLayoutLabel,
+        homeLayoutModeTitle,
+        homeScreenGridLabel,
+        appsScreenGridLabel,
+        appsScreenSortLabel,
+        appsScreenSortUnavailable,
+        hideAppsLabel,
+        hiddenAppsValue,
+        folderGridLabel,
+        folderGridTitle,
+        defaultHomePageLabelText,
+        visiblePagesLabel,
+    ) {
         listOf(
-            SettingRowState("Home screen layout", homeLayoutMode.title),
-            SettingRowState("Home screen grid", "4x6"),
-            SettingRowState("Apps screen grid", "4x6"),
+            SettingRowState(homeScreenLayoutLabel, homeLayoutModeTitle),
+            SettingRowState(homeScreenGridLabel, "4x6"),
+            SettingRowState(appsScreenGridLabel, "4x6"),
             SettingRowState(
-                "Apps screen sort",
-                if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) "Unavailable in Home screen only mode" else appsScreenSortTitle,
+                appsScreenSortLabel,
+                if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) appsScreenSortUnavailable else appsScreenSortTitle,
             ),
-            SettingRowState("Hide apps", if (hiddenAppCount == 0) "None" else "$hiddenAppCount hidden"),
-            SettingRowState("Folder grid", folderGrid.title),
-            SettingRowState("Default home page", defaultHomePageLabel),
-            SettingRowState("Visible pages", homePageCount.toString()),
+            SettingRowState(hideAppsLabel, hiddenAppsValue),
+            SettingRowState(folderGridLabel, folderGridTitle),
+            SettingRowState(defaultHomePageLabelText, defaultHomePageLabel),
+            SettingRowState(visiblePagesLabel, homePageCount.toString()),
         )
     }
 
@@ -93,9 +141,9 @@ internal fun SettingsOverlay(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Home screen settings", color = OneUiText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_title_home_screen), color = OneUiText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
-                SettingsCapsule(label = "Close", onClick = onClose, accent = false)
+                SettingsCapsule(label = stringResource(R.string.action_close), onClick = onClose, accent = false)
             }
             Spacer(Modifier.height(18.dp))
             LazyColumn(
@@ -109,7 +157,7 @@ internal fun SettingsOverlay(
                             color = OneUiAccentSoft,
                         ) {
                             Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
-                                Text("Finder result", color = OneUiAccent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.settings_finder_result), color = OneUiAccent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     focusedSettingTitle,
@@ -119,7 +167,7 @@ internal fun SettingsOverlay(
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    "Review the matching setting below.",
+                                    stringResource(R.string.settings_finder_result_review),
                                     color = OneUiTextSecondary,
                                     fontSize = 12.sp,
                                     lineHeight = 18.sp,
@@ -130,109 +178,101 @@ internal fun SettingsOverlay(
                 }
                 item {
                     SettingsSection(
-                        title = "Layout",
-                        summary = "Default launcher structure and page behavior",
+                        title = stringResource(R.string.settings_section_layout),
+                        summary = stringResource(R.string.settings_summary_layout),
                         rows = layoutRows,
                     )
                 }
                 item {
                     SettingsModeCard(
-                        title = "Home screen layout",
+                        title = stringResource(R.string.settings_home_screen_layout),
                         selectedMode = homeLayoutMode,
                         onSelectMode = onHomeLayoutModeChange,
                     )
                 }
                 item {
                     SettingsToggleCard(
-                        title = "Media page",
+                        title = stringResource(R.string.settings_media_page),
                         checked = mediaPageEnabled,
                         onCheckedChange = onMediaPageChange,
-                        summary = "Show a left-side page for news, media, and daily cards.",
+                        summary = stringResource(R.string.settings_media_page_summary),
                     )
                 }
                 if (homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS) {
                     item {
                         SettingsToggleCard(
-                            title = "Apps button on Home screen",
+                            title = stringResource(R.string.settings_apps_button),
                             checked = appsButtonEnabled,
                             onCheckedChange = onAppsButtonChange,
-                            summary = "Keep an explicit Apps entry in the dock.",
+                            summary = stringResource(R.string.settings_apps_button_summary),
                         )
                     }
                 }
                 item {
                     SettingsToggleCard(
-                        "App labels",
+                        stringResource(R.string.settings_app_labels),
                         appLabelsEnabled,
                         onAppLabelsChange,
-                        "Show names under Home, dock, and Apps screen icons.",
+                        stringResource(R.string.settings_app_labels_summary),
                     )
                 }
                 item {
                     SettingsToggleCard(
-                        "Widget labels",
+                        stringResource(R.string.settings_widget_labels),
                         widgetLabelsEnabled,
                         onWidgetLabelsChange,
-                        "Show provider labels on compact widget previews.",
+                        stringResource(R.string.settings_widget_labels_summary),
                     )
                 }
                 item {
                     SettingsToggleCard(
-                        "Swipe down for notification panel",
+                        stringResource(R.string.settings_swipe_notifications),
                         swipeDownForNotifications,
                         onSwipeDownChange,
-                        "Open the notification shade from empty Home screen space.",
+                        stringResource(R.string.settings_swipe_notifications_summary),
                     )
                 }
                 item {
                     SettingsToggleCard(
-                        "Lock Home screen layout",
+                        stringResource(R.string.settings_lock_layout),
                         lockHomeScreenLayout,
                         onLockHomeScreenLayoutChange,
-                        "Prevent accidental page, folder, and widget changes.",
+                        stringResource(R.string.settings_lock_layout_summary),
                     )
                 }
                 item {
                     SettingsSelectorCard(
-                        title = "Folder grid",
-                        description = "Controls how many apps appear per folder page. The default is 3x4.",
+                        title = stringResource(R.string.settings_folder_grid),
+                        description = stringResource(R.string.settings_folder_grid_description),
                         entries = FolderGridMode.entries,
                         selectedEntry = folderGrid,
-                        labelOf = { it.title },
+                        labelOf = { it.localizedTitle() },
                         onSelect = onFolderGridChange,
                     )
                 }
                 item {
                     SettingsSelectorCard(
-                        title = "Motion",
-                        description = "Standard uses spring overshoot for One UI feel. Reduced softens transitions for accessibility.",
+                        title = stringResource(R.string.settings_motion),
+                        description = stringResource(R.string.settings_motion_description),
                         entries = MotionPresetMode.entries,
                         selectedEntry = motionPreset,
-                        labelOf = { it.title },
+                        labelOf = { it.localizedTitle() },
                         onSelect = onMotionPresetChange,
                     )
                 }
                 item {
                     SettingsActionCard(
-                        title = "Reset widgets",
-                        description = if (boundWidgetCount == 0) {
-                            "Clear the launcher widget host and remove stale provider state."
-                        } else {
-                            "Remove $boundWidgetCount bound widget${if (boundWidgetCount == 1) "" else "s"} and clear stale provider state."
-                        },
-                        actionLabel = "Reset",
+                        title = stringResource(R.string.settings_reset_widgets),
+                        description = resetWidgetsDescription,
+                        actionLabel = stringResource(R.string.action_reset),
                         onClick = onResetWidgets,
                     )
                 }
                 item {
                     SettingsSection(
-                        title = "Behavior",
-                        summary = "Expected launcher defaults",
-                        rows = listOf(
-                            SettingRowState("Add new apps to Home screen", "On"),
-                            SettingRowState("Badge notifications", "Dots and number"),
-                            SettingRowState("About Home screen", "One UI Home Clone 0.2.1"),
-                        ),
+                        title = stringResource(R.string.settings_section_behavior),
+                        summary = stringResource(R.string.settings_summary_behavior),
+                        rows = behaviorRows,
                     )
                 }
             }
@@ -285,8 +325,11 @@ private fun SettingsSection(
             Text(summary, color = OneUiTextSecondary, fontSize = 12.sp)
             Spacer(Modifier.height(16.dp))
             rows.forEachIndexed { index, row ->
+                val rowDescription = stringResource(R.string.a11y_setting_row, row.title, row.value)
                 Row(
-                    Modifier.fillMaxWidth(),
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = rowDescription },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -329,7 +372,7 @@ private fun SettingsModeCard(
             Text(title, color = OneUiText, fontSize = 15.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(6.dp))
             Text(
-                "Switch between the traditional Home and Apps screens setup and the simpler Home screen only layout.",
+                stringResource(R.string.settings_mode_description),
                 color = OneUiTextSecondary,
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
@@ -341,7 +384,7 @@ private fun SettingsModeCard(
             ) {
                 HomeLayoutMode.entries.forEach { mode ->
                     SettingsCapsule(
-                        label = mode.title,
+                        label = mode.localizedTitle(),
                         onClick = { onSelectMode(mode) },
                         accent = selectedMode == mode,
                     )

@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.oneuihomeclone.R
 import com.oneuihomeclone.ui.theme.OneUiBackground
 import com.oneuihomeclone.ui.theme.OneUiCard
 import com.oneuihomeclone.ui.theme.OneUiSurface
@@ -94,7 +96,7 @@ internal fun FolderOverlay(
                                 fontWeight = FontWeight.Bold,
                             ),
                             placeholder = {
-                                Text("Folder name", color = OneUiTextSecondary)
+                                Text(stringResource(R.string.folder_name), color = OneUiTextSecondary)
                             },
                             shape = OneUiControlShape,
                         )
@@ -102,7 +104,7 @@ internal fun FolderOverlay(
                         Text(folder.summary, color = OneUiTextSecondary, fontSize = 13.sp)
                     }
                     Spacer(Modifier.width(10.dp))
-                    SettingsCapsule(label = "Close", onClick = onClose, accent = false)
+                    SettingsCapsule(label = stringResource(R.string.action_close), onClick = onClose, accent = false)
                 }
                 Spacer(Modifier.height(10.dp))
                 Row(
@@ -110,7 +112,7 @@ internal fun FolderOverlay(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     SettingsCapsule(
-                        label = if (hasTitleChanges) "Save name" else "Folder name",
+                        label = if (hasTitleChanges) stringResource(R.string.folder_save_name) else stringResource(R.string.folder_name),
                         onClick = {
                             val updatedTitle = sanitizedTitleDraft.ifBlank { folder.title }
                             if (updatedTitle != folder.title) {
@@ -120,7 +122,7 @@ internal fun FolderOverlay(
                         },
                         accent = hasTitleChanges,
                     )
-                    DrawerPill("Folder")
+                    DrawerPill(stringResource(R.string.folder_label))
                 }
                 Spacer(Modifier.height(18.dp))
                 val folderGridHeight = (folderGrid.rows * 78).dp
@@ -155,7 +157,7 @@ internal fun FolderOverlay(
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Folders keep related apps together without changing their position on the Home screen.",
+                    stringResource(R.string.folder_summary),
                     color = OneUiTextSecondary,
                     fontSize = 12.sp,
                     lineHeight = 18.sp,
@@ -188,20 +190,20 @@ internal fun HideAppsOverlay(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Hide apps", color = OneUiText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_hide_apps), color = OneUiText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
-                SettingsCapsule(label = "Close", onClick = onClose, accent = false)
+                SettingsCapsule(label = stringResource(R.string.action_close), onClick = onClose, accent = false)
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                "Hidden apps disappear from Home and Apps screens until you restore them.",
+                stringResource(R.string.hide_apps_summary),
                 color = OneUiTextSecondary,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
             )
             Spacer(Modifier.height(16.dp))
             if (hiddenApps.isNotEmpty()) {
-                FinderSectionHeader("Hidden now")
+                FinderSectionHeader(stringResource(R.string.hide_apps_hidden_now))
                 Spacer(Modifier.height(10.dp))
                 Row(
                     Modifier.horizontalScroll(rememberScrollState()),
@@ -217,13 +219,19 @@ internal fun HideAppsOverlay(
                 }
                 Spacer(Modifier.height(18.dp))
             }
-            FinderSectionHeader("Tap apps to hide or restore")
+            FinderSectionHeader(stringResource(R.string.hide_apps_tap_to_toggle))
             Spacer(Modifier.height(12.dp))
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = 28.dp),
             ) {
                 lazyItems(visibleApps + hiddenApps) { app ->
+                    val appState = if (app.id in hiddenAppIds) {
+                        stringResource(R.string.hide_apps_hidden_state)
+                    } else {
+                        stringResource(R.string.hide_apps_visible_state)
+                    }
+                    val appDescription = stringResource(R.string.a11y_hide_app_state, app.name, appState)
                     Surface(
                         shape = OneUiPanelShape,
                         color = OneUiSurface,
@@ -232,7 +240,7 @@ internal fun HideAppsOverlay(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .semantics { contentDescription = app.name }
+                                .semantics { contentDescription = appDescription }
                                 .clickable(role = Role.Button) { onToggleHidden(app) }
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -243,13 +251,13 @@ internal fun HideAppsOverlay(
                                 Text(app.name, color = OneUiText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(3.dp))
                                 Text(
-                                    if (app.id in hiddenAppIds) "Hidden from Home and Apps screens" else "Visible on Home and Apps screens",
+                                    appState,
                                     color = OneUiTextSecondary,
                                     fontSize = 12.sp,
                                 )
                             }
                             SettingsCapsule(
-                                label = if (app.id in hiddenAppIds) "Restore" else "Hide",
+                                label = if (app.id in hiddenAppIds) stringResource(R.string.action_restore) else stringResource(R.string.action_hide),
                                 onClick = { onToggleHidden(app) },
                                 accent = app.id !in hiddenAppIds,
                             )

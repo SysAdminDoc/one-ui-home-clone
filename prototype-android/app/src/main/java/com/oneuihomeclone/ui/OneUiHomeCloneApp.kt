@@ -76,6 +76,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -98,6 +99,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.oneuihomeclone.LauncherApp
+import com.oneuihomeclone.R
 import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.DrawerSortKey
 import com.oneuihomeclone.data.FolderGridKey
@@ -170,6 +172,7 @@ private suspend fun loadWidgetProviderTemplates(
         Log.w("OneUiHome/widgets", "Widget provider query failed (${cause.javaClass.simpleName})")
         emptyList()
     }
+    val widgetsFallbackLabel = context.getString(R.string.widgets_title)
 
     val widgets = providers
         .asSequence()
@@ -177,14 +180,14 @@ private suspend fun loadWidgetProviderTemplates(
         .distinctBy { info -> info.provider.flattenToShortString() }
         .sortedWith(
             compareBy<AppWidgetProviderInfo> { info ->
-                widgetProviderAppLabel(packageManager, info).lowercase(Locale.getDefault())
+                widgetProviderAppLabel(packageManager, info, widgetsFallbackLabel).lowercase(Locale.getDefault())
             }.thenBy { info ->
                 widgetProviderLabel(packageManager, info).lowercase(Locale.getDefault())
             },
         )
         .take(MAX_WIDGET_PROVIDERS_LOADED)
         .map { info ->
-            val appLabel = widgetProviderAppLabel(packageManager, info)
+            val appLabel = widgetProviderAppLabel(packageManager, info, widgetsFallbackLabel)
             val label = widgetProviderLabel(packageManager, info)
             val spanX = widgetSpanX(info)
             val spanY = widgetSpanY(info)
@@ -192,7 +195,7 @@ private suspend fun loadWidgetProviderTemplates(
             val canResizeVertical = widgetCanResizeVertical(info)
             WidgetTemplateModel(
                 title = label,
-                summary = "Provided by $appLabel",
+                summary = context.getString(R.string.widgets_provider_summary, appLabel),
                 category = appLabel,
                 span = "$spanX x $spanY",
                 accent = fallbackColorFor(info.provider.flattenToShortString()),
@@ -244,6 +247,61 @@ fun OneUiHomeCloneApp(
     }
     var widgetTemplates by remember { mutableStateOf(fallbackWidgetTemplates) }
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
+    val homeScreenSettingsTitle = stringResource(R.string.settings_title_home_screen)
+    val hideAppsTitle = stringResource(R.string.settings_hide_apps)
+    val lockLayoutTitle = stringResource(R.string.settings_lock_layout)
+    val defaultHomeLabel = stringResource(R.string.home_default_label)
+    val fallbackHomePageLabel = stringResource(R.string.home_page_label, 1)
+    val finderSettingText = FinderSettingText(
+        homeScreenLayout = stringResource(R.string.settings_home_screen_layout),
+        homeScreenGrid = stringResource(R.string.settings_home_screen_grid),
+        appsScreenGrid = stringResource(R.string.settings_apps_screen_grid),
+        folderGrid = stringResource(R.string.settings_folder_grid),
+        defaultHomePage = stringResource(R.string.settings_default_home_page),
+        visiblePages = stringResource(R.string.settings_visible_pages),
+        mediaPage = stringResource(R.string.settings_media_page),
+        appsButton = stringResource(R.string.settings_apps_button),
+        appLabels = stringResource(R.string.settings_app_labels),
+        widgetLabels = stringResource(R.string.settings_widget_labels),
+        swipeDownNotifications = stringResource(R.string.settings_swipe_notifications),
+        hideApps = hideAppsTitle,
+        lockLayout = lockLayoutTitle,
+        addNewApps = stringResource(R.string.settings_add_new_apps),
+        badgeNotifications = stringResource(R.string.settings_badge_notifications),
+        layoutCategory = stringResource(R.string.settings_section_layout),
+        behaviorCategory = stringResource(R.string.settings_section_behavior),
+        gesturesCategory = stringResource(R.string.settings_category_gestures),
+        appsScreenCategory = stringResource(R.string.drawer_section_apps_screen),
+        onValue = stringResource(R.string.settings_value_on),
+        offValue = stringResource(R.string.state_off),
+        noneValue = stringResource(R.string.settings_value_none),
+        dotsAndNumberValue = stringResource(R.string.settings_value_dots_and_number),
+        appsSortUnavailable = stringResource(R.string.settings_sort_unavailable_home_only),
+        hiddenCount = { count -> appContext.getString(R.string.settings_value_hidden_count, count) },
+    )
+    val finderActionText = FinderActionText(
+        homeScreenSettingsTitle = homeScreenSettingsTitle,
+        settingsHomeOnlySummary = stringResource(R.string.finder_action_settings_home_only),
+        settingsDefaultSummary = stringResource(R.string.finder_action_settings_default),
+        wallpapersTitle = stringResource(R.string.edit_wallpapers_style),
+        wallpaperLockedSummary = stringResource(R.string.finder_action_wallpaper_locked),
+        wallpaperDefaultSummary = stringResource(R.string.finder_action_wallpaper_default),
+        widgetsTitle = stringResource(R.string.widgets_title),
+        widgetsSummary = stringResource(R.string.finder_action_widgets_summary),
+        pageManagerTitle = stringResource(R.string.edit_page_manager),
+        pageManagerLockedSummary = stringResource(R.string.finder_action_page_manager_locked),
+        pageManagerDefaultSummary = stringResource(R.string.finder_action_page_manager_default),
+        mediaGoTitle = stringResource(R.string.finder_action_media_go_title),
+        mediaEnableTitle = stringResource(R.string.finder_action_media_enable_title),
+        mediaGoSummary = stringResource(R.string.finder_action_media_go_summary),
+        mediaEnableSummary = stringResource(R.string.finder_action_media_enable_summary),
+        defaultHomeTitle = stringResource(R.string.finder_action_default_home_title),
+        defaultHomeSummary = stringResource(R.string.finder_action_default_home_summary),
+        manageHiddenTitle = stringResource(R.string.finder_action_manage_hidden_title),
+        hideAppsTitle = hideAppsTitle,
+        manageHiddenSummary = stringResource(R.string.finder_action_manage_hidden_summary),
+        hideAppsSummary = stringResource(R.string.finder_action_hide_apps_summary),
+    )
 
     fun showFeedback(message: String) {
         feedbackMessage = message
@@ -265,9 +323,9 @@ fun OneUiHomeCloneApp(
     val launchSelectedApp: (CloneApp) -> Unit = { app ->
         if (!appInventory.launch(app)) {
             if (app.launchIntent == null && app.launchTarget == null) {
-                showFeedback("${app.name} is available after device app loading finishes.")
+                showFeedback(appContext.getString(R.string.feedback_app_loading, app.name))
             } else {
-                showFeedback("Couldn't open ${app.name}.")
+                showFeedback(appContext.getString(R.string.feedback_app_open_failed, app.name))
             }
         }
     }
@@ -296,8 +354,14 @@ fun OneUiHomeCloneApp(
     var drawerPageIndex by remember { mutableIntStateOf(0) }
     var hiddenAppIds by remember { mutableStateOf(setOf<String>()) }
     var searchQuery by remember { mutableStateOf("") }
+    val initialRecentSearches = listOf(
+        stringResource(R.string.settings_media_page),
+        stringResource(R.string.settings_folder_grid),
+        stringResource(R.string.widgets_title),
+        stringResource(R.string.settings_home_screen_grid),
+    )
     var recentSearches by remember {
-        mutableStateOf(listOf("Media page", "Folder grid", "Widgets", "Home screen grid"))
+        mutableStateOf(initialRecentSearches)
     }
     var mediaPageEnabled by remember { mutableStateOf(initialPrefs.mediaPageEnabled) }
     var appsButtonEnabled by remember { mutableStateOf(initialPrefs.appsButtonEnabled) }
@@ -496,9 +560,18 @@ fun OneUiHomeCloneApp(
         filterWidgetsForCategory(widgetTemplates, selectedWidgetCategory)
     }
     val activeBoundWidgetCount = remember(homePages) { boundWidgetCount(homePages) }
+    val localizedHomeLayoutTitle = homeLayoutMode.localizedTitle()
+    val localizedDrawerSortTitle = drawerSortMode.localizedTitle()
+    val defaultFinderHomePageLabel = homePages.getOrNull(defaultHomePageIndex)?.label ?: fallbackHomePageLabel
+    val hiddenAppsValue = if (hiddenAppIds.isEmpty()) {
+        stringResource(R.string.settings_value_none)
+    } else {
+        stringResource(R.string.settings_value_hidden_count, hiddenAppIds.size)
+    }
     val finderSettings = remember(
         searchQuery,
         homeLayoutMode,
+        localizedHomeLayoutTitle,
         lockHomeScreenLayout,
         mediaPageEnabled,
         appsButtonEnabled,
@@ -507,7 +580,9 @@ fun OneUiHomeCloneApp(
         swipeDownForNotifications,
         homePages,
         defaultHomePageIndex,
+        defaultFinderHomePageLabel,
         hiddenAppIds,
+        hiddenAppsValue,
     ) {
         buildFinderSettingResults(
             query = searchQuery,
@@ -519,17 +594,21 @@ fun OneUiHomeCloneApp(
             widgetLabelsEnabled = widgetLabelsEnabled,
             swipeDownForNotifications = swipeDownForNotifications,
             homePageCount = homePages.size,
-            defaultHomePageLabel = homePages.getOrNull(defaultHomePageIndex)?.label ?: "Home 1",
+            defaultHomePageLabel = defaultFinderHomePageLabel,
             hiddenAppCount = hiddenAppIds.size,
+            text = finderSettingText,
+            homeLayoutModeTitle = localizedHomeLayoutTitle,
+            hiddenAppsValue = hiddenAppsValue,
         )
     }
-    val finderActions = remember(searchQuery, homeLayoutMode, lockHomeScreenLayout, mediaPageEnabled, hiddenAppIds) {
+    val finderActions = remember(searchQuery, homeLayoutMode, lockHomeScreenLayout, mediaPageEnabled, hiddenAppIds, finderActionText) {
         buildFinderActionResults(
             query = searchQuery,
             homeLayoutMode = homeLayoutMode,
             lockHomeScreenLayout = lockHomeScreenLayout,
             mediaPageEnabled = mediaPageEnabled,
             hasHiddenApps = hiddenAppIds.isNotEmpty(),
+            text = finderActionText,
         )
     }
 
@@ -632,27 +711,27 @@ fun OneUiHomeCloneApp(
 
     val addWidgetFromPicker: (WidgetTemplateModel) -> Unit = { widget ->
         val targetPageId = widgetTargetPage?.id
-        val targetPageLabel = widgetTargetPage?.label ?: "Home"
+        val targetPageLabel = widgetTargetPage?.label ?: defaultHomeLabel
         val targetHomePageIndex = widgetTargetHomePageIndex
         val providerInfo = widget.providerInfo
 
         if (providerInfo == null) {
             addWidgetToTargetPage(widget, targetPageId, targetHomePageIndex)
-            showFeedback("${widget.title} added to $targetPageLabel.")
+            showFeedback(appContext.getString(R.string.feedback_widget_added, widget.title, targetPageLabel))
         } else if (providerInfo.configure != null) {
-            showFeedback("${widget.title} needs setup before it can be added.")
+            showFeedback(appContext.getString(R.string.feedback_widget_needs_setup, widget.title))
         } else {
             val host = LauncherApp.appWidgetHost()
             val manager = LauncherApp.appWidgetManager()
             if (host == null || manager == null) {
-                showFeedback("Widget host is not ready yet.")
+                showFeedback(appContext.getString(R.string.feedback_widget_host_not_ready))
             } else {
                 val allocatedId = runCatching { host.allocateAppWidgetId() }.getOrElse { cause ->
                     Log.w("OneUiHome/widgets", "Widget id allocation failed (${cause.javaClass.simpleName})")
                     AppWidgetManager.INVALID_APPWIDGET_ID
                 }
                 if (allocatedId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-                    showFeedback("Couldn't allocate a widget slot.")
+                    showFeedback(appContext.getString(R.string.feedback_widget_allocate_failed))
                 } else {
                     val options = widgetBindOptions(widget)
                     val commitBoundWidget: (Int) -> Unit = { boundId ->
@@ -661,7 +740,7 @@ fun OneUiHomeCloneApp(
                         placedWidget?.toBoundWidget(boundId, targetHomePageIndex)?.let { persisted ->
                             coroutineScope.launch { widgetPersistence.add(persisted) }
                         }
-                        showFeedback("${widget.title} added to $targetPageLabel.")
+                        showFeedback(appContext.getString(R.string.feedback_widget_added, widget.title, targetPageLabel))
                     }
                     val alreadyAllowed = runCatching {
                         if (providerInfo.profile != null) {
@@ -690,13 +769,13 @@ fun OneUiHomeCloneApp(
                                 is WidgetBindResult.Bound -> commitBoundWidget(result.widgetId)
                                 is WidgetBindResult.Declined -> {
                                     deleteWidgetId(result.requestedId)
-                                    showFeedback("Widget was not added.")
+                                    showFeedback(appContext.getString(R.string.feedback_widget_declined))
                                 }
                             }
                         }
                         if (!launched) {
                             deleteWidgetId(allocatedId)
-                            showFeedback("Widget binding is not available on this device.")
+                            showFeedback(appContext.getString(R.string.feedback_widget_bind_unavailable))
                         }
                     }
                 }
@@ -711,9 +790,11 @@ fun OneUiHomeCloneApp(
         coroutineScope.launch { widgetPersistence.clear() }
         showFeedback(
             if (removedCount == 0) {
-                "Widget host state reset."
+                appContext.getString(R.string.feedback_widget_host_reset)
+            } else if (removedCount == 1) {
+                appContext.getString(R.string.feedback_widget_reset_one)
             } else {
-                "Reset $removedCount widget${if (removedCount == 1) "" else "s"}."
+                appContext.getString(R.string.feedback_widget_reset_many, removedCount)
             },
         )
     }
@@ -729,7 +810,7 @@ fun OneUiHomeCloneApp(
             }
             deleteWidgetId(hostWidgetId)
             coroutineScope.launch { widgetPersistence.remove(hostWidgetId) }
-            showFeedback("Widget removed.")
+            showFeedback(appContext.getString(R.string.feedback_widget_removed))
         }
     }
 
@@ -912,7 +993,7 @@ fun OneUiHomeCloneApp(
                 onSelectRecentSearch = { searchQuery = it },
                 onOpenSettingResult = { setting ->
                     rememberSearch(setting.title)
-                    if (setting.title == "Hide apps") {
+                    if (setting.type == FinderSettingType.HIDE_APPS) {
                         settingsFocusTitle = null
                         activeOverlay = OverlayPanel.HIDE_APPS
                     } else {
@@ -924,13 +1005,13 @@ fun OneUiHomeCloneApp(
                     rememberSearch(if (searchQuery.isBlank()) action.title else searchQuery)
                     when (action.type) {
                         FinderActionType.SETTINGS -> {
-                            settingsFocusTitle = "Home screen settings"
+                            settingsFocusTitle = homeScreenSettingsTitle
                             activeOverlay = OverlayPanel.SETTINGS
                         }
                         FinderActionType.WALLPAPERS,
                         FinderActionType.PAGE_MANAGER -> {
                             if (lockHomeScreenLayout) {
-                                settingsFocusTitle = "Lock Home screen layout"
+                                settingsFocusTitle = lockLayoutTitle
                                 activeOverlay = OverlayPanel.SETTINGS
                             } else {
                                 activeOverlay = OverlayPanel.EDIT_MODE
@@ -995,9 +1076,9 @@ fun OneUiHomeCloneApp(
                 lockHomeScreenLayout = lockHomeScreenLayout,
                 motionPreset = motionPreset,
                 folderGrid = folderGrid,
-                defaultHomePageLabel = homePages.getOrNull(defaultHomePageIndex)?.label ?: "Home 1",
+                defaultHomePageLabel = homePages.getOrNull(defaultHomePageIndex)?.label ?: fallbackHomePageLabel,
                 homePageCount = homePages.size,
-                appsScreenSortTitle = drawerSortMode.title,
+                appsScreenSortTitle = localizedDrawerSortTitle,
                 hiddenAppCount = hiddenAppIds.size,
                 boundWidgetCount = activeBoundWidgetCount,
                 focusedSettingTitle = settingsFocusTitle,
@@ -1159,7 +1240,7 @@ fun OneUiHomeCloneApp(
                 categories = widgetCategories,
                 selectedCategory = selectedWidgetCategory,
                 widgets = filteredWidgetTemplates,
-                targetPageLabel = widgetTargetPage?.label ?: "Home 1",
+                targetPageLabel = widgetTargetPage?.label ?: fallbackHomePageLabel,
                 onSelectCategory = { selectedWidgetCategory = it },
                 onAddWidget = addWidgetFromPicker,
                 onClose = { activeOverlay = null },
