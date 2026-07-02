@@ -103,7 +103,86 @@ internal fun addWidgetToPage(
     widgets: List<WidgetTemplateModel>,
     widget: WidgetTemplateModel,
 ): List<WidgetTemplateModel> {
-    return (widgets.filterNot { it.stableWidgetKey() == widget.stableWidgetKey() } + widget).takeLast(3)
+    return placeWidgetsInGrid(widgets.filterNot { it.stableWidgetKey() == widget.stableWidgetKey() } + widget)
+}
+
+internal fun removeWidgetFromPage(
+    widgets: List<WidgetTemplateModel>,
+    hostWidgetId: Int,
+): List<WidgetTemplateModel> =
+    widgets.filterNot { it.hostWidgetId == hostWidgetId }
+
+internal fun resizeWidgetInPage(
+    widgets: List<WidgetTemplateModel>,
+    hostWidgetId: Int,
+    deltaX: Int,
+    deltaY: Int,
+): List<WidgetTemplateModel> =
+    placeWidgetsInGrid(
+        widgets.map { widget ->
+            if (widget.hostWidgetId != hostWidgetId) {
+                widget
+            } else {
+                val nextSpanX = if (widget.canResizeHorizontal) {
+                    (widget.spanX + deltaX).coerceIn(widget.minSpanX, widget.maxSpanX)
+                } else {
+                    widget.spanX
+                }
+                val nextSpanY = if (widget.canResizeVertical) {
+                    (widget.spanY + deltaY).coerceIn(widget.minSpanY, widget.maxSpanY)
+                } else {
+                    widget.spanY
+                }
+                widget.copy(
+                    span = widgetSpanLabel(nextSpanX, nextSpanY),
+                    spanX = nextSpanX,
+                    spanY = nextSpanY,
+                )
+            }
+        },
+    )
+
+internal fun moveWidgetInPage(
+    widgets: List<WidgetTemplateModel>,
+    hostWidgetId: Int,
+    deltaX: Int,
+    deltaY: Int,
+): List<WidgetTemplateModel> =
+    placeWidgetsInGrid(
+        widgets.map { widget ->
+            if (widget.hostWidgetId == hostWidgetId) {
+                widget.copy(
+                    cellX = widget.cellX + deltaX,
+                    cellY = widget.cellY + deltaY,
+                )
+            } else {
+                widget
+            }
+        },
+    )
+
+internal fun placeWidgetsInGrid(
+    widgets: List<WidgetTemplateModel>,
+    columns: Int = 4,
+    maxRows: Int = 6,
+): List<WidgetTemplateModel> {
+    if (widgets.isEmpty()) return emptyList()
+    val occupied = mutableSetOf<Pair<Int, Int>>()
+    val placed = mutableListOf<WidgetTemplateModel>()
+    widgets
+        .map { it.normalizedWidgetBounds(columns, maxRows) }
+        .sortedWith(compareBy<WidgetTemplateModel> { it.cellY }.thenBy { it.cellX }.thenBy { it.stableWidgetKey() })
+        .forEach { widget ->
+            val preferred = widget.cellX to widget.cellY
+            val cell = if (canPlaceWidget(preferred.first, preferred.second, widget, columns, maxRows, occupied)) {
+                preferred
+            } else {
+                firstAvailableWidgetCell(widget, columns, maxRows, occupied)
+            }
+            placed += widget.copy(cellX = cell.first, cellY = cell.second)
+            markWidgetCells(cell.first, cell.second, widget, occupied)
+        }
+    return placed.sortedWith(compareBy<WidgetTemplateModel> { it.cellY }.thenBy { it.cellX }.thenBy { it.stableWidgetKey() })
 }
 
 internal fun buildWidgetCategories(widgets: List<WidgetTemplateModel>): List<String> {
@@ -158,7 +237,9 @@ internal fun BoundWidget.toWidgetModel(templates: List<WidgetTemplateModel>): Wi
     return if (template != null) {
         template.copy(
             hostWidgetId = hostWidgetId,
-            span = "$spanX x $spanY",
+            cellX = cellX,
+            cellY = cellY,
+            span = widgetSpanLabel(spanX, spanY),
             spanX = spanX,
             spanY = spanY,
         )
@@ -167,11 +248,17 @@ internal fun BoundWidget.toWidgetModel(templates: List<WidgetTemplateModel>): Wi
             title = providerClass.substringAfterLast('.'),
             summary = "Restored widget from ${providerPackage.substringAfterLast('.')}",
             category = providerPackage.substringAfterLast('.').replaceFirstChar(Char::titlecase),
-            span = "$spanX x $spanY",
+            span = widgetSpanLabel(spanX, spanY),
             accent = fallbackColorFor(providerKey),
             hostWidgetId = hostWidgetId,
+            cellX = cellX,
+            cellY = cellY,
             spanX = spanX,
             spanY = spanY,
+            minSpanX = 1,
+            minSpanY = 1,
+            maxSpanX = 4,
+            maxSpanY = 4,
         )
     }
 }
@@ -186,8 +273,8 @@ internal fun WidgetTemplateModel.toBoundWidget(
         providerPackage = provider.packageName,
         providerClass = provider.className,
         pageIndex = pageIndex,
-        cellX = 0,
-        cellY = 0,
+        cellX = cellX,
+        cellY = cellY,
         spanX = spanX,
         spanY = spanY,
     )
@@ -210,6 +297,83 @@ internal fun widgetBindOptions(widget: WidgetTemplateModel): Bundle =
         putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, minHeight)
         putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidth * 2)
         putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight * 2)
+    }
+
+internal fun widgetSpanLabel(spanX: Int, spanY: Int): String = "$spanX x $spanY"
+
+private fun WidgetTemplateModel.normalizedWidgetBounds(
+    columns: Int,
+    maxRows: Int,
+): WidgetTemplateModel {
+    val normalizedMinX = minSpanX.coerceIn(1, columns)
+    val normalizedMinY = minSpanY.coerceIn(1, maxRows)
+    val normalizedMaxX = maxSpanX.coerceIn(normalizedMinX, columns)
+    val normalizedMaxY = maxSpanY.coerceIn(normalizedMinY, maxRows)
+    val normalizedSpanX = spanX.coerceIn(normalizedMinX, normalizedMaxX)
+    val normalizedSpanY = spanY.coerceIn(normalizedMinY, normalizedMaxY)
+    return copy(
+        cellX = cellX.coerceIn(0, columns - normalizedSpanX),
+        cellY = cellY.coerceIn(0, maxRows - normalizedSpanY),
+        span = widgetSpanLabel(normalizedSpanX, normalizedSpanY),
+        spanX = normalizedSpanX,
+        spanY = normalizedSpanY,
+        minSpanX = normalizedMinX,
+        minSpanY = normalizedMinY,
+        maxSpanX = normalizedMaxX,
+        maxSpanY = normalizedMaxY,
+    )
+}
+
+private fun firstAvailableWidgetCell(
+    widget: WidgetTemplateModel,
+    columns: Int,
+    maxRows: Int,
+    occupied: Set<Pair<Int, Int>>,
+): Pair<Int, Int> {
+    for (row in 0..(maxRows - widget.spanY)) {
+        for (column in 0..(columns - widget.spanX)) {
+            if (canPlaceWidget(column, row, widget, columns, maxRows, occupied)) {
+                return column to row
+            }
+        }
+    }
+    return 0 to (maxRows - widget.spanY).coerceAtLeast(0)
+}
+
+private fun canPlaceWidget(
+    cellX: Int,
+    cellY: Int,
+    widget: WidgetTemplateModel,
+    columns: Int,
+    maxRows: Int,
+    occupied: Set<Pair<Int, Int>>,
+): Boolean {
+    if (cellX < 0 || cellY < 0 || cellX + widget.spanX > columns || cellY + widget.spanY > maxRows) {
+        return false
+    }
+    return widgetCellRange(cellX, cellY, widget).none { it in occupied }
+}
+
+private fun markWidgetCells(
+    cellX: Int,
+    cellY: Int,
+    widget: WidgetTemplateModel,
+    occupied: MutableSet<Pair<Int, Int>>,
+) {
+    occupied += widgetCellRange(cellX, cellY, widget)
+}
+
+private fun widgetCellRange(
+    cellX: Int,
+    cellY: Int,
+    widget: WidgetTemplateModel,
+): List<Pair<Int, Int>> =
+    buildList {
+        for (x in cellX until cellX + widget.spanX) {
+            for (y in cellY until cellY + widget.spanY) {
+                add(x to y)
+            }
+        }
     }
 
 internal fun boundWidgetCount(pages: List<HomePageModel>): Int =
@@ -642,6 +806,26 @@ internal fun widgetSpanY(info: AppWidgetProviderInfo): Int {
     }
     return if (info.minHeight > 0) ((info.minHeight + 71) / 72).coerceIn(1, 4) else 2
 }
+
+internal fun widgetCanResizeHorizontal(info: AppWidgetProviderInfo): Boolean =
+    info.resizeMode and AppWidgetProviderInfo.RESIZE_HORIZONTAL != 0
+
+internal fun widgetCanResizeVertical(info: AppWidgetProviderInfo): Boolean =
+    info.resizeMode and AppWidgetProviderInfo.RESIZE_VERTICAL != 0
+
+internal fun widgetMinResizeSpanX(info: AppWidgetProviderInfo, fallbackSpan: Int): Int =
+    if (widgetCanResizeHorizontal(info) && info.minResizeWidth > 0) {
+        ((info.minResizeWidth + 71) / 72).coerceIn(1, fallbackSpan.coerceAtLeast(1))
+    } else {
+        fallbackSpan.coerceAtLeast(1)
+    }
+
+internal fun widgetMinResizeSpanY(info: AppWidgetProviderInfo, fallbackSpan: Int): Int =
+    if (widgetCanResizeVertical(info) && info.minResizeHeight > 0) {
+        ((info.minResizeHeight + 71) / 72).coerceIn(1, fallbackSpan.coerceAtLeast(1))
+    } else {
+        fallbackSpan.coerceAtLeast(1)
+    }
 
 internal fun alphabeticalAppSections(apps: List<CloneApp>): List<Pair<String, List<CloneApp>>> {
     return apps

@@ -34,7 +34,7 @@ Compose-first prototype covering:
 - One UI style home surface with widget hero card, wallpaper atmosphere, page indicator
 - Samsung-style app drawer shell with Finder search (grouped results, recent searches, settings hits)
 - Unified edit-mode tray (Wallpaper, Themes, Widgets, Home screen settings)
-- Widget picker overlay + widget preview strip
+- Widget picker overlay + span-aware Home widget grid for bound widgets
 - Folder bubble + folder open overlay
 - Hide-apps overlay (Samsung "clean view" equivalent)
 - Page manager panel with reorderable preview tiles
@@ -70,7 +70,7 @@ v0.2.0 landed the widgets + persistence + motion primitives:
 - `WidgetPreviewLoader` — `previewLayout` (API 31+) → `previewImage` → provider icon fallback
 - Dep bumps: Compose BOM 2024.01 → 2024.10.01 (Compose 1.7 / Material3 1.3), Kotlin 1.9.22 → 1.9.24, core-ktx / activity-compose / lifecycle / material advanced to current stable; `datastore-preferences` 1.1.1 added
 
-Widget bind / preview / persistence are plumbed but not yet fully consumed by live home-cell rendering; that remains v0.2.x follow-up work alongside drop-to-edge page creation and widget resize handles.
+Widget bind / preview / persistence now feed live Home widget cells with move, resize, remove, and unavailable-provider recovery controls. Drop-to-edge page creation remains v0.2.x follow-up work.
 
 ## Build the prototype
 
@@ -105,7 +105,7 @@ adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME
 See [ROADMAP.md](ROADMAP.md). Near-term themes:
 
 1. Real `AppWidgetHost` integration (v0.2.x)
-2. Drop-to-edge page creation + widget resize handles (v0.2.x)
+2. Drop-to-edge page creation (v0.2.x)
 3. Motion parity — 240fps reference captures → Compose `spring()` parameters (v0.3.x)
 4. Landscape + foldable posture support (v0.4.x)
 5. Optional `tribalfs/oneui-design` AndroidView interop for SwitchBar / ToolbarLayout fidelity (v0.5.x)

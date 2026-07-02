@@ -188,6 +188,8 @@ private suspend fun loadWidgetProviderTemplates(
             val label = widgetProviderLabel(packageManager, info)
             val spanX = widgetSpanX(info)
             val spanY = widgetSpanY(info)
+            val canResizeHorizontal = widgetCanResizeHorizontal(info)
+            val canResizeVertical = widgetCanResizeVertical(info)
             WidgetTemplateModel(
                 title = label,
                 summary = "Provided by $appLabel",
@@ -198,6 +200,12 @@ private suspend fun loadWidgetProviderTemplates(
                 previewSource = WidgetPreviewLoader.load(context, info),
                 spanX = spanX,
                 spanY = spanY,
+                minSpanX = widgetMinResizeSpanX(info, spanX),
+                minSpanY = widgetMinResizeSpanY(info, spanY),
+                maxSpanX = if (canResizeHorizontal) 4 else spanX,
+                maxSpanY = if (canResizeVertical) 4 else spanY,
+                canResizeHorizontal = canResizeHorizontal,
+                canResizeVertical = canResizeVertical,
             )
         }
         .toList()
@@ -605,17 +613,21 @@ fun OneUiHomeCloneApp(
         widget: WidgetTemplateModel,
         targetPageId: Int?,
         targetHomePageIndex: Int,
-    ) {
-        if (targetPageId == null) return
+    ): WidgetTemplateModel? {
+        if (targetPageId == null) return null
+        var placedWidget: WidgetTemplateModel? = null
         homePages = homePages.map { page ->
             if (page.id == targetPageId) {
-                page.copy(widgets = addWidgetToPage(page.widgets, widget))
+                val nextWidgets = addWidgetToPage(page.widgets, widget)
+                placedWidget = nextWidgets.firstOrNull { it.stableWidgetKey() == widget.stableWidgetKey() }
+                page.copy(widgets = nextWidgets)
             } else {
                 page
             }
         }
         pageIndex = visualIndexForHomePage(targetHomePageIndex, mediaPageEnabled)
         activeOverlay = null
+        return placedWidget
     }
 
     val addWidgetFromPicker: (WidgetTemplateModel) -> Unit = { widget ->
@@ -645,8 +657,8 @@ fun OneUiHomeCloneApp(
                     val options = widgetBindOptions(widget)
                     val commitBoundWidget: (Int) -> Unit = { boundId ->
                         val boundModel = widget.copy(hostWidgetId = boundId)
-                        addWidgetToTargetPage(boundModel, targetPageId, targetHomePageIndex)
-                        boundModel.toBoundWidget(boundId, targetHomePageIndex)?.let { persisted ->
+                        val placedWidget = addWidgetToTargetPage(boundModel, targetPageId, targetHomePageIndex)
+                        placedWidget?.toBoundWidget(boundId, targetHomePageIndex)?.let { persisted ->
                             coroutineScope.launch { widgetPersistence.add(persisted) }
                         }
                         showFeedback("${widget.title} added to $targetPageLabel.")
@@ -704,6 +716,57 @@ fun OneUiHomeCloneApp(
                 "Reset $removedCount widget${if (removedCount == 1) "" else "s"}."
             },
         )
+    }
+
+    val removeBoundWidget: (Int) -> Unit = { hostWidgetId ->
+        currentHomePage?.let { page ->
+            homePages = homePages.map { homePage ->
+                if (homePage.id == page.id) {
+                    homePage.copy(widgets = removeWidgetFromPage(homePage.widgets, hostWidgetId))
+                } else {
+                    homePage
+                }
+            }
+            deleteWidgetId(hostWidgetId)
+            coroutineScope.launch { widgetPersistence.remove(hostWidgetId) }
+            showFeedback("Widget removed.")
+        }
+    }
+
+    val resizeBoundWidget: (Int, Int, Int) -> Unit = resize@{ hostWidgetId, deltaX, deltaY ->
+        val pageIndexForPersistence = currentHomePageIndex ?: return@resize
+        val page = currentHomePage ?: return@resize
+        var resizedWidget: WidgetTemplateModel? = null
+        homePages = homePages.map { homePage ->
+            if (homePage.id == page.id) {
+                val nextWidgets = resizeWidgetInPage(homePage.widgets, hostWidgetId, deltaX, deltaY)
+                resizedWidget = nextWidgets.firstOrNull { it.hostWidgetId == hostWidgetId }
+                homePage.copy(widgets = nextWidgets)
+            } else {
+                homePage
+            }
+        }
+        resizedWidget?.toBoundWidget(hostWidgetId, pageIndexForPersistence)?.let { persisted ->
+            coroutineScope.launch { widgetPersistence.add(persisted) }
+        }
+    }
+
+    val moveBoundWidget: (Int, Int, Int) -> Unit = move@{ hostWidgetId, deltaX, deltaY ->
+        val pageIndexForPersistence = currentHomePageIndex ?: return@move
+        val page = currentHomePage ?: return@move
+        var movedWidget: WidgetTemplateModel? = null
+        homePages = homePages.map { homePage ->
+            if (homePage.id == page.id) {
+                val nextWidgets = moveWidgetInPage(homePage.widgets, hostWidgetId, deltaX, deltaY)
+                movedWidget = nextWidgets.firstOrNull { it.hostWidgetId == hostWidgetId }
+                homePage.copy(widgets = nextWidgets)
+            } else {
+                homePage
+            }
+        }
+        movedWidget?.toBoundWidget(hostWidgetId, pageIndexForPersistence)?.let { persisted ->
+            coroutineScope.launch { widgetPersistence.add(persisted) }
+        }
     }
 
     val motionPresetKey = remember(motionPreset) {
@@ -806,6 +869,9 @@ fun OneUiHomeCloneApp(
                     activeOverlay = OverlayPanel.FOLDER
                 }
             },
+            onMoveWidget = moveBoundWidget,
+            onResizeWidget = resizeBoundWidget,
+            onRemoveWidget = removeBoundWidget,
             onPageChange = { pageIndex = it },
         )
 

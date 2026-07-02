@@ -22,6 +22,7 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
@@ -238,6 +239,9 @@ internal fun HomeSurface(
     onHomeItemDragStateChange: (Boolean) -> Unit,
     onOpenApp: (CloneApp) -> Unit,
     onOpenFolder: (FolderModel) -> Unit,
+    onMoveWidget: (Int, Int, Int) -> Unit,
+    onResizeWidget: (Int, Int, Int) -> Unit,
+    onRemoveWidget: (Int) -> Unit,
     onPageChange: (Int) -> Unit,
 ) {
     val drawerGestureEnabled = homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS
@@ -300,9 +304,13 @@ internal fun HomeSurface(
             currentHomePage?.let { WidgetHeroCard(it) }
             currentHomePage?.takeIf { it.widgets.isNotEmpty() }?.let { page ->
                 Spacer(Modifier.height(14.dp))
-                WidgetPreviewStrip(
+                WidgetGrid(
                     widgets = page.widgets,
                     showLabels = widgetLabelsEnabled,
+                    canEdit = !lockHomeScreenLayout,
+                    onMoveWidget = onMoveWidget,
+                    onResizeWidget = onResizeWidget,
+                    onRemoveWidget = onRemoveWidget,
                 )
             }
             Spacer(Modifier.height(22.dp))
@@ -468,6 +476,262 @@ private fun WidgetHeroCard(page: HomePageModel) {
                 color = OneUiTextSecondary,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WidgetGrid(
+    widgets: List<WidgetTemplateModel>,
+    showLabels: Boolean,
+    canEdit: Boolean,
+    onMoveWidget: (Int, Int, Int) -> Unit,
+    onResizeWidget: (Int, Int, Int) -> Unit,
+    onRemoveWidget: (Int) -> Unit,
+) {
+    val placedWidgets = remember(widgets) { placeWidgetsInGrid(widgets) }
+    val gridRows = (placedWidgets.maxOfOrNull { it.cellY + it.spanY } ?: 1).coerceIn(1, 6)
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(4),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height((gridRows * 88).dp),
+        userScrollEnabled = false,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(
+            items = placedWidgets,
+            key = { widget -> widget.stableWidgetKey() },
+            span = { widget -> GridItemSpan(widget.spanX.coerceIn(1, 4)) },
+        ) { widget ->
+            WidgetGridTile(
+                widget = widget,
+                showLabels = showLabels,
+                canEdit = canEdit,
+                onMoveWidget = onMoveWidget,
+                onResizeWidget = onResizeWidget,
+                onRemoveWidget = onRemoveWidget,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WidgetGridTile(
+    widget: WidgetTemplateModel,
+    showLabels: Boolean,
+    canEdit: Boolean,
+    onMoveWidget: (Int, Int, Int) -> Unit,
+    onResizeWidget: (Int, Int, Int) -> Unit,
+    onRemoveWidget: (Int) -> Unit,
+) {
+    val hostWidgetId = widget.hostWidgetId
+    val boundProviderMissing = hostWidgetId != null && widget.providerInfo == null
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height((widget.spanY.coerceIn(1, 4) * 82).dp),
+        shape = OneUiPanelShape,
+        color = OneUiCard,
+        shadowElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(widget.accent.copy(alpha = 0.12f), Color.White.copy(alpha = 0.82f)),
+                        start = Offset.Zero,
+                        end = Offset(900f, 260f),
+                    ),
+                )
+                .padding(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (showLabels) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = widget.title,
+                            color = OneUiText,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = widget.span,
+                            color = OneUiTextSecondary,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
+                if (hostWidgetId != null && canEdit) {
+                    WidgetGridControls(
+                        widget = widget,
+                        onMoveWidget = onMoveWidget,
+                        onResizeWidget = onResizeWidget,
+                        onRemoveWidget = onRemoveWidget,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            if (boundProviderMissing) {
+                WidgetUnavailablePane(
+                    widget = widget,
+                    onRemoveWidget = {
+                        hostWidgetId?.let(onRemoveWidget)
+                    },
+                )
+            } else {
+                WidgetPreviewPane(
+                    widget = widget,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    compact = false,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WidgetGridControls(
+    widget: WidgetTemplateModel,
+    onMoveWidget: (Int, Int, Int) -> Unit,
+    onResizeWidget: (Int, Int, Int) -> Unit,
+    onRemoveWidget: (Int) -> Unit,
+) {
+    val hostWidgetId = widget.hostWidgetId ?: return
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        WidgetGridControlButton(
+            label = "<",
+            enabled = widget.cellX > 0,
+            onClick = { onMoveWidget(hostWidgetId, -1, 0) },
+        )
+        WidgetGridControlButton(
+            label = ">",
+            enabled = widget.cellX + widget.spanX < 4,
+            onClick = { onMoveWidget(hostWidgetId, 1, 0) },
+        )
+        WidgetGridControlButton(
+            label = "^",
+            enabled = widget.cellY > 0,
+            onClick = { onMoveWidget(hostWidgetId, 0, -1) },
+        )
+        WidgetGridControlButton(
+            label = "v",
+            enabled = widget.cellY + widget.spanY < 6,
+            onClick = { onMoveWidget(hostWidgetId, 0, 1) },
+        )
+        WidgetGridControlButton(
+            label = "-",
+            enabled = widget.canResizeHorizontal && widget.spanX > widget.minSpanX,
+            onClick = { onResizeWidget(hostWidgetId, -1, 0) },
+        )
+        WidgetGridControlButton(
+            label = "+",
+            enabled = widget.canResizeHorizontal && widget.spanX < widget.maxSpanX,
+            onClick = { onResizeWidget(hostWidgetId, 1, 0) },
+        )
+        WidgetGridControlButton(
+            label = "V-",
+            enabled = widget.canResizeVertical && widget.spanY > widget.minSpanY,
+            onClick = { onResizeWidget(hostWidgetId, 0, -1) },
+        )
+        WidgetGridControlButton(
+            label = "V+",
+            enabled = widget.canResizeVertical && widget.spanY < widget.maxSpanY,
+            onClick = { onResizeWidget(hostWidgetId, 0, 1) },
+        )
+        WidgetGridControlButton(
+            label = "X",
+            enabled = true,
+            onClick = { onRemoveWidget(hostWidgetId) },
+        )
+    }
+}
+
+@Composable
+private fun WidgetGridControlButton(
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.size(26.dp),
+        shape = OneUiMicroShape,
+        color = if (enabled) OneUiSurface else OneUiSurfaceSoft.copy(alpha = 0.55f),
+        border = BorderStroke(1.dp, OneUiBorder.copy(alpha = if (enabled) 0.5f else 0.25f)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (enabled) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = label,
+                color = if (enabled) OneUiText else OneUiTextSecondary.copy(alpha = 0.55f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WidgetUnavailablePane(
+    widget: WidgetTemplateModel,
+    onRemoveWidget: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(OneUiPanelShape)
+            .background(Color.White.copy(alpha = 0.72f))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = "Widget unavailable",
+            color = OneUiText,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = widget.summary,
+            color = OneUiTextSecondary,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(10.dp))
+        Surface(
+            shape = OneUiControlShape,
+            color = OneUiSurface,
+            border = BorderStroke(1.dp, OneUiBorder.copy(alpha = 0.45f)),
+        ) {
+            Text(
+                text = "Remove",
+                color = OneUiText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clickable(role = Role.Button, onClick = onRemoveWidget)
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
             )
         }
     }

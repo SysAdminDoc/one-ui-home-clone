@@ -1,6 +1,7 @@
 package com.oneuihomeclone.ui
 
 import androidx.compose.ui.graphics.Color
+import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.DrawerSortKey
 import com.oneuihomeclone.data.FolderGridKey
 import com.oneuihomeclone.data.HomeLayoutKey
@@ -45,14 +46,37 @@ class LauncherLogicTest {
         items = items,
     )
 
-    private fun widget(title: String, hostWidgetId: Int? = null) =
+    private fun widget(
+        title: String,
+        hostWidgetId: Int? = null,
+        cellX: Int = 0,
+        cellY: Int = 0,
+        spanX: Int = 2,
+        spanY: Int = 1,
+        minSpanX: Int = 1,
+        minSpanY: Int = 1,
+        maxSpanX: Int = 4,
+        maxSpanY: Int = 4,
+        canResizeHorizontal: Boolean = true,
+        canResizeVertical: Boolean = true,
+    ) =
         WidgetTemplateModel(
             title = title,
             summary = "$title summary",
             category = "Recommended",
-            span = "4 x 2",
+            span = "$spanX x $spanY",
             accent = Color.Gray,
             hostWidgetId = hostWidgetId,
+            cellX = cellX,
+            cellY = cellY,
+            spanX = spanX,
+            spanY = spanY,
+            minSpanX = minSpanX,
+            minSpanY = minSpanY,
+            maxSpanX = maxSpanX,
+            maxSpanY = maxSpanY,
+            canResizeHorizontal = canResizeHorizontal,
+            canResizeVertical = canResizeVertical,
         )
 
     @Test
@@ -224,6 +248,102 @@ class LauncherLogicTest {
 
         assertEquals(listOf(seed), result[0].widgets)
         assertTrue(result[1].widgets.isEmpty())
+    }
+
+    @Test
+    fun addWidgetToPage_placesWidgetsWithoutOverlap() {
+        val result = addWidgetToPage(
+            widgets = listOf(widget("Calendar", hostWidgetId = 1, spanX = 2, spanY = 1)),
+            widget = widget("Weather", hostWidgetId = 2, spanX = 2, spanY = 1),
+        )
+
+        assertEquals(2, result.size)
+        assertEquals(0, result[0].cellX)
+        assertEquals(0, result[0].cellY)
+        assertEquals(2, result[1].cellX)
+        assertEquals(0, result[1].cellY)
+    }
+
+    @Test
+    fun addWidgetToPage_keepsMoreThanThreeBoundWidgets() {
+        val result = listOf(
+            widget("One", hostWidgetId = 1),
+            widget("Two", hostWidgetId = 2),
+            widget("Three", hostWidgetId = 3),
+        ).let { widgets ->
+            addWidgetToPage(widgets, widget("Four", hostWidgetId = 4))
+        }
+
+        assertEquals(4, result.size)
+    }
+
+    @Test
+    fun resizeWidgetInPage_clampsToWidgetLimits() {
+        val expanded = resizeWidgetInPage(
+            widgets = listOf(
+                widget(
+                    title = "Calendar",
+                    hostWidgetId = 42,
+                    spanX = 2,
+                    spanY = 2,
+                    minSpanX = 1,
+                    minSpanY = 1,
+                    maxSpanX = 3,
+                    maxSpanY = 3,
+                ),
+            ),
+            hostWidgetId = 42,
+            deltaX = 5,
+            deltaY = 5,
+        )
+
+        assertEquals(3, expanded.single().spanX)
+        assertEquals(3, expanded.single().spanY)
+
+        val shrunk = resizeWidgetInPage(expanded, hostWidgetId = 42, deltaX = -5, deltaY = -5)
+
+        assertEquals(1, shrunk.single().spanX)
+        assertEquals(1, shrunk.single().spanY)
+    }
+
+    @Test
+    fun moveWidgetInPage_updatesCellWithinGrid() {
+        val result = moveWidgetInPage(
+            widgets = listOf(widget("Calendar", hostWidgetId = 42, cellX = 1, cellY = 1, spanX = 2, spanY = 2)),
+            hostWidgetId = 42,
+            deltaX = 1,
+            deltaY = 1,
+        )
+
+        assertEquals(2, result.single().cellX)
+        assertEquals(2, result.single().cellY)
+    }
+
+    @Test
+    fun mergeBoundWidgetsIntoPages_restoresCellsAndSpans() {
+        val result = mergeBoundWidgetsIntoPages(
+            pages = listOf(page(1)),
+            boundWidgets = listOf(
+                BoundWidget(
+                    hostWidgetId = 42,
+                    providerPackage = "com.example",
+                    providerClass = "com.example.ClockWidget",
+                    pageIndex = 0,
+                    cellX = 2,
+                    cellY = 1,
+                    spanX = 2,
+                    spanY = 3,
+                ),
+            ),
+            templates = emptyList(),
+        )
+
+        val restored = result.single().widgets.single()
+        assertEquals(42, restored.hostWidgetId)
+        assertEquals(2, restored.cellX)
+        assertEquals(1, restored.cellY)
+        assertEquals(2, restored.spanX)
+        assertEquals(3, restored.spanY)
     }
 
     @Test

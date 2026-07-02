@@ -92,8 +92,16 @@ internal data class WidgetTemplateModel(
     val providerInfo: AppWidgetProviderInfo? = null,
     val previewSource: PreviewSource = PreviewSource.Empty,
     val hostWidgetId: Int? = null,
+    val cellX: Int = 0,
+    val cellY: Int = 0,
     val spanX: Int = 4,
     val spanY: Int = 2,
+    val minSpanX: Int = 1,
+    val minSpanY: Int = 1,
+    val maxSpanX: Int = 4,
+    val maxSpanY: Int = 4,
+    val canResizeHorizontal: Boolean = true,
+    val canResizeVertical: Boolean = true,
 )
 
 internal data class NotificationCardModel(
