@@ -4,7 +4,9 @@ import android.annotation.SuppressLint
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.app.WallpaperManager
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
@@ -101,6 +103,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.oneuihomeclone.DefaultLauncherState
 import com.oneuihomeclone.LauncherApp
 import com.oneuihomeclone.R
+import com.oneuihomeclone.BuildConfig
 import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.DrawerSortKey
 import com.oneuihomeclone.data.FolderGridKey
@@ -108,6 +111,8 @@ import com.oneuihomeclone.data.HomeLayoutKey
 import com.oneuihomeclone.data.LauncherBackup
 import com.oneuihomeclone.data.LauncherBackupFileStore
 import com.oneuihomeclone.data.LauncherDataStore
+import com.oneuihomeclone.data.LauncherDiagnosticsFileStore
+import com.oneuihomeclone.data.LauncherDiagnosticsSnapshot
 import com.oneuihomeclone.data.LauncherLayoutStore
 import com.oneuihomeclone.data.LauncherState
 import com.oneuihomeclone.data.MotionPresetKey
@@ -242,6 +247,7 @@ fun OneUiHomeCloneApp(
     val widgetPersistence = remember(appContext) { WidgetPersistence(appContext) }
     val layoutStore = remember(appContext) { LauncherLayoutStore(appContext) }
     val backupStore = remember(appContext) { LauncherBackupFileStore(appContext) }
+    val diagnosticsStore = remember(appContext) { LauncherDiagnosticsFileStore(appContext) }
     val coroutineScope = rememberCoroutineScope()
     var hasAppliedPersistedSettings by remember { mutableStateOf(false) }
     val initialPrefs = LauncherState()
@@ -838,6 +844,48 @@ fun OneUiHomeCloneApp(
         }
     }
 
+    fun exportLauncherDiagnostics() {
+        coroutineScope.launch {
+            val persistedWidgets = runCatching { widgetPersistence.read() }.getOrDefault(emptyList())
+            val folders = homePages.flatMap { page -> page.items.filterIsInstance<FolderModel>() }
+            val snapshot = LauncherDiagnosticsSnapshot(
+                versionName = BuildConfig.VERSION_NAME,
+                versionCode = BuildConfig.VERSION_CODE,
+                buildType = BuildConfig.BUILD_TYPE,
+                sdkInt = Build.VERSION.SDK_INT,
+                targetSdk = appContext.applicationInfo.targetSdkVersion,
+                internetPermissionDeclared = appContext.hasRequestedPermission(Manifest.permission.INTERNET),
+                defaultLauncherChecked = defaultLauncherState.checked,
+                isDefaultLauncher = defaultLauncherState.isDefaultLauncher,
+                canOpenDefaultLauncherSettings = defaultLauncherState.canOpenSettings,
+                previousCrash = LauncherApp.previousCrashSummary(),
+                appInventoryLoaded = appInventoryLoaded,
+                appCount = allApps.size,
+                launchableAppCount = allApps.count { it.isLaunchable },
+                unavailableAppCount = allApps.count { !it.isLaunchable && !it.isRestoredPlaceholder },
+                restoredPlaceholderAppCount = restoredPlaceholderCount(homePages),
+                hiddenAppCount = hiddenAppIds.size,
+                homePageCount = homePages.size,
+                folderCount = folders.size,
+                directHomeAppCount = homePages.sumOf { page -> page.items.count { it is AppItemModel } },
+                folderAppCount = folders.sumOf { it.apps.size },
+                homeWidgetCount = homePages.sumOf { it.widgets.size },
+                boundWidgetCount = boundWidgetCount(homePages),
+                persistedWidgetCount = persistedWidgets.size,
+                widgetTemplateCount = widgetTemplates.size,
+                realWidgetProviderCount = widgetTemplates.count { it.providerInfo != null },
+            )
+            runCatching { diagnosticsStore.export(snapshot) }
+                .onSuccess { file ->
+                    showFeedback(appContext.getString(R.string.feedback_diagnostics_exported, file.name))
+                }
+                .onFailure { cause ->
+                    Log.e("OneUiHome/diagnostics", "Diagnostics export failed", cause)
+                    showFeedback(appContext.getString(R.string.feedback_diagnostics_export_failed))
+                }
+        }
+    }
+
     val rememberSearch: (String) -> Unit = { query ->
         recentSearches = rememberRecentSearch(query, recentSearches)
     }
@@ -1419,6 +1467,7 @@ fun OneUiHomeCloneApp(
                 hiddenAppCount = hiddenAppIds.size,
                 boundWidgetCount = activeBoundWidgetCount,
                 backupFileName = backupStore.backupFileName,
+                diagnosticsFileName = diagnosticsStore.diagnosticsFileName,
                 defaultLauncherState = defaultLauncherState,
                 focusedSettingTitle = settingsFocusTitle,
                 onClose = {
@@ -1437,6 +1486,7 @@ fun OneUiHomeCloneApp(
                 onResetWidgets = resetWidgets,
                 onExportBackup = ::exportLauncherBackup,
                 onImportBackup = ::importLauncherBackup,
+                onExportDiagnostics = ::exportLauncherDiagnostics,
                 onOpenDefaultLauncherSettings = onOpenDefaultLauncherSettings,
             )
         }
@@ -1636,5 +1686,14 @@ fun OneUiHomeCloneApp(
     }
     }
 }
+
+private fun Context.hasRequestedPermission(permission: String): Boolean =
+    runCatching {
+        val permissions = packageManager
+            .getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+            .requestedPermissions
+            .orEmpty()
+        permission in permissions
+    }.getOrDefault(false)
 
 

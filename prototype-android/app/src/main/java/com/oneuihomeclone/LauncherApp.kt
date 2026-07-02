@@ -102,6 +102,7 @@ class LauncherApp : Application() {
 
     private val crashLogFile: File
         get() = File(filesDir, CRASH_LOG_NAME)
+    private val lastCrashSummary = AtomicReference<PreviousCrashSummary?>(null)
 
     override fun onCreate() {
         super.onCreate()
@@ -167,8 +168,10 @@ class LauncherApp : Application() {
         if (!file.exists() || file.length() == 0L) return null
         val content = runCatching { file.readText() }.getOrNull()
         file.delete()
-        return content?.let(::summarizeCrashLog)
+        return content?.let(::summarizeCrashLog)?.also(lastCrashSummary::set)
     }
+
+    fun previousCrashSummary(): PreviousCrashSummary? = lastCrashSummary.get()
 
     fun writeRecoveryDiagnostics(summary: PreviousCrashSummary): File {
         val file = File(filesDir, RECOVERY_DIAGNOSTICS_NAME)
@@ -227,6 +230,8 @@ class LauncherApp : Application() {
 
         fun writeRecoveryDiagnostics(summary: PreviousCrashSummary): File? =
             instance?.writeRecoveryDiagnostics(summary)
+
+        fun previousCrashSummary(): PreviousCrashSummary? = instance?.previousCrashSummary()
 
         /** Called once per Activity creation so Compose-layer code can dispatch a bind. */
         internal fun registerWidgetBindLauncher(launcher: ActivityResultLauncher<WidgetBindRequest>) {

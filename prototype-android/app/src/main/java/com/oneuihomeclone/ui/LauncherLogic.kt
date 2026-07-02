@@ -691,6 +691,16 @@ private fun restoredMissingAppLabel(appId: String): String {
         .replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(Locale.getDefault()) else char.toString() }
 }
 
+internal fun restoredPlaceholderCount(pages: List<HomePageModel>): Int =
+    pages.sumOf { page ->
+        page.items.sumOf { item ->
+            when (item) {
+                is AppItemModel -> if (item.app.isRestoredPlaceholder) 1 else 0
+                is FolderModel -> item.apps.count { it.isRestoredPlaceholder }
+            }
+        }
+    }
+
 internal fun folderSummaryFor(apps: List<CloneApp>): String {
     return when (apps.size) {
         0 -> "Empty folder"

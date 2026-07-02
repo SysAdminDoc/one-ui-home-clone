@@ -72,6 +72,8 @@
     <string name="settings_export_backup_summary">Write settings, pages, folders, hidden apps, and widget metadata to %1$s.</string>
     <string name="settings_restore_backup">Restore backup</string>
     <string name="settings_restore_backup_summary">Read %1$s and restore missing apps or widgets as repairable Home placeholders.</string>
+    <string name="settings_export_diagnostics">Export diagnostics</string>
+    <string name="settings_export_diagnostics_summary">Write sanitized support counts to %1$s without app names or search history.</string>
     <string name="settings_section_behavior">Behavior</string>
     <string name="settings_summary_behavior">Expected launcher defaults</string>
     <string name="settings_add_new_apps">Add new apps to Home screen</string>
@@ -244,6 +246,8 @@
     <string name="feedback_backup_missing">No launcher backup found at %1$s.</string>
     <string name="feedback_backup_restored">Backup restored. Missing apps and widgets stay on Home as repairable placeholders.</string>
     <string name="feedback_backup_restore_failed">Couldn\'t restore launcher backup.</string>
+    <string name="feedback_diagnostics_exported">Diagnostics written to %1$s.</string>
+    <string name="feedback_diagnostics_export_failed">Couldn\'t write diagnostics.</string>
     <string name="a11y_page_indicator">Page %1$d of %2$d</string>
     <string name="a11y_open_label">Open %1$s</string>
     <string name="a11y_open_apps_screen">Open Apps screen</string>

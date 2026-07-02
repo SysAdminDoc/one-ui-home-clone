@@ -57,6 +57,7 @@ internal fun SettingsOverlay(
     hiddenAppCount: Int,
     boundWidgetCount: Int,
     backupFileName: String,
+    diagnosticsFileName: String,
     defaultLauncherState: DefaultLauncherState,
     focusedSettingTitle: String?,
     onClose: () -> Unit,
@@ -72,6 +73,7 @@ internal fun SettingsOverlay(
     onResetWidgets: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
+    onExportDiagnostics: () -> Unit,
     onOpenDefaultLauncherSettings: () -> Unit,
 ) {
     val homeScreenLayoutLabel = stringResource(R.string.settings_home_screen_layout)
@@ -293,6 +295,14 @@ internal fun SettingsOverlay(
                         description = stringResource(R.string.settings_restore_backup_summary, backupFileName),
                         actionLabel = stringResource(R.string.action_import),
                         onClick = onImportBackup,
+                    )
+                }
+                item {
+                    SettingsActionCard(
+                        title = stringResource(R.string.settings_export_diagnostics),
+                        description = stringResource(R.string.settings_export_diagnostics_summary, diagnosticsFileName),
+                        actionLabel = stringResource(R.string.action_export),
+                        onClick = onExportDiagnostics,
                     )
                 }
                 item {
