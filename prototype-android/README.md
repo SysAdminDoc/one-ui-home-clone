@@ -22,6 +22,24 @@ $env:Path="$env:JAVA_HOME\bin;$env:Path"
 JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew assembleDebug
 ```
 
+## Release-channel package
+
+Copy `../keystore.properties.example` to `keystore.properties`, fill in the
+local release keystore values, then run:
+
+```powershell
+.\gradlew.bat :app:releaseChannelPackage
+```
+
+The task builds `assembleRelease`, requires the local release keystore, copies a
+versioned signed APK to `app/build/outputs/release-channel/`, and writes adjacent
+JSON metadata with version, SDK, signing, size, SHA-256, and upgrade-install
+fields. Install upgrades with:
+
+```powershell
+adb install -r app/build/outputs/release-channel/one-ui-home-clone-v0.2.2-release.apk
+```
+
 ## Install + set as launcher
 
 ```bash

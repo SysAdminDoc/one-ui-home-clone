@@ -1,3 +1,4 @@
+import java.security.MessageDigest
 import java.util.Properties
 
 plugins {
@@ -15,17 +16,36 @@ val keystoreProps: Properties = Properties().apply {
     }
 }
 val hasReleaseKeystore: Boolean = keystoreProps.getProperty("storeFile")?.isNotBlank() == true
+val launcherApplicationId = "com.oneuihomeclone"
+val launcherVersionCode = 4
+val launcherVersionName = "0.2.2"
+
+fun File.sha256Hex(): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    inputStream().use { input ->
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val read = input.read(buffer)
+            if (read <= 0) break
+            digest.update(buffer, 0, read)
+        }
+    }
+    return digest.digest().joinToString("") { "%02x".format(it) }
+}
+
+fun String.jsonEscaped(): String =
+    replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace = "com.oneuihomeclone"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.oneuihomeclone"
+        applicationId = launcherApplicationId
         minSdk = 28
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.2.2"
+        versionCode = launcherVersionCode
+        versionName = launcherVersionName
 
         vectorDrawables { useSupportLibrary = true }
     }
@@ -102,6 +122,63 @@ android {
         disable += setOf("ObsoleteSdkInt")
         // Lint's own bundled custom checks fall out of sync with Compose compiler updates
         disable += setOf("ObsoleteLintCustomCheck")
+    }
+}
+
+tasks.register("releaseChannelPackage") {
+    group = "distribution"
+    description = "Builds a signed release APK and writes release-channel metadata with SHA-256."
+    dependsOn("assembleRelease")
+
+    val outputDir = layout.buildDirectory.dir("outputs/release-channel")
+    val releaseApk = layout.buildDirectory.file("outputs/apk/release/app-release.apk")
+    val channelApkName = "one-ui-home-clone-v$launcherVersionName-release.apk"
+    val channelApk = outputDir.map { it.file(channelApkName) }
+    val metadataFile = outputDir.map { it.file("one-ui-home-clone-v$launcherVersionName-release.json") }
+    outputs.files(channelApk, metadataFile)
+
+    doLast {
+        check(hasReleaseKeystore) {
+            "releaseChannelPackage requires prototype-android/keystore.properties with a release keystore."
+        }
+
+        val sourceApk = releaseApk.get().asFile
+        check(sourceApk.isFile) { "Release APK not found: ${sourceApk.absolutePath}" }
+
+        val destinationDir = outputDir.get().asFile
+        destinationDir.mkdirs()
+        val packagedApk = channelApk.get().asFile
+        sourceApk.copyTo(packagedApk, overwrite = true)
+
+        val releaseStoreFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+        val metadata = """
+            {
+              "schemaVersion": 1,
+              "applicationId": "$launcherApplicationId",
+              "versionName": "$launcherVersionName",
+              "versionCode": $launcherVersionCode,
+              "minSdk": ${android.defaultConfig.minSdk ?: 0},
+              "targetSdk": ${android.defaultConfig.targetSdk ?: 0},
+              "compileSdk": ${android.compileSdk ?: 0},
+              "artifact": {
+                "type": "apk",
+                "fileName": "${packagedApk.name.jsonEscaped()}",
+                "sha256": "${packagedApk.sha256Hex()}",
+                "sizeBytes": ${packagedApk.length()},
+                "path": "${packagedApk.absolutePath.jsonEscaped()}"
+              },
+              "signing": {
+                "scheme": "release",
+                "keystoreConfigured": true,
+                "storeFile": "${releaseStoreFile.name.jsonEscaped()}",
+                "keyAlias": "${keystoreProps.getProperty("keyAlias", "").jsonEscaped()}"
+              },
+              "upgradeInstall": "adb install -r ${packagedApk.name.jsonEscaped()}"
+            }
+        """.trimIndent()
+        metadataFile.get().asFile.writeText(metadata)
+        logger.lifecycle("Release-channel APK: ${packagedApk.absolutePath}")
+        logger.lifecycle("Release-channel metadata: ${metadataFile.get().asFile.absolutePath}")
     }
 }
 

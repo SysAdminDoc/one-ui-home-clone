@@ -103,6 +103,20 @@ The prototype builds with AGP 8.6, Gradle 8.7, JDK 17, and Android API 35
 (`compileSdk`/`targetSdk`). Install the Android 15 SDK platform before building
 on a fresh machine.
 
+Release-channel package with metadata:
+
+```powershell
+cd prototype-android
+Copy-Item ..\keystore.properties.example .\keystore.properties
+# fill in storeFile/storePassword/keyAlias/keyPassword
+.\gradlew.bat :app:releaseChannelPackage
+```
+
+Output lands in `prototype-android/app/build/outputs/release-channel/` as a
+versioned signed APK plus a JSON metadata file containing version, SDK, signing,
+size, SHA-256, and upgrade-install information. Upgrade an existing install with
+`adb install -r app/build/outputs/release-channel/one-ui-home-clone-v0.2.2-release.apk`.
+
 Device-backed parity/performance smoke:
 
 ```powershell
