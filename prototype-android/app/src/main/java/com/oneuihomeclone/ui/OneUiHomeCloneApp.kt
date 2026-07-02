@@ -76,6 +76,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -138,7 +139,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.absoluteValue
-import kotlin.math.roundToInt
 import com.oneuihomeclone.widgets.PreviewSource
 import com.oneuihomeclone.widgets.WidgetBindRequest
 import com.oneuihomeclone.widgets.WidgetBindResult
@@ -252,6 +252,10 @@ fun OneUiHomeCloneApp(
     onOpenDefaultLauncherSettings: () -> Unit = {},
 ) {
     val appContext = LocalContext.current.applicationContext
+    val configuration = LocalConfiguration.current
+    val layoutContract = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
+        resolveLauncherLayoutContract(configuration.screenWidthDp, configuration.screenHeightDp)
+    }
     val launcherDataStore = remember(appContext) { LauncherDataStore(appContext) }
     val launcherState: LauncherState? by launcherDataStore.state.collectAsStateWithLifecycle(initialValue = null)
     val widgetPersistence = remember(appContext) { WidgetPersistence(appContext) }
@@ -627,8 +631,8 @@ fun OneUiHomeCloneApp(
             DrawerSortMode.ALPHABETICAL -> drawerApps.filterNot { it.id in hiddenAppIds }.sortedBy { it.name.lowercase(Locale.getDefault()) }
         }
     }
-    val drawerPages = remember(drawerApps, hiddenAppIds) {
-        drawerApps.filterNot { it.id in hiddenAppIds }.chunked(20)
+    val drawerPages = remember(drawerApps, hiddenAppIds, layoutContract.appsPageSize) {
+        drawerApps.filterNot { it.id in hiddenAppIds }.chunked(layoutContract.appsPageSize)
     }
     val filteredApps = remember(searchQuery, appsScreenApps) {
         if (searchQuery.isBlank()) {
@@ -644,6 +648,7 @@ fun OneUiHomeCloneApp(
     val activeBoundWidgetCount = remember(homePages) { boundWidgetCount(homePages) }
     val localizedHomeLayoutTitle = homeLayoutMode.localizedTitle()
     val localizedDrawerSortTitle = drawerSortMode.localizedTitle()
+    val localizedFolderGridTitle = folderGrid.localizedTitle()
     val defaultFinderHomePageLabel = homePages.getOrNull(defaultHomePageIndex)?.label ?: fallbackHomePageLabel
     val hiddenAppsValue = if (hiddenAppIds.isEmpty()) {
         stringResource(R.string.settings_value_none)
@@ -665,6 +670,9 @@ fun OneUiHomeCloneApp(
         defaultFinderHomePageLabel,
         hiddenAppIds,
         hiddenAppsValue,
+        layoutContract.homeGridLabel,
+        layoutContract.appsGridLabel,
+        localizedFolderGridTitle,
     ) {
         buildFinderSettingResults(
             query = searchQuery,
@@ -681,6 +689,9 @@ fun OneUiHomeCloneApp(
             text = finderSettingText,
             homeLayoutModeTitle = localizedHomeLayoutTitle,
             hiddenAppsValue = hiddenAppsValue,
+            homeScreenGridValue = layoutContract.homeGridLabel,
+            appsScreenGridValue = layoutContract.appsGridLabel,
+            folderGridValue = localizedFolderGridTitle,
         )
     }
     val finderActions = remember(searchQuery, homeLayoutMode, lockHomeScreenLayout, mediaPageEnabled, hiddenAppIds, finderActionText) {
@@ -921,7 +932,12 @@ fun OneUiHomeCloneApp(
         var placedWidget: WidgetTemplateModel? = null
         homePages = homePages.map { page ->
             if (page.id == targetPageId) {
-                val nextWidgets = addWidgetToPage(page.widgets, widget)
+                val nextWidgets = addWidgetToPage(
+                    widgets = page.widgets,
+                    widget = widget,
+                    columns = layoutContract.widgetGridColumns,
+                    maxRows = layoutContract.widgetGridMaxRows,
+                )
                 placedWidget = nextWidgets.firstOrNull { it.stableWidgetKey() == widget.stableWidgetKey() }
                 page.copy(widgets = nextWidgets)
             } else {
@@ -1044,7 +1060,14 @@ fun OneUiHomeCloneApp(
         var resizedWidget: WidgetTemplateModel? = null
         homePages = homePages.map { homePage ->
             if (homePage.id == page.id) {
-                val nextWidgets = resizeWidgetInPage(homePage.widgets, hostWidgetId, deltaX, deltaY)
+                val nextWidgets = resizeWidgetInPage(
+                    widgets = homePage.widgets,
+                    hostWidgetId = hostWidgetId,
+                    deltaX = deltaX,
+                    deltaY = deltaY,
+                    columns = layoutContract.widgetGridColumns,
+                    maxRows = layoutContract.widgetGridMaxRows,
+                )
                 resizedWidget = nextWidgets.firstOrNull { it.hostWidgetId == hostWidgetId }
                 homePage.copy(widgets = nextWidgets)
             } else {
@@ -1062,7 +1085,14 @@ fun OneUiHomeCloneApp(
         var movedWidget: WidgetTemplateModel? = null
         homePages = homePages.map { homePage ->
             if (homePage.id == page.id) {
-                val nextWidgets = moveWidgetInPage(homePage.widgets, hostWidgetId, deltaX, deltaY)
+                val nextWidgets = moveWidgetInPage(
+                    widgets = homePage.widgets,
+                    hostWidgetId = hostWidgetId,
+                    deltaX = deltaX,
+                    deltaY = deltaY,
+                    columns = layoutContract.widgetGridColumns,
+                    maxRows = layoutContract.widgetGridMaxRows,
+                )
                 movedWidget = nextWidgets.firstOrNull { it.hostWidgetId == hostWidgetId }
                 homePage.copy(widgets = nextWidgets)
             } else {
@@ -1259,6 +1289,7 @@ fun OneUiHomeCloneApp(
     ) {
         WallpaperAtmosphere()
         HomeSurface(
+            layoutContract = layoutContract,
             currentHomePage = currentHomePage,
             isMediaPage = isMediaPage,
             dockApps = visibleDockApps,
@@ -1355,6 +1386,9 @@ fun OneUiHomeCloneApp(
                 canOpenSettings = defaultLauncherState.canOpenSettings,
                 onOpenSettings = onOpenDefaultLauncherSettings,
                 onDismiss = { defaultLauncherPromptDismissed = true },
+                modifier = Modifier
+                    .widthIn(max = layoutContract.settingsMaxWidth)
+                    .fillMaxWidth(),
             )
         }
 
@@ -1370,6 +1404,7 @@ fun OneUiHomeCloneApp(
             ) + fadeOut(tween(160)),
         ) {
             DrawerOverlay(
+                layoutContract = layoutContract,
                 query = searchQuery,
                 apps = filteredApps,
                 appsScreenApps = appsScreenApps,
@@ -1471,6 +1506,7 @@ fun OneUiHomeCloneApp(
             exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(220)) + fadeOut(tween(140)),
         ) {
             SettingsOverlay(
+                layoutContract = layoutContract,
                 mediaPageEnabled = mediaPageEnabled,
                 appsButtonEnabled = appsButtonEnabled,
                 appLabelsEnabled = appLabelsEnabled,
@@ -1516,6 +1552,7 @@ fun OneUiHomeCloneApp(
             exit = slideOutVertically(targetOffsetY = { it / 2 }, animationSpec = tween(180)) + fadeOut(tween(120)),
         ) {
             EditModeTray(
+                layoutContract = layoutContract,
                 pages = homePages,
                 pageIndex = currentPageIndex,
                 mediaPageEnabled = mediaPageEnabled,
@@ -1615,6 +1652,7 @@ fun OneUiHomeCloneApp(
         ) {
             openFolder?.let { folder ->
                 FolderOverlay(
+                    layoutContract = layoutContract,
                     folder = folder,
                     appLabelsEnabled = appLabelsEnabled,
                     folderGrid = folderGrid,
@@ -1651,6 +1689,7 @@ fun OneUiHomeCloneApp(
             exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(220)) + fadeOut(tween(140)),
         ) {
             WidgetPickerOverlay(
+                layoutContract = layoutContract,
                 categories = widgetCategories,
                 selectedCategory = selectedWidgetCategory,
                 searchQuery = widgetSearchQuery,

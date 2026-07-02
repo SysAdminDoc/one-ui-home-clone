@@ -42,6 +42,7 @@ import com.oneuihomeclone.ui.theme.OneUiTextSecondary
 
 @Composable
 internal fun SettingsOverlay(
+    layoutContract: LauncherLayoutContract,
     mediaPageEnabled: Boolean,
     appsButtonEnabled: Boolean,
     appLabelsEnabled: Boolean,
@@ -90,6 +91,8 @@ internal fun SettingsOverlay(
     val folderGridLabel = stringResource(R.string.settings_folder_grid)
     val homeLayoutModeTitle = homeLayoutMode.localizedTitle()
     val folderGridTitle = folderGrid.localizedTitle()
+    val homeGridLabel = layoutContract.homeGridLabel
+    val appsGridLabel = layoutContract.appsGridLabel
     val defaultHomePageLabelText = stringResource(R.string.settings_default_home_page)
     val visiblePagesLabel = stringResource(R.string.settings_visible_pages)
     val resetWidgetsDescription = when {
@@ -128,6 +131,8 @@ internal fun SettingsOverlay(
         appsScreenSortUnavailable,
         hideAppsLabel,
         hiddenAppsValue,
+        homeGridLabel,
+        appsGridLabel,
         folderGridLabel,
         folderGridTitle,
         defaultHomePageLabelText,
@@ -135,8 +140,8 @@ internal fun SettingsOverlay(
     ) {
         listOf(
             SettingRowState(homeScreenLayoutLabel, homeLayoutModeTitle),
-            SettingRowState(homeScreenGridLabel, "4x6"),
-            SettingRowState(appsScreenGridLabel, "4x6"),
+            SettingRowState(homeScreenGridLabel, homeGridLabel),
+            SettingRowState(appsScreenGridLabel, appsGridLabel),
             SettingRowState(
                 appsScreenSortLabel,
                 if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) appsScreenSortUnavailable else appsScreenSortTitle,
@@ -152,13 +157,15 @@ internal fun SettingsOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(OneUiBackground),
+        contentAlignment = Alignment.TopCenter,
     ) {
         Column(
             modifier = Modifier
+                .widthIn(max = layoutContract.settingsMaxWidth)
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = layoutContract.overlayHorizontalPadding, vertical = 12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.settings_title_home_screen), color = OneUiText, fontSize = 28.sp, fontWeight = FontWeight.Bold)

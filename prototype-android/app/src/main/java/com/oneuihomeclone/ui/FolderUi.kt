@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -56,6 +57,7 @@ import com.oneuihomeclone.ui.theme.OneUiTextSecondary
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun FolderOverlay(
+    layoutContract: LauncherLayoutContract,
     folder: FolderModel,
     appLabelsEnabled: Boolean,
     folderGrid: FolderGridMode,
@@ -77,6 +79,7 @@ internal fun FolderOverlay(
     ) {
         Surface(
             modifier = Modifier
+                .widthIn(max = layoutContract.folderMaxWidth)
                 .fillMaxWidth()
                 .padding(horizontal = 28.dp)
                 .pointerInput(Unit) {
@@ -129,11 +132,12 @@ internal fun FolderOverlay(
                     DrawerPill(stringResource(R.string.folder_label))
                 }
                 Spacer(Modifier.height(18.dp))
-                val folderGridHeight = (folderGrid.rows * 78).dp
+                val requestedFolderGridHeight = (folderGrid.rows * 78).dp
+                val folderGridHeight = minOf(requestedFolderGridHeight, layoutContract.folderGridMaxHeight)
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(folderGrid.columns),
                     modifier = Modifier.height(folderGridHeight),
-                    userScrollEnabled = false,
+                    userScrollEnabled = requestedFolderGridHeight > folderGridHeight,
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {

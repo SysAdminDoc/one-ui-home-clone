@@ -55,6 +55,7 @@ import com.oneuihomeclone.ui.theme.OneUiTextSecondary
 
 @Composable
 internal fun EditModeTray(
+    layoutContract: LauncherLayoutContract,
     pages: List<HomePageModel>,
     pageIndex: Int,
     mediaPageEnabled: Boolean,
@@ -83,6 +84,7 @@ internal fun EditModeTray(
     ) {
         Surface(
             modifier = Modifier
+                .widthIn(max = layoutContract.editTrayMaxWidth)
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(16.dp),

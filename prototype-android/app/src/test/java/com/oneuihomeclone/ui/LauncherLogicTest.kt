@@ -1,6 +1,7 @@
 package com.oneuihomeclone.ui
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.DrawerSortKey
 import com.oneuihomeclone.data.FolderGridKey
@@ -94,6 +95,54 @@ class LauncherLogicTest {
     @Test
     fun totalPageCount_withMediaPage() {
         assertEquals(4, totalPageCount(3, mediaPageEnabled = true))
+    }
+
+    @Test
+    fun resolveLauncherLayoutContract_phonePortraitUsesOneUiPhoneGrid() {
+        val contract = resolveLauncherLayoutContract(widthDp = 412, heightDp = 915)
+
+        assertEquals(LauncherFormFactor.PHONE_PORTRAIT, contract.formFactor)
+        assertFalse(contract.isLandscape)
+        assertEquals("4x5", contract.homeGridLabel)
+        assertEquals("4x5", contract.appsGridLabel)
+        assertEquals(20, contract.appsPageSize)
+        assertEquals(440.dp, contract.homeMaxWidth)
+    }
+
+    @Test
+    fun resolveLauncherLayoutContract_phoneLandscapeUsesCompactFiveColumnGrid() {
+        val contract = resolveLauncherLayoutContract(widthDp = 891, heightDp = 411)
+
+        assertEquals(LauncherFormFactor.PHONE_LANDSCAPE, contract.formFactor)
+        assertTrue(contract.isLandscape)
+        assertEquals("5x3", contract.homeGridLabel)
+        assertEquals("5x3", contract.appsGridLabel)
+        assertEquals(5, contract.widgetGridColumns)
+        assertEquals(3, contract.widgetGridMaxRows)
+        assertEquals(15, contract.appsPageSize)
+    }
+
+    @Test
+    fun resolveLauncherLayoutContract_foldableUsesBoundedFiveColumnSurfaces() {
+        val contract = resolveLauncherLayoutContract(widthDp = 673, heightDp = 841)
+
+        assertEquals(LauncherFormFactor.FOLDABLE, contract.formFactor)
+        assertEquals("5x5", contract.homeGridLabel)
+        assertEquals("5x5", contract.appsGridLabel)
+        assertEquals(640.dp, contract.settingsMaxWidth)
+        assertEquals(560.dp, contract.folderMaxWidth)
+    }
+
+    @Test
+    fun resolveLauncherLayoutContract_tabletUsesSixColumnSurfaces() {
+        val contract = resolveLauncherLayoutContract(widthDp = 1280, heightDp = 800)
+
+        assertEquals(LauncherFormFactor.TABLET, contract.formFactor)
+        assertTrue(contract.isLandscape)
+        assertEquals("6x5", contract.homeGridLabel)
+        assertEquals("6x5", contract.appsGridLabel)
+        assertEquals(30, contract.appsPageSize)
+        assertEquals(760.dp, contract.drawerMaxWidth)
     }
 
     @Test

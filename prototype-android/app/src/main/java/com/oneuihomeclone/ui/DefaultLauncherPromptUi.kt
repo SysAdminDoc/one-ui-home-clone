@@ -25,8 +25,10 @@ internal fun DefaultLauncherPrompt(
     canOpenSettings: Boolean,
     onOpenSettings: () -> Unit,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
+        modifier = modifier,
         shape = OneUiPanelShape,
         color = OneUiCard,
         shadowElevation = 4.dp,

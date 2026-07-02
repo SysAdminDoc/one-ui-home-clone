@@ -71,6 +71,7 @@ Compose-first launcher prototype split into surface-focused UI files under
 - **LauncherPreferences** (`data/`) - SharedPreferences-backed persistence for user-facing toggles
 - **OneUiHomeCloneTheme** (`ui/theme/`) - full Material 3 day/night color scheme + One UI type scale
 - **OneUiHomeCloneApp** (`ui/`) - state orchestration, persistence, overlay routing, and widget/app loading
+- **LauncherLayoutContract** (`ui/`) - phone portrait, phone landscape, foldable-width, and tablet grid/width contracts
 - **HomeSurface / DrawerUi / FolderUi / WidgetPickerUi / SettingsUi / EditModeUi / NotificationUi** (`ui/`) - focused Compose surfaces
 - **SharedComponents** (`ui/`) - shared controls, app icons, settings rows, and in-app feedback
 

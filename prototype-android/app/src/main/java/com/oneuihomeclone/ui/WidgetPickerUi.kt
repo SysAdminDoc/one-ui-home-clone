@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.rememberScrollState
@@ -41,6 +42,7 @@ import com.oneuihomeclone.widgets.PreviewSource
 
 @Composable
 internal fun WidgetPickerOverlay(
+    layoutContract: LauncherLayoutContract,
     categories: List<String>,
     selectedCategory: String,
     searchQuery: String,
@@ -56,13 +58,15 @@ internal fun WidgetPickerOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(OneUiBackground),
+        contentAlignment = Alignment.TopCenter,
     ) {
         Column(
             modifier = Modifier
+                .widthIn(max = layoutContract.widgetPickerMaxWidth)
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = layoutContract.overlayHorizontalPadding, vertical = 12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.widgets_title), color = OneUiText, fontSize = 28.sp, fontWeight = FontWeight.Bold)

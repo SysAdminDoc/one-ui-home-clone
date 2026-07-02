@@ -209,8 +209,14 @@ internal fun buildVisibleDockApps(
 internal fun addWidgetToPage(
     widgets: List<WidgetTemplateModel>,
     widget: WidgetTemplateModel,
+    columns: Int = 4,
+    maxRows: Int = 6,
 ): List<WidgetTemplateModel> {
-    return placeWidgetsInGrid(widgets.filterNot { it.stableWidgetKey() == widget.stableWidgetKey() } + widget)
+    return placeWidgetsInGrid(
+        widgets.filterNot { it.stableWidgetKey() == widget.stableWidgetKey() } + widget,
+        columns = columns,
+        maxRows = maxRows,
+    )
 }
 
 internal fun removeWidgetFromPage(
@@ -255,6 +261,8 @@ internal fun resizeWidgetInPage(
     hostWidgetId: Int,
     deltaX: Int,
     deltaY: Int,
+    columns: Int = 4,
+    maxRows: Int = 6,
 ): List<WidgetTemplateModel> =
     placeWidgetsInGrid(
         widgets.map { widget ->
@@ -278,6 +286,8 @@ internal fun resizeWidgetInPage(
                 )
             }
         },
+        columns = columns,
+        maxRows = maxRows,
     )
 
 internal fun moveWidgetInPage(
@@ -285,6 +295,8 @@ internal fun moveWidgetInPage(
     hostWidgetId: Int,
     deltaX: Int,
     deltaY: Int,
+    columns: Int = 4,
+    maxRows: Int = 6,
 ): List<WidgetTemplateModel> =
     placeWidgetsInGrid(
         widgets.map { widget ->
@@ -297,6 +309,8 @@ internal fun moveWidgetInPage(
                 widget
             }
         },
+        columns = columns,
+        maxRows = maxRows,
     )
 
 internal fun placeWidgetsInGrid(
@@ -962,12 +976,15 @@ internal fun buildFinderSettingResults(
     text: FinderSettingText = FinderSettingText(),
     homeLayoutModeTitle: String = homeLayoutMode.title,
     hiddenAppsValue: String = if (hiddenAppCount == 0) text.noneValue else text.hiddenCount(hiddenAppCount),
+    homeScreenGridValue: String = "4x6",
+    appsScreenGridValue: String = "4x6",
+    folderGridValue: String = "3x4",
 ): List<FinderSettingResult> {
     val settings = listOf(
         FinderSettingResult(FinderSettingType.HOME_SCREEN_LAYOUT, text.homeScreenLayout, text.layoutCategory, homeLayoutModeTitle),
-        FinderSettingResult(FinderSettingType.HOME_SCREEN_GRID, text.homeScreenGrid, text.layoutCategory, "4x6"),
-        FinderSettingResult(FinderSettingType.APPS_SCREEN_GRID, text.appsScreenGrid, text.layoutCategory, "4x6"),
-        FinderSettingResult(FinderSettingType.FOLDER_GRID, text.folderGrid, text.layoutCategory, "3x4"),
+        FinderSettingResult(FinderSettingType.HOME_SCREEN_GRID, text.homeScreenGrid, text.layoutCategory, homeScreenGridValue),
+        FinderSettingResult(FinderSettingType.APPS_SCREEN_GRID, text.appsScreenGrid, text.layoutCategory, appsScreenGridValue),
+        FinderSettingResult(FinderSettingType.FOLDER_GRID, text.folderGrid, text.layoutCategory, folderGridValue),
         FinderSettingResult(FinderSettingType.DEFAULT_HOME_PAGE, text.defaultHomePage, text.layoutCategory, defaultHomePageLabel),
         FinderSettingResult(FinderSettingType.VISIBLE_PAGES, text.visiblePages, text.layoutCategory, homePageCount.toString()),
         FinderSettingResult(FinderSettingType.MEDIA_PAGE, text.mediaPage, text.behaviorCategory, if (mediaPageEnabled) text.onValue else text.offValue),

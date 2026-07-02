@@ -68,7 +68,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -220,6 +219,7 @@ private fun readSystemWallpaper(context: Context): ImageBitmap? = runCatching {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun HomeSurface(
+    layoutContract: LauncherLayoutContract,
     currentHomePage: HomePageModel?,
     isMediaPage: Boolean,
     dockApps: List<CloneApp>,
@@ -252,12 +252,12 @@ internal fun HomeSurface(
 ) {
     val drawerGestureEnabled = homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 12.dp)
+            .padding(horizontal = layoutContract.homeHorizontalPadding, vertical = layoutContract.homeVerticalPadding)
             .pointerInput(onOpenEditMode, isHomeItemDragActive) {
                 if (isHomeItemDragActive) {
                     return@pointerInput
@@ -293,68 +293,163 @@ internal fun HomeSurface(
                     }
                 }
             },
+        contentAlignment = Alignment.TopCenter,
     ) {
-        StatusRow(
-            timeText = timeText,
-            dateText = dateText,
-            homeLayoutMode = homeLayoutMode,
-            lockHomeScreenLayout = lockHomeScreenLayout,
-        )
-        Spacer(Modifier.height(18.dp))
-        if (isMediaPage) {
-            MediaPageHero()
-            Spacer(Modifier.height(16.dp))
-            MediaPageCards()
-            Spacer(Modifier.weight(1f))
+        if (layoutContract.isLandscape) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .widthIn(max = layoutContract.homeMaxWidth),
+                horizontalArrangement = Arrangement.spacedBy(22.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(0.9f)
+                        .fillMaxHeight(),
+                ) {
+                    StatusRow(
+                        timeText = timeText,
+                        dateText = dateText,
+                        homeLayoutMode = homeLayoutMode,
+                        lockHomeScreenLayout = lockHomeScreenLayout,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    if (isMediaPage) {
+                        MediaPageHero()
+                    } else {
+                        currentHomePage?.let { WidgetHeroCard(it) }
+                        currentHomePage?.takeIf { it.widgets.isNotEmpty() }?.let { page ->
+                            Spacer(Modifier.height(10.dp))
+                            WidgetGrid(
+                                layoutContract = layoutContract,
+                                widgets = page.widgets,
+                                showLabels = widgetLabelsEnabled,
+                                canEdit = !lockHomeScreenLayout,
+                                onMoveWidget = onMoveWidget,
+                                onResizeWidget = onResizeWidget,
+                                onRemoveWidget = onRemoveWidget,
+                                onOpenWidgetActions = onOpenWidgetActions,
+                            )
+                        }
+                    }
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1.1f)
+                        .fillMaxHeight(),
+                ) {
+                    if (isMediaPage) {
+                        MediaPageCards()
+                    } else {
+                        HomeGrid(
+                            layoutContract = layoutContract,
+                            items = currentHomePage?.items.orEmpty(),
+                            showLabels = appLabelsEnabled,
+                            compactLayout = currentHomePage?.widgets?.isNotEmpty() == true,
+                            canOrganize = !lockHomeScreenLayout,
+                            onReorderItem = onReorderHomeItem,
+                            onCreateFolder = onCreateFolder,
+                            onAddAppToFolder = onAddAppToFolder,
+                            onDragStateChange = onHomeItemDragStateChange,
+                            onOpenApp = onOpenApp,
+                            onOpenAppActions = onOpenAppActions,
+                            onOpenFolder = onOpenFolder,
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    PageStrip(
+                        pageIndex = pageIndex,
+                        pageCount = pageCount,
+                        onPageChange = onPageChange,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    SearchBarButton(
+                        label = if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) stringResource(R.string.home_search_apps) else stringResource(R.string.drawer_title_finder),
+                        onOpenDrawer = onOpenDrawer,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    DockBar(
+                        apps = dockApps,
+                        showLabels = appLabelsEnabled,
+                        appsButtonEnabled = homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS && appsButtonEnabled,
+                        onOpenApp = onOpenApp,
+                        onOpenAppActions = onOpenAppActions,
+                        onOpenDrawer = onOpenDrawer,
+                    )
+                }
+            }
         } else {
-            currentHomePage?.let { WidgetHeroCard(it) }
-            currentHomePage?.takeIf { it.widgets.isNotEmpty() }?.let { page ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .widthIn(max = layoutContract.homeMaxWidth),
+            ) {
+                StatusRow(
+                    timeText = timeText,
+                    dateText = dateText,
+                    homeLayoutMode = homeLayoutMode,
+                    lockHomeScreenLayout = lockHomeScreenLayout,
+                )
+                Spacer(Modifier.height(18.dp))
+                if (isMediaPage) {
+                    MediaPageHero()
+                    Spacer(Modifier.height(16.dp))
+                    MediaPageCards()
+                    Spacer(Modifier.weight(1f))
+                } else {
+                    currentHomePage?.let { WidgetHeroCard(it) }
+                    currentHomePage?.takeIf { it.widgets.isNotEmpty() }?.let { page ->
+                        Spacer(Modifier.height(14.dp))
+                        WidgetGrid(
+                            layoutContract = layoutContract,
+                            widgets = page.widgets,
+                            showLabels = widgetLabelsEnabled,
+                            canEdit = !lockHomeScreenLayout,
+                            onMoveWidget = onMoveWidget,
+                            onResizeWidget = onResizeWidget,
+                            onRemoveWidget = onRemoveWidget,
+                            onOpenWidgetActions = onOpenWidgetActions,
+                        )
+                    }
+                    Spacer(Modifier.height(22.dp))
+                    HomeGrid(
+                        layoutContract = layoutContract,
+                        items = currentHomePage?.items.orEmpty(),
+                        showLabels = appLabelsEnabled,
+                        compactLayout = currentHomePage?.widgets?.isNotEmpty() == true,
+                        canOrganize = !lockHomeScreenLayout,
+                        onReorderItem = onReorderHomeItem,
+                        onCreateFolder = onCreateFolder,
+                        onAddAppToFolder = onAddAppToFolder,
+                        onDragStateChange = onHomeItemDragStateChange,
+                        onOpenApp = onOpenApp,
+                        onOpenAppActions = onOpenAppActions,
+                        onOpenFolder = onOpenFolder,
+                    )
+                    Spacer(Modifier.weight(1f))
+                }
+                PageStrip(
+                    pageIndex = pageIndex,
+                    pageCount = pageCount,
+                    onPageChange = onPageChange,
+                )
+                Spacer(Modifier.height(18.dp))
+                SearchBarButton(
+                    label = if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) stringResource(R.string.home_search_apps) else stringResource(R.string.drawer_title_finder),
+                    onOpenDrawer = onOpenDrawer,
+                )
                 Spacer(Modifier.height(14.dp))
-                WidgetGrid(
-                    widgets = page.widgets,
-                    showLabels = widgetLabelsEnabled,
-                    canEdit = !lockHomeScreenLayout,
-                    onMoveWidget = onMoveWidget,
-                    onResizeWidget = onResizeWidget,
-                    onRemoveWidget = onRemoveWidget,
-                    onOpenWidgetActions = onOpenWidgetActions,
+                DockBar(
+                    apps = dockApps,
+                    showLabels = appLabelsEnabled,
+                    appsButtonEnabled = homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS && appsButtonEnabled,
+                    onOpenApp = onOpenApp,
+                    onOpenAppActions = onOpenAppActions,
+                    onOpenDrawer = onOpenDrawer,
                 )
             }
-            Spacer(Modifier.height(22.dp))
-            HomeGrid(
-                items = currentHomePage?.items.orEmpty(),
-                showLabels = appLabelsEnabled,
-                compactLayout = currentHomePage?.widgets?.isNotEmpty() == true,
-                canOrganize = !lockHomeScreenLayout,
-                onReorderItem = onReorderHomeItem,
-                onCreateFolder = onCreateFolder,
-                onAddAppToFolder = onAddAppToFolder,
-                onDragStateChange = onHomeItemDragStateChange,
-                onOpenApp = onOpenApp,
-                onOpenAppActions = onOpenAppActions,
-                onOpenFolder = onOpenFolder,
-            )
-            Spacer(Modifier.weight(1f))
         }
-        PageStrip(
-            pageIndex = pageIndex,
-            pageCount = pageCount,
-            onPageChange = onPageChange,
-        )
-        Spacer(Modifier.height(18.dp))
-        SearchBarButton(
-            label = if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) stringResource(R.string.home_search_apps) else stringResource(R.string.drawer_title_finder),
-            onOpenDrawer = onOpenDrawer,
-        )
-        Spacer(Modifier.height(14.dp))
-        DockBar(
-            apps = dockApps,
-            showLabels = appLabelsEnabled,
-            appsButtonEnabled = homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS && appsButtonEnabled,
-            onOpenApp = onOpenApp,
-            onOpenAppActions = onOpenAppActions,
-            onOpenDrawer = onOpenDrawer,
-        )
     }
 }
 
@@ -492,6 +587,7 @@ private fun WidgetHeroCard(page: HomePageModel) {
 
 @Composable
 private fun WidgetGrid(
+    layoutContract: LauncherLayoutContract,
     widgets: List<WidgetTemplateModel>,
     showLabels: Boolean,
     canEdit: Boolean,
@@ -500,13 +596,17 @@ private fun WidgetGrid(
     onRemoveWidget: (Int) -> Unit,
     onOpenWidgetActions: (WidgetTemplateModel) -> Unit,
 ) {
-    val placedWidgets = remember(widgets) { placeWidgetsInGrid(widgets) }
-    val gridRows = (placedWidgets.maxOfOrNull { it.cellY + it.spanY } ?: 1).coerceIn(1, 6)
+    val gridColumns = layoutContract.widgetGridColumns
+    val maxRows = layoutContract.widgetGridMaxRows
+    val placedWidgets = remember(widgets, gridColumns, maxRows) {
+        placeWidgetsInGrid(widgets, columns = gridColumns, maxRows = maxRows)
+    }
+    val gridRows = (placedWidgets.maxOfOrNull { it.cellY + it.spanY } ?: 1).coerceIn(1, maxRows)
     LazyVerticalGrid(
-        columns = GridCells.Fixed(4),
+        columns = GridCells.Fixed(gridColumns),
         modifier = Modifier
             .fillMaxWidth()
-            .height((gridRows * 88).dp),
+            .height((gridRows * layoutContract.widgetGridCellHeight.value).dp),
         userScrollEnabled = false,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -514,9 +614,10 @@ private fun WidgetGrid(
         items(
             items = placedWidgets,
             key = { widget -> widget.stableWidgetKey() },
-            span = { widget -> GridItemSpan(widget.spanX.coerceIn(1, 4)) },
+            span = { widget -> GridItemSpan(widget.spanX.coerceIn(1, gridColumns)) },
         ) { widget ->
             WidgetGridTile(
+                layoutContract = layoutContract,
                 widget = widget,
                 showLabels = showLabels,
                 canEdit = canEdit,
@@ -531,6 +632,7 @@ private fun WidgetGrid(
 
 @Composable
 private fun WidgetGridTile(
+    layoutContract: LauncherLayoutContract,
     widget: WidgetTemplateModel,
     showLabels: Boolean,
     canEdit: Boolean,
@@ -541,6 +643,7 @@ private fun WidgetGridTile(
 ) {
     val hostWidgetId = widget.hostWidgetId
     val boundProviderMissing = hostWidgetId != null && widget.providerInfo == null
+    val tileHeight = (layoutContract.widgetGridCellHeight.value - 6f).coerceAtLeast(58f)
     Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -549,7 +652,7 @@ private fun WidgetGridTile(
                     onLongClick = { onOpenWidgetActions(widget) },
                     role = Role.Button,
                 )
-                .height((widget.spanY.coerceIn(1, 4) * 82).dp),
+                .height((widget.spanY.coerceIn(1, layoutContract.widgetGridMaxRows) * tileHeight).dp),
         shape = OneUiPanelShape,
         color = OneUiCard,
         shadowElevation = 1.dp,
@@ -590,6 +693,7 @@ private fun WidgetGridTile(
                 }
                 if (hostWidgetId != null && canEdit) {
                     WidgetGridControls(
+                        layoutContract = layoutContract,
                         widget = widget,
                         onMoveWidget = onMoveWidget,
                         onResizeWidget = onResizeWidget,
@@ -620,6 +724,7 @@ private fun WidgetGridTile(
 
 @Composable
 private fun WidgetGridControls(
+    layoutContract: LauncherLayoutContract,
     widget: WidgetTemplateModel,
     onMoveWidget: (Int, Int, Int) -> Unit,
     onResizeWidget: (Int, Int, Int) -> Unit,
@@ -649,7 +754,7 @@ private fun WidgetGridControls(
         WidgetGridControlButton(
             label = ">",
             contentDescription = moveRightDescription,
-            enabled = widget.cellX + widget.spanX < 4,
+            enabled = widget.cellX + widget.spanX < layoutContract.widgetGridColumns,
             onClick = { onMoveWidget(hostWidgetId, 1, 0) },
         )
         WidgetGridControlButton(
@@ -661,7 +766,7 @@ private fun WidgetGridControls(
         WidgetGridControlButton(
             label = "v",
             contentDescription = moveDownDescription,
-            enabled = widget.cellY + widget.spanY < 6,
+            enabled = widget.cellY + widget.spanY < layoutContract.widgetGridMaxRows,
             onClick = { onMoveWidget(hostWidgetId, 0, 1) },
         )
         WidgetGridControlButton(
@@ -1025,6 +1130,7 @@ internal fun SyntheticWidgetPreview(
 
 @Composable
 private fun HomeGrid(
+    layoutContract: LauncherLayoutContract,
     items: List<HomeGridItemModel>,
     showLabels: Boolean,
     compactLayout: Boolean,
@@ -1063,10 +1169,10 @@ private fun HomeGrid(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (compactLayout) 304.dp else 356.dp),
+            .height(if (compactLayout) layoutContract.compactHomeGridHeight else layoutContract.homeGridHeight),
     ) {
         LazyVerticalGrid(
-            columns = GridCells.Fixed(4),
+            columns = GridCells.Fixed(layoutContract.homeGridColumns),
             modifier = Modifier.fillMaxSize(),
             userScrollEnabled = false,
             horizontalArrangement = Arrangement.spacedBy(12.dp),

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -63,6 +64,7 @@ import com.oneuihomeclone.ui.theme.OneUiTextSecondary
 
 @Composable
 internal fun DrawerOverlay(
+    layoutContract: LauncherLayoutContract,
     query: String,
     apps: List<CloneApp>,
     appsScreenApps: List<CloneApp>,
@@ -100,14 +102,16 @@ internal fun DrawerOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(OneUiBackground.copy(alpha = 0.96f)),
+        contentAlignment = Alignment.TopCenter,
     ) {
         Column(
             modifier = Modifier
+                .widthIn(max = layoutContract.drawerMaxWidth)
                 .fillMaxHeight()
                 .fillMaxWidth()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 18.dp, vertical = 14.dp),
+                .padding(horizontal = layoutContract.overlayHorizontalPadding, vertical = 14.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -187,6 +191,7 @@ internal fun DrawerOverlay(
                         )
                         Spacer(Modifier.height(14.dp))
                         FinderAppGrid(
+                            columns = layoutContract.appsGridColumns,
                             apps = selectedDrawerPage,
                             showLabels = appLabelsEnabled,
                             onOpenApp = onOpenApp,
@@ -235,7 +240,8 @@ internal fun DrawerOverlay(
                                     FinderSectionHeader(stringResource(R.string.drawer_suggested_apps))
                                     Spacer(Modifier.height(12.dp))
                                     FinderAppGrid(
-                                        apps = appsScreenApps.take(8),
+                                        columns = layoutContract.appsGridColumns,
+                                        apps = appsScreenApps.take(layoutContract.appsGridColumns * 2),
                                         showLabels = appLabelsEnabled,
                                         onOpenApp = onOpenApp,
                                         onOpenAppActions = onOpenAppActions,
@@ -258,6 +264,7 @@ internal fun DrawerOverlay(
                                     FinderSectionHeader(section.first)
                                     Spacer(Modifier.height(10.dp))
                                     FinderAppGrid(
+                                        columns = layoutContract.appsGridColumns,
                                         apps = section.second,
                                         showLabels = appLabelsEnabled,
                                         onOpenApp = onOpenApp,
@@ -302,6 +309,7 @@ internal fun DrawerOverlay(
                                 FinderSectionHeader(stringResource(R.string.apps))
                                 Spacer(Modifier.height(12.dp))
                                 FinderAppGrid(
+                                    columns = layoutContract.appsGridColumns,
                                     apps = apps,
                                     showLabels = appLabelsEnabled,
                                     onOpenApp = onOpenApp,
@@ -512,13 +520,14 @@ private fun FinderSettingsList(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FinderAppGrid(
+    columns: Int,
     apps: List<CloneApp>,
     showLabels: Boolean,
     onOpenApp: (CloneApp) -> Unit,
     onOpenAppActions: (CloneApp, AppContextSource) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        apps.chunked(4).forEach { rowApps ->
+        apps.chunked(columns).forEach { rowApps ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowApps.forEach { app ->
                     Column(
@@ -548,7 +557,7 @@ private fun FinderAppGrid(
                         }
                     }
                 }
-                repeat(4 - rowApps.size) {
+                repeat(columns - rowApps.size) {
                     Spacer(Modifier.weight(1f))
                 }
             }

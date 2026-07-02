@@ -67,6 +67,7 @@ Unreleased work moves launcher settings onto a single DataStore path:
 - Widget picker supports local provider/title search, explicit empty search results, and health labels for ready, template, setup-required, missing-provider, and preview-unavailable widgets
 - Home screen settings can export/import `one-ui-home-clone-backup.json` for settings, pages, folders, hidden apps, recent searches, and bound-widget metadata; unavailable restored apps/widgets stay visible as repairable placeholders
 - Home screen settings can export `one-ui-home-clone-diagnostics.txt` with sanitized version, SDK, launcher-role, crash-summary, app-inventory, layout, and widget counts without app names or search history
+- Responsive layout contracts now select explicit phone portrait, phone landscape, foldable-width, and tablet grids; Home/Apps pagination, widget placement, Settings, folders, Widget Picker, edit tray, and default-launcher prompt are bounded per form factor
 
 v0.2.0 landed the widgets + persistence + motion primitives:
 
@@ -173,7 +174,7 @@ See [ROADMAP.md](ROADMAP.md). Near-term themes:
 1. Real `AppWidgetHost` integration (v0.2.x)
 2. Drop-to-edge page creation (v0.2.x)
 3. Motion parity — 240fps reference captures → Compose `spring()` parameters (v0.3.x)
-4. Landscape + foldable posture support (v0.4.x)
+4. Finder expansion with Samsung-like on-device sources (v0.4.x)
 5. Optional `tribalfs/oneui-design` AndroidView interop for SwitchBar / ToolbarLayout fidelity (v0.5.x)
 
 ## Legal
