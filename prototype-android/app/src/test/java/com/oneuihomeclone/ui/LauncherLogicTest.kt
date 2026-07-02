@@ -37,6 +37,16 @@ class LauncherLogicTest {
         items = items,
     )
 
+    private fun widget(title: String, hostWidgetId: Int? = null) =
+        WidgetTemplateModel(
+            title = title,
+            summary = "$title summary",
+            category = "Recommended",
+            span = "4 x 2",
+            accent = Color.Gray,
+            hostWidgetId = hostWidgetId,
+        )
+
     @Test
     fun totalPageCount_withoutMediaPage() {
         assertEquals(3, totalPageCount(3, mediaPageEnabled = false))
@@ -182,6 +192,30 @@ class LauncherLogicTest {
         val pages = listOf(page(1, items))
         val result = applyHiddenAppsToPages(pages, emptySet())
         assertEquals(pages, result)
+    }
+
+    @Test
+    fun boundWidgetCount_countsOnlyHostBackedWidgets() {
+        val pages = listOf(
+            page(1, widgets = listOf(widget("Calendar"), widget("Clock", hostWidgetId = 42))),
+            page(2, widgets = listOf(widget("Weather", hostWidgetId = 99))),
+        )
+
+        assertEquals(2, boundWidgetCount(pages))
+    }
+
+    @Test
+    fun clearBoundWidgetsFromPages_keepsSyntheticSeedWidgets() {
+        val seed = widget("Calendar")
+        val pages = listOf(
+            page(1, widgets = listOf(seed, widget("Clock", hostWidgetId = 42))),
+            page(2, widgets = listOf(widget("Weather", hostWidgetId = 99))),
+        )
+
+        val result = clearBoundWidgetsFromPages(pages)
+
+        assertEquals(listOf(seed), result[0].widgets)
+        assertTrue(result[1].widgets.isEmpty())
     }
 
     @Test

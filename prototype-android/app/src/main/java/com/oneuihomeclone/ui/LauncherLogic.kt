@@ -209,8 +209,18 @@ internal fun widgetBindOptions(widget: WidgetTemplateModel): Bundle =
         putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight * 2)
     }
 
+internal fun boundWidgetCount(pages: List<HomePageModel>): Int =
+    pages.sumOf { page -> page.widgets.count { it.hostWidgetId != null } }
+
+internal fun clearBoundWidgetsFromPages(pages: List<HomePageModel>): List<HomePageModel> =
+    pages.map { page ->
+        page.copy(widgets = page.widgets.filter { it.hostWidgetId == null })
+    }
+
 internal fun deleteWidgetId(widgetId: Int) {
+    if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return
     runCatching { LauncherApp.appWidgetHost()?.deleteAppWidgetId(widgetId) }
+        .onFailure { Log.w("OneUiHome/widgets", "Widget id $widgetId delete failed (${it.javaClass.simpleName})") }
 }
 
 internal fun homeItemLabel(item: HomeGridItemModel): String {

@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import com.oneuihomeclone.widgets.WidgetBindRequest
 import com.oneuihomeclone.widgets.WidgetBindResult
+import com.oneuihomeclone.widgets.withResolvedSystemBindActivity
 import kotlin.system.exitProcess
 import java.io.File
 import java.io.PrintWriter
@@ -131,13 +132,18 @@ class LauncherApp : Application() {
          * observes null and falls back to its own error path rather than silently
          * stealing the first caller's result.
          */
-        private val pendingWidgetBindCallback: AtomicReference<((WidgetBindResult) -> Unit)?> =
+        private val pendingWidgetBindRequest: AtomicReference<PendingWidgetBindRequest?> =
             AtomicReference(null)
 
         fun appWidgetHost(): AppWidgetHost? = widgetHost
 
         fun appWidgetManager(): AppWidgetManager? =
             instance?.let { AppWidgetManager.getInstance(it) }
+
+        fun resetWidgetHost() {
+            runCatching { widgetHost?.deleteHost() }
+                .onFailure { Log.w(TAG, "Widget host reset failed (${it.javaClass.simpleName})") }
+        }
 
         fun consumePreviousCrashLog(): String? = instance?.consumePreviousCrashLog()
 
@@ -165,25 +171,32 @@ class LauncherApp : Application() {
             callback: (WidgetBindResult) -> Unit,
         ): Boolean {
             val launcher = widgetBindLauncher ?: return false
+            val app = instance ?: return false
+            val resolvedRequest = request.withResolvedSystemBindActivity(app) ?: return false
             // A prior-in-flight callback would mean someone started a second bind before
             // the first returned. This shouldn't happen in UI flow — but if it does, we
             // surface Declined for the older request so neither waits forever.
-            pendingWidgetBindCallback.getAndSet(callback)?.let { stale ->
-                runCatching { stale(WidgetBindResult.Declined(AppWidgetManager.INVALID_APPWIDGET_ID)) }
+            pendingWidgetBindRequest.getAndSet(
+                PendingWidgetBindRequest(
+                    allocatedWidgetId = request.allocatedWidgetId,
+                    callback = callback,
+                ),
+            )?.let { stale ->
+                runCatching { stale.callback(WidgetBindResult.Declined(stale.allocatedWidgetId)) }
                     .onFailure { Log.w(TAG, "Stale bind callback threw during superseding request", it) }
             }
-            return runCatching { launcher.launch(request) }.fold(
+            return runCatching { launcher.launch(resolvedRequest) }.fold(
                 onSuccess = { true },
                 onFailure = { cause ->
                     Log.e(TAG, "Widget bind launcher.launch() failed", cause)
-                    pendingWidgetBindCallback.set(null)
+                    pendingWidgetBindRequest.set(null)
                     false
                 },
             )
         }
 
         internal fun consumePendingWidgetBindCallback(): ((WidgetBindResult) -> Unit)? =
-            pendingWidgetBindCallback.getAndSet(null)
+            pendingWidgetBindRequest.getAndSet(null)?.callback
 
         /**
          * Called from `Activity.onDestroy` to prevent a callback left by a dying Activity
@@ -193,9 +206,14 @@ class LauncherApp : Application() {
          * completes rather than hanging forever.
          */
         internal fun cancelPendingWidgetBind() {
-            val pending = pendingWidgetBindCallback.getAndSet(null) ?: return
-            runCatching { pending(WidgetBindResult.Declined(AppWidgetManager.INVALID_APPWIDGET_ID)) }
+            val pending = pendingWidgetBindRequest.getAndSet(null) ?: return
+            runCatching { pending.callback(WidgetBindResult.Declined(pending.allocatedWidgetId)) }
                 .onFailure { Log.w(TAG, "Pending widget bind callback threw during cancel", it) }
         }
+
+        private data class PendingWidgetBindRequest(
+            val allocatedWidgetId: Int,
+            val callback: (WidgetBindResult) -> Unit,
+        )
     }
 }

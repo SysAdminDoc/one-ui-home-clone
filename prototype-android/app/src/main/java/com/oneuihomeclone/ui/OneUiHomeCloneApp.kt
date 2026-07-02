@@ -457,6 +457,7 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
     val filteredWidgetTemplates = remember(selectedWidgetCategory, widgetTemplates) {
         filterWidgetsForCategory(widgetTemplates, selectedWidgetCategory)
     }
+    val activeBoundWidgetCount = remember(homePages) { boundWidgetCount(homePages) }
     val finderSettings = remember(
         searchQuery,
         homeLayoutMode,
@@ -565,6 +566,8 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
         if (providerInfo == null) {
             addWidgetToTargetPage(widget, targetPageId, targetHomePageIndex)
             showFeedback("${widget.title} added to $targetPageLabel.")
+        } else if (providerInfo.configure != null) {
+            showFeedback("${widget.title} needs setup before it can be added.")
         } else {
             val host = LauncherApp.appWidgetHost()
             val manager = LauncherApp.appWidgetManager()
@@ -613,18 +616,33 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
                             when (result) {
                                 is WidgetBindResult.Bound -> commitBoundWidget(result.widgetId)
                                 is WidgetBindResult.Declined -> {
+                                    deleteWidgetId(result.requestedId)
                                     showFeedback("Widget was not added.")
                                 }
                             }
                         }
                         if (!launched) {
                             deleteWidgetId(allocatedId)
-                            showFeedback("Widget picker is not ready yet.")
+                            showFeedback("Widget binding is not available on this device.")
                         }
                     }
                 }
             }
         }
+    }
+
+    val resetWidgets: () -> Unit = {
+        val removedCount = boundWidgetCount(homePages)
+        LauncherApp.resetWidgetHost()
+        homePages = clearBoundWidgetsFromPages(homePages)
+        coroutineScope.launch { widgetPersistence.clear() }
+        showFeedback(
+            if (removedCount == 0) {
+                "Widget host state reset."
+            } else {
+                "Reset $removedCount widget${if (removedCount == 1) "" else "s"}."
+            },
+        )
     }
 
     val motionPresetKey = remember(motionPreset) {
@@ -854,6 +872,7 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
                 homePageCount = homePages.size,
                 appsScreenSortTitle = drawerSortMode.title,
                 hiddenAppCount = hiddenAppIds.size,
+                boundWidgetCount = activeBoundWidgetCount,
                 focusedSettingTitle = settingsFocusTitle,
                 onClose = {
                     settingsFocusTitle = null
@@ -868,6 +887,7 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
                 onLockHomeScreenLayoutChange = { lockHomeScreenLayout = it },
                 onMotionPresetChange = { motionPreset = it },
                 onFolderGridChange = { folderGrid = it },
+                onResetWidgets = resetWidgets,
             )
         }
 

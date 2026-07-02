@@ -50,6 +50,7 @@ internal fun SettingsOverlay(
     homePageCount: Int,
     appsScreenSortTitle: String,
     hiddenAppCount: Int,
+    boundWidgetCount: Int,
     focusedSettingTitle: String?,
     onClose: () -> Unit,
     onMediaPageChange: (Boolean) -> Unit,
@@ -61,6 +62,7 @@ internal fun SettingsOverlay(
     onLockHomeScreenLayoutChange: (Boolean) -> Unit,
     onMotionPresetChange: (MotionPresetMode) -> Unit,
     onFolderGridChange: (FolderGridMode) -> Unit,
+    onResetWidgets: () -> Unit,
 ) {
     val layoutRows = remember(defaultHomePageLabel, homePageCount, homeLayoutMode, appsScreenSortTitle, hiddenAppCount, folderGrid) {
         listOf(
@@ -211,6 +213,18 @@ internal fun SettingsOverlay(
                     )
                 }
                 item {
+                    SettingsActionCard(
+                        title = "Reset widgets",
+                        description = if (boundWidgetCount == 0) {
+                            "Clear the launcher widget host and remove stale provider state."
+                        } else {
+                            "Remove $boundWidgetCount bound widget${if (boundWidgetCount == 1) "" else "s"} and clear stale provider state."
+                        },
+                        actionLabel = "Reset",
+                        onClick = onResetWidgets,
+                    )
+                }
+                item {
                     SettingsSection(
                         title = "Behavior",
                         summary = "Expected launcher defaults",
@@ -222,6 +236,34 @@ internal fun SettingsOverlay(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsActionCard(
+    title: String,
+    description: String,
+    actionLabel: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        shape = OneUiPanelShape,
+        color = OneUiSurface,
+        shadowElevation = 1.dp,
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(title, color = OneUiText, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(4.dp))
+                Text(description, color = OneUiTextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+            }
+            SettingsCapsule(label = actionLabel, onClick = onClick, accent = true)
         }
     }
 }

@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
      * ActivityResultLauncher for `ACTION_APPWIDGET_BIND`. Registered before `setContent`
      * so the lifecycle owner is in CREATED state — registration during/after RESUMED
      * throws `IllegalStateException`. The lambda is hot-swapped per request via
-     * [LauncherApp.pendingWidgetBindCallback] so callers from deep in Compose can await
+     * `LauncherApp`'s pending bind callback so callers from deep in Compose can await
      * the result without a ViewModel plumbing pass.
      */
     private lateinit var widgetBindLauncher: ActivityResultLauncher<WidgetBindRequest>

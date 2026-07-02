@@ -3,8 +3,11 @@ package com.oneuihomeclone.widgets
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.UserHandle
 import android.util.Log
@@ -36,6 +39,7 @@ data class WidgetBindRequest(
     val allocatedWidgetId: Int,
     val providerInfo: AppWidgetProviderInfo,
     val options: Bundle? = null,
+    val bindActivity: ComponentName? = null,
 )
 
 sealed class WidgetBindResult {
@@ -49,19 +53,7 @@ sealed class WidgetBindResult {
 class WidgetBindContract : ActivityResultContract<WidgetBindRequest, WidgetBindResult>() {
 
     override fun createIntent(context: Context, input: WidgetBindRequest): Intent =
-        Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, input.allocatedWidgetId)
-            putExtra(EXTRA_ALLOCATED_ID_INTERNAL, input.allocatedWidgetId)
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, input.providerInfo.provider)
-            // minSdk=28, so the Lollipop-era profile extra is always available.
-            if (input.providerInfo.profile != null) {
-                putExtra(
-                    AppWidgetManager.EXTRA_APPWIDGET_PROVIDER_PROFILE,
-                    input.providerInfo.profile as UserHandle,
-                )
-            }
-            input.options?.let { putExtra(AppWidgetManager.EXTRA_APPWIDGET_OPTIONS, it) }
-        }
+        input.toBindIntent()
 
     override fun parseResult(resultCode: Int, intent: Intent?): WidgetBindResult {
         val allocatedId = readAllocatedId(intent)
@@ -104,3 +96,40 @@ class WidgetBindContract : ActivityResultContract<WidgetBindRequest, WidgetBindR
         private const val TAG = "WidgetBindContract"
     }
 }
+
+internal fun WidgetBindRequest.toBindIntent(): Intent =
+    Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
+        bindActivity?.let(::setComponent)
+        putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, allocatedWidgetId)
+        putExtra(EXTRA_ALLOCATED_ID_INTERNAL, allocatedWidgetId)
+        putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, providerInfo.provider)
+        // minSdk=28, so the Lollipop-era profile extra is always available.
+        if (providerInfo.profile != null) {
+            putExtra(
+                AppWidgetManager.EXTRA_APPWIDGET_PROVIDER_PROFILE,
+                providerInfo.profile as UserHandle,
+            )
+        }
+        options?.let { putExtra(AppWidgetManager.EXTRA_APPWIDGET_OPTIONS, it) }
+    }
+
+@Suppress("DEPRECATION")
+internal fun WidgetBindRequest.withResolvedSystemBindActivity(context: Context): WidgetBindRequest? {
+    val resolver = context.packageManager
+    val resolvedInfo = resolver.resolveActivity(toBindIntent(), PackageManager.MATCH_DEFAULT_ONLY)
+    val activityInfo = resolvedInfo?.activityInfo
+    if (activityInfo == null) {
+        Log.w(TAG, "No activity resolves ACTION_APPWIDGET_BIND")
+        return null
+    }
+    val appInfo = activityInfo.applicationInfo
+    val isSystemHandler = appInfo != null &&
+        (appInfo.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
+    if (!isSystemHandler) {
+        Log.w(TAG, "Refusing non-system widget bind handler ${activityInfo.packageName}/${activityInfo.name}")
+        return null
+    }
+    return copy(bindActivity = ComponentName(activityInfo.packageName, activityInfo.name))
+}
+
+private const val TAG = "WidgetBindContract"
