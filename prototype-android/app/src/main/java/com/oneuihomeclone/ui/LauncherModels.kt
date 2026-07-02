@@ -6,6 +6,11 @@ import android.content.Intent
 import android.os.UserHandle
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import com.oneuihomeclone.data.DrawerSortKey
+import com.oneuihomeclone.data.FolderGridKey
+import com.oneuihomeclone.data.HomeLayoutKey
+import com.oneuihomeclone.data.LauncherState
+import com.oneuihomeclone.data.MotionPresetKey
 import com.oneuihomeclone.widgets.PreviewSource
 
 internal data class CloneApp(
@@ -149,6 +154,58 @@ internal data class PersistedToggles(
     val drawerSortMode: DrawerSortMode,
     val motionPreset: MotionPresetMode,
     val folderGrid: FolderGridMode,
+)
+
+internal fun LauncherState.toPersistedToggles(): PersistedToggles = PersistedToggles(
+    mediaPageEnabled = mediaPageEnabled,
+    appsButtonEnabled = appsButtonEnabled,
+    appLabelsEnabled = appLabelsEnabled,
+    widgetLabelsEnabled = widgetLabelsEnabled,
+    swipeDownForNotifications = swipeDownForNotifications,
+    lockHomeScreenLayout = lockHomeScreenLayout,
+    homeLayoutMode = when (homeLayoutMode) {
+        HomeLayoutKey.HOME_AND_APPS_SCREENS -> HomeLayoutMode.HOME_AND_APPS_SCREENS
+        HomeLayoutKey.HOME_SCREEN_ONLY -> HomeLayoutMode.HOME_SCREEN_ONLY
+    },
+    drawerSortMode = when (drawerSortMode) {
+        DrawerSortKey.CUSTOM_ORDER -> DrawerSortMode.CUSTOM_ORDER
+        DrawerSortKey.ALPHABETICAL -> DrawerSortMode.ALPHABETICAL
+    },
+    motionPreset = when (motionPreset) {
+        MotionPresetKey.STANDARD -> MotionPresetMode.STANDARD
+        MotionPresetKey.REDUCED -> MotionPresetMode.REDUCED
+    },
+    folderGrid = when (folderGrid) {
+        FolderGridKey.GRID_3X4 -> FolderGridMode.GRID_3X4
+        FolderGridKey.GRID_4X4 -> FolderGridMode.GRID_4X4
+        FolderGridKey.GRID_5X5 -> FolderGridMode.GRID_5X5
+    },
+)
+
+internal fun PersistedToggles.toLauncherState(): LauncherState = LauncherState(
+    mediaPageEnabled = mediaPageEnabled,
+    appsButtonEnabled = appsButtonEnabled,
+    appLabelsEnabled = appLabelsEnabled,
+    widgetLabelsEnabled = widgetLabelsEnabled,
+    swipeDownForNotifications = swipeDownForNotifications,
+    lockHomeScreenLayout = lockHomeScreenLayout,
+    homeLayoutMode = when (homeLayoutMode) {
+        HomeLayoutMode.HOME_AND_APPS_SCREENS -> HomeLayoutKey.HOME_AND_APPS_SCREENS
+        HomeLayoutMode.HOME_SCREEN_ONLY -> HomeLayoutKey.HOME_SCREEN_ONLY
+    },
+    drawerSortMode = when (drawerSortMode) {
+        DrawerSortMode.CUSTOM_ORDER -> DrawerSortKey.CUSTOM_ORDER
+        DrawerSortMode.ALPHABETICAL -> DrawerSortKey.ALPHABETICAL
+    },
+    motionPreset = when (motionPreset) {
+        MotionPresetMode.STANDARD -> MotionPresetKey.STANDARD
+        MotionPresetMode.REDUCED -> MotionPresetKey.REDUCED
+    },
+    folderGrid = when (folderGrid) {
+        FolderGridMode.GRID_3X4 -> FolderGridKey.GRID_3X4
+        FolderGridMode.GRID_4X4 -> FolderGridKey.GRID_4X4
+        FolderGridMode.GRID_5X5 -> FolderGridKey.GRID_5X5
+    },
 )
 
 internal const val MAX_ICONS_LOADED_EAGERLY = 300

@@ -10,7 +10,6 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
-import com.oneuihomeclone.data.LauncherPreferences
 import com.oneuihomeclone.data.MotionPresetKey
 
 /**
@@ -90,14 +89,10 @@ inline fun <reified T> SpringParams.spec(): FiniteAnimationSpec<T> =
 val LocalMotionScheme = staticCompositionLocalOf { MotionScheme.Standard }
 
 /**
- * Top-level provider wired from the Activity. Seeds [LocalMotionScheme] from the user's
- * persisted [MotionPresetKey] (via [LauncherPreferences]) OR'd with the system-level
+ * Top-level provider wired from the Activity. Uses the supplied persisted
+ * [MotionPresetKey] OR'd with the system-level
  * animator-scale=0 signal (users globally disable animations via Developer Options /
- * Accessibility → "Remove animations").
- *
- * Seed-from-snapshot is acceptable for v0.2.0 — live-switch without restart will land
- * once the motion preset toggle ships in the settings UI (follow-up iter). The snapshot
- * approach means changing the preset today requires an Activity recreate to take effect.
+ * Accessibility -> "Remove animations").
  */
 @Composable
 fun ProvideMotionScheme(
@@ -105,9 +100,7 @@ fun ProvideMotionScheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current.applicationContext
-    val preset = presetOverride ?: remember(context) {
-        LauncherPreferences(context).snapshot().motionPreset
-    }
+    val preset = presetOverride ?: MotionPresetKey.STANDARD
     val systemReduce = remember(context) {
         runCatching {
             Settings.Global.getFloat(

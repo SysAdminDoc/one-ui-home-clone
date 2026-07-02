@@ -14,26 +14,11 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
 /**
- * DataStore Preferences mirror for launcher toggles — forward-compat plumbing.
+ * DataStore Preferences store for launcher toggles.
  *
- * v0.2.0 introduces this alongside the legacy [LauncherPreferences] (SharedPreferences).
- * A [SharedPreferencesMigration] copies the existing v0.1.0 store once on first read so
- * users keep their toggle state after upgrade.
- *
- * **Dual-store reality for v0.2.0:** [LauncherPreferences] remains the sole WRITER in
- * v0.2.0 to avoid split-brain with the 3,800-line monolith that already owns every
- * write call site. This DataStore file is live — `state` is a real DataStore flow — but
- * the SP→DS migration is strictly one-shot: after it runs on the first DS read, further
- * writes made through [LauncherPreferences] go to SharedPreferences only and will NOT
- * reach this DataStore file. Conversely, writes made through [update] go to DataStore
- * only and will NOT reach SharedPreferences. Until the v0.2.x monolith split cuts every
- * call site over to DataStore, readers that need to observe live toggle changes should
- * read [LauncherPreferences.snapshot] instead.
- *
- * Why DataStore: widget-binding state and pending-operation logs need typed async flows
- * that SharedPreferences can't offer without main-thread writes. Standing this up now
- * means the follow-up monolith split does not also have to introduce a new persistence
- * layer in the same change.
+ * A one-shot [SharedPreferencesMigration] copies the legacy v0.1.0
+ * `one_ui_home_clone_prefs` file on the first DataStore read. After migration, this
+ * store is the only launcher-settings writer and Compose observes [state] directly.
  */
 private const val DS_NAME = "one_ui_home_clone_prefs_ds"
 private const val LEGACY_SP_NAME = "one_ui_home_clone_prefs"
@@ -85,6 +70,19 @@ class LauncherDataStore(context: Context) {
     }
 
     class Mutator internal constructor(private val prefs: androidx.datastore.preferences.core.MutablePreferences) {
+        fun setLauncherState(state: LauncherState) {
+            setMediaPageEnabled(state.mediaPageEnabled)
+            setAppsButtonEnabled(state.appsButtonEnabled)
+            setAppLabelsEnabled(state.appLabelsEnabled)
+            setWidgetLabelsEnabled(state.widgetLabelsEnabled)
+            setSwipeDownForNotifications(state.swipeDownForNotifications)
+            setLockHomeScreenLayout(state.lockHomeScreenLayout)
+            setHomeLayoutMode(state.homeLayoutMode)
+            setDrawerSortMode(state.drawerSortMode)
+            setMotionPreset(state.motionPreset)
+            setFolderGrid(state.folderGrid)
+        }
+
         fun setMediaPageEnabled(value: Boolean) { prefs[Keys.MEDIA_PAGE] = value }
         fun setAppsButtonEnabled(value: Boolean) { prefs[Keys.APPS_BUTTON] = value }
         fun setAppLabelsEnabled(value: Boolean) { prefs[Keys.APP_LABELS] = value }

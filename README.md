@@ -55,16 +55,22 @@ v0.2.2 moves app inventory onto Android's launcher contract:
 - Package/profile changes refresh the inventory through `LauncherApps.Callback`
 - Launch targets carry their profile-aware component and user handle, with the existing sample apps retained only as the empty/error fallback
 
+Unreleased work moves launcher settings onto a single DataStore path:
+
+- `LauncherDataStore.state` is collected by Compose and is now the only writer for media page, Apps button, labels, notification swipe, locked layout, home layout, drawer sort, motion preset, and folder grid toggles
+- The old SharedPreferences file is used only as a one-shot migration source on first DataStore read
+- Motion preset changes now feed `ProvideMotionScheme` live without requiring Activity recreation
+
 v0.2.0 landed the widgets + persistence + motion primitives:
 
-- `LauncherDataStore` — DataStore Preferences mirror with one-shot migration from the v0.1.0 SharedPreferences file (live DataStore flow; `LauncherPreferences` remains the sole writer until the monolith split cuts call sites over)
+- `LauncherDataStore` — DataStore Preferences store with one-shot migration from the v0.1.0 SharedPreferences file
 - `WidgetPersistence` — versioned JSON widget-ID store on its own DataStore file, bounds-checked decode (128 KB / 1024 entries) to contain corrupt-file blast radius
 - `MotionScheme` + `ProvideMotionScheme` — Standard / Reduced presets exposed as raw `SpringParams`, threaded through a `LocalMotionScheme` CompositionLocal. Platform `ANIMATOR_DURATION_SCALE == 0` forces Reduced
 - `WidgetBindContract` — stateless `ActivityResultContract` for `ACTION_APPWIDGET_BIND` that round-trips the allocated widget ID through an Intent extra so process death during the bind dialog still deallocates correctly on cancel
 - `WidgetPreviewLoader` — `previewLayout` (API 31+) → `previewImage` → provider icon fallback
 - Dep bumps: Compose BOM 2024.01 → 2024.10.01 (Compose 1.7 / Material3 1.3), Kotlin 1.9.22 → 1.9.24, core-ktx / activity-compose / lifecycle / material advanced to current stable; `datastore-preferences` 1.1.1 added
 
-Motion preset wiring is seeded at composition — live switch without Activity recreate ships when the settings toggle lands. Widget bind / preview / persistence are plumbed but not yet consumed by the picker UI; that's v0.2.x follow-up work alongside drop-to-edge page creation and widget resize handles.
+Widget bind / preview / persistence are plumbed but not yet fully consumed by live home-cell rendering; that remains v0.2.x follow-up work alongside drop-to-edge page creation and widget resize handles.
 
 ## Build the prototype
 

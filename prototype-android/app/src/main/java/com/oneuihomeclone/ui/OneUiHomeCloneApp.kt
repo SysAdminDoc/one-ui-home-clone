@@ -70,6 +70,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -101,8 +102,9 @@ import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.DrawerSortKey
 import com.oneuihomeclone.data.FolderGridKey
 import com.oneuihomeclone.data.HomeLayoutKey
+import com.oneuihomeclone.data.LauncherDataStore
 import com.oneuihomeclone.data.LauncherLayoutStore
-import com.oneuihomeclone.data.LauncherPreferences
+import com.oneuihomeclone.data.LauncherState
 import com.oneuihomeclone.data.MotionPresetKey
 import com.oneuihomeclone.data.WidgetPersistence
 import com.oneuihomeclone.ui.motion.ProvideMotionScheme
@@ -122,6 +124,7 @@ import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.absoluteValue
@@ -208,11 +211,13 @@ fun OneUiHomeCloneApp(
     recoveryNotice: String? = null,
 ) {
     val appContext = LocalContext.current.applicationContext
-    val preferences = remember(appContext) { LauncherPreferences(appContext) }
+    val launcherDataStore = remember(appContext) { LauncherDataStore(appContext) }
+    val launcherState: LauncherState? by launcherDataStore.state.collectAsStateWithLifecycle(initialValue = null)
     val widgetPersistence = remember(appContext) { WidgetPersistence(appContext) }
     val layoutStore = remember(appContext) { LauncherLayoutStore(appContext) }
     val coroutineScope = rememberCoroutineScope()
-    val initialPrefs = remember(preferences) { preferences.snapshot() }
+    var hasAppliedPersistedSettings by remember { mutableStateOf(false) }
+    val initialPrefs = LauncherState()
     val fallbackApps = remember { sampleApps() }
     val appInventory = remember(appContext, fallbackApps) { LauncherAppInventory(appContext, fallbackApps) }
     var allApps by remember { mutableStateOf(fallbackApps) }
@@ -308,6 +313,22 @@ fun OneUiHomeCloneApp(
             },
         )
     }
+    LaunchedEffect(launcherState) {
+        val state = launcherState ?: return@LaunchedEffect
+        if (hasAppliedPersistedSettings) return@LaunchedEffect
+        val toggles = state.toPersistedToggles()
+        mediaPageEnabled = toggles.mediaPageEnabled
+        appsButtonEnabled = toggles.appsButtonEnabled
+        appLabelsEnabled = toggles.appLabelsEnabled
+        widgetLabelsEnabled = toggles.widgetLabelsEnabled
+        swipeDownForNotifications = toggles.swipeDownForNotifications
+        lockHomeScreenLayout = toggles.lockHomeScreenLayout
+        homeLayoutMode = toggles.homeLayoutMode
+        drawerSortMode = toggles.drawerSortMode
+        motionPreset = toggles.motionPreset
+        folderGrid = toggles.folderGrid
+        hasAppliedPersistedSettings = true
+    }
     var settingsFocusTitle by remember { mutableStateOf<String?>(null) }
     var selectedWidgetCategory by remember { mutableStateOf("Recommended") }
     var nextPageId by remember { mutableIntStateOf(3) }
@@ -346,59 +367,32 @@ fun OneUiHomeCloneApp(
         }
     }
 
-    // Persist user-facing toggles via snapshotFlow so the first emission (on composition
-    // entry) can be discarded — there's no reason to rewrite SharedPreferences with the
-    // values we just read from it. Further emissions fire only on genuine state changes.
-    LaunchedEffect(preferences) {
+    // Persist user-facing toggles only after the DataStore snapshot initializes Compose
+    // state. The first non-null emission is that loaded snapshot, so skip it.
+    LaunchedEffect(launcherDataStore) {
         snapshotFlow {
-            PersistedToggles(
-                mediaPageEnabled = mediaPageEnabled,
-                appsButtonEnabled = appsButtonEnabled,
-                appLabelsEnabled = appLabelsEnabled,
-                widgetLabelsEnabled = widgetLabelsEnabled,
-                swipeDownForNotifications = swipeDownForNotifications,
-                lockHomeScreenLayout = lockHomeScreenLayout,
-                homeLayoutMode = homeLayoutMode,
-                drawerSortMode = drawerSortMode,
-                motionPreset = motionPreset,
-                folderGrid = folderGrid,
-            )
+            if (!hasAppliedPersistedSettings) {
+                null
+            } else {
+                PersistedToggles(
+                    mediaPageEnabled = mediaPageEnabled,
+                    appsButtonEnabled = appsButtonEnabled,
+                    appLabelsEnabled = appLabelsEnabled,
+                    widgetLabelsEnabled = widgetLabelsEnabled,
+                    swipeDownForNotifications = swipeDownForNotifications,
+                    lockHomeScreenLayout = lockHomeScreenLayout,
+                    homeLayoutMode = homeLayoutMode,
+                    drawerSortMode = drawerSortMode,
+                    motionPreset = motionPreset,
+                    folderGrid = folderGrid,
+                )
+            }
         }
+            .filterNotNull()
             .drop(1)
             .collect { toggles ->
-                preferences.update { editor ->
-                    editor
-                        .setMediaPageEnabled(toggles.mediaPageEnabled)
-                        .setAppsButtonEnabled(toggles.appsButtonEnabled)
-                        .setAppLabelsEnabled(toggles.appLabelsEnabled)
-                        .setWidgetLabelsEnabled(toggles.widgetLabelsEnabled)
-                        .setSwipeDownForNotifications(toggles.swipeDownForNotifications)
-                        .setLockHomeScreenLayout(toggles.lockHomeScreenLayout)
-                        .setHomeLayoutMode(
-                            when (toggles.homeLayoutMode) {
-                                HomeLayoutMode.HOME_AND_APPS_SCREENS -> HomeLayoutKey.HOME_AND_APPS_SCREENS
-                                HomeLayoutMode.HOME_SCREEN_ONLY -> HomeLayoutKey.HOME_SCREEN_ONLY
-                            },
-                        )
-                        .setDrawerSortMode(
-                            when (toggles.drawerSortMode) {
-                                DrawerSortMode.CUSTOM_ORDER -> DrawerSortKey.CUSTOM_ORDER
-                                DrawerSortMode.ALPHABETICAL -> DrawerSortKey.ALPHABETICAL
-                            },
-                        )
-                        .setMotionPreset(
-                            when (toggles.motionPreset) {
-                                MotionPresetMode.STANDARD -> MotionPresetKey.STANDARD
-                                MotionPresetMode.REDUCED -> MotionPresetKey.REDUCED
-                            },
-                        )
-                        .setFolderGrid(
-                            when (toggles.folderGrid) {
-                                FolderGridMode.GRID_3X4 -> FolderGridKey.GRID_3X4
-                                FolderGridMode.GRID_4X4 -> FolderGridKey.GRID_4X4
-                                FolderGridMode.GRID_5X5 -> FolderGridKey.GRID_5X5
-                            },
-                        )
+                launcherDataStore.update {
+                    setLauncherState(toggles.toLauncherState())
                 }
             }
     }

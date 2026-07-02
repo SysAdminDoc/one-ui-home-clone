@@ -1,6 +1,11 @@
 package com.oneuihomeclone.ui
 
 import androidx.compose.ui.graphics.Color
+import com.oneuihomeclone.data.DrawerSortKey
+import com.oneuihomeclone.data.FolderGridKey
+import com.oneuihomeclone.data.HomeLayoutKey
+import com.oneuihomeclone.data.LauncherState
+import com.oneuihomeclone.data.MotionPresetKey
 import com.oneuihomeclone.data.PersistedHomeItem
 import com.oneuihomeclone.data.PersistedHomePage
 import com.oneuihomeclone.data.PersistedLauncherLayout
@@ -365,5 +370,29 @@ class LauncherLogicTest {
             listOf("Alpha", "Blanklabel", "Zeta"),
             result.map { it.displayLabel() },
         )
+    }
+
+    @Test
+    fun launcherStateToggleMapping_roundTripsAllValues() {
+        val state = LauncherState(
+            mediaPageEnabled = false,
+            appsButtonEnabled = false,
+            appLabelsEnabled = false,
+            widgetLabelsEnabled = false,
+            swipeDownForNotifications = false,
+            lockHomeScreenLayout = true,
+            homeLayoutMode = HomeLayoutKey.HOME_SCREEN_ONLY,
+            drawerSortMode = DrawerSortKey.ALPHABETICAL,
+            motionPreset = MotionPresetKey.REDUCED,
+            folderGrid = FolderGridKey.GRID_5X5,
+        )
+
+        val toggles = state.toPersistedToggles()
+
+        assertEquals(HomeLayoutMode.HOME_SCREEN_ONLY, toggles.homeLayoutMode)
+        assertEquals(DrawerSortMode.ALPHABETICAL, toggles.drawerSortMode)
+        assertEquals(MotionPresetMode.REDUCED, toggles.motionPreset)
+        assertEquals(FolderGridMode.GRID_5X5, toggles.folderGrid)
+        assertEquals(state, toggles.toLauncherState())
     }
 }
