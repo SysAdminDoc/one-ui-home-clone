@@ -137,6 +137,18 @@ adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME
 
 If Android keeps another launcher as the default Home app, One UI Home Clone shows an in-app prompt with an `Open Home settings` action. Dismissing the prompt is non-blocking; the app refreshes Home-role status when returning from Android settings.
 
+## Privacy and data safety
+
+One UI Home Clone is local-only in the current prototype:
+
+- Network: the manifest declares no `INTERNET` permission, so the app cannot upload launcher data through its own process.
+- Installed apps: Android `LauncherApps` and package-visibility queries are used locally to render Home, Apps screen, Finder, folders, hide-apps state, labels, icons, profile badges, and launch targets.
+- Searches and layout: recent Finder searches, hidden apps, Home pages, folders, settings, backup metadata, and widget IDs are stored in app-private DataStore/files. `android:allowBackup="false"` keeps this data out of Android backup.
+- Widgets and wallpaper: `EXPAND_STATUS_BAR`, `SET_WALLPAPER`, `VIBRATE`, `AppWidgetHost`, and wallpaper APIs are used for launcher behavior only.
+- Exports: `one-ui-home-clone-backup.json` intentionally contains launcher layout/search/widget data for restore; `one-ui-home-clone-diagnostics.txt` contains only version, SDK, default-launcher state, sanitized crash fields, and aggregate app/layout/widget counts.
+
+Store listing copy: no data is collected, shared, or transmitted by the app; launcher data remains on device unless the user manually exports a backup or diagnostics file.
+
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md). Near-term themes:

@@ -74,6 +74,13 @@
     <string name="settings_restore_backup_summary">Read %1$s and restore missing apps or widgets as repairable Home placeholders.</string>
     <string name="settings_export_diagnostics">Export diagnostics</string>
     <string name="settings_export_diagnostics_summary">Write sanitized support counts to %1$s without app names or search history.</string>
+    <string name="settings_privacy_title">Privacy and permissions</string>
+    <string name="settings_privacy_summary">Launcher data stays on this device. The app does not request internet access and Android backup is disabled.</string>
+    <string name="settings_privacy_network">Network: no INTERNET permission is declared, so launcher data is not sent to a server by the app.</string>
+    <string name="settings_privacy_apps">Installed apps: launchable apps and profile labels are read locally for Home, Apps screen, Finder, folders, and hide-apps state.</string>
+    <string name="settings_privacy_search_layout">Search and layout: recent Finder searches, hidden apps, pages, folders, settings, and widget IDs stay in app-private storage with allowBackup=false.</string>
+    <string name="settings_privacy_widgets_wallpaper">Widgets and wallpaper: Android widget, status bar, haptic, and wallpaper APIs are used for launcher behavior only.</string>
+    <string name="settings_privacy_exports">Exports: backups include launcher layout data by design; diagnostics include only aggregate counts and sanitized crash summary fields.</string>
     <string name="settings_section_behavior">Behavior</string>
     <string name="settings_summary_behavior">Expected launcher defaults</string>
     <string name="settings_add_new_apps">Add new apps to Home screen</string>

@@ -107,6 +107,13 @@ internal fun SettingsOverlay(
         SettingRowState(stringResource(R.string.settings_badge_notifications), stringResource(R.string.settings_value_dots_and_number)),
         SettingRowState(stringResource(R.string.settings_about_home_screen), stringResource(R.string.settings_about_version)),
     )
+    val privacyPoints = listOf(
+        stringResource(R.string.settings_privacy_network),
+        stringResource(R.string.settings_privacy_apps),
+        stringResource(R.string.settings_privacy_search_layout),
+        stringResource(R.string.settings_privacy_widgets_wallpaper),
+        stringResource(R.string.settings_privacy_exports),
+    )
     val layoutRows = remember(
         defaultHomePageLabel,
         homePageCount,
@@ -306,6 +313,13 @@ internal fun SettingsOverlay(
                     )
                 }
                 item {
+                    SettingsPrivacyCard(
+                        title = stringResource(R.string.settings_privacy_title),
+                        summary = stringResource(R.string.settings_privacy_summary),
+                        points = privacyPoints,
+                    )
+                }
+                item {
                     SettingsActionCard(
                         title = stringResource(R.string.settings_default_launcher),
                         description = defaultLauncherDescription,
@@ -321,6 +335,35 @@ internal fun SettingsOverlay(
                         rows = behaviorRows,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsPrivacyCard(
+    title: String,
+    summary: String,
+    points: List<String>,
+) {
+    Surface(
+        shape = OneUiPanelShape,
+        color = OneUiSurface,
+        shadowElevation = 1.dp,
+    ) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
+            Text(title, color = OneUiText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            Text(summary, color = OneUiTextSecondary, fontSize = 12.sp, lineHeight = 18.sp)
+            Spacer(Modifier.height(14.dp))
+            points.forEach { point ->
+                Text(
+                    "- $point",
+                    color = OneUiText,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                )
+                Spacer(Modifier.height(8.dp))
             }
         }
     }
