@@ -5,6 +5,7 @@
     <string name="action_done">Done</string>
     <string name="action_hide">Hide</string>
     <string name="action_open">Open</string>
+    <string name="action_later">Later</string>
     <string name="action_remove">Remove</string>
     <string name="action_reset">Reset</string>
     <string name="action_restore">Restore</string>
@@ -190,6 +191,12 @@
     <string name="safe_mode_diagnostics_exported">Diagnostics written to %1$s.</string>
     <string name="safe_mode_action_failed">%1$s failed. The launcher state was not changed.</string>
     <string name="feedback_recovery_continue">Recovery mode closed. Home loaded after the previous crash.</string>
+    <string name="default_launcher_prompt_title">Set as default Home</string>
+    <string name="default_launcher_prompt_summary">Android is still using another launcher for the Home key and system gestures.</string>
+    <string name="default_launcher_prompt_action">Open Home settings</string>
+    <string name="settings_default_launcher">Default Home app</string>
+    <string name="settings_default_launcher_current">One UI Home Clone is the current Home app.</string>
+    <string name="settings_default_launcher_not_current">Choose this launcher in Android Home app settings to make Home return here.</string>
     <string name="feedback_widget_added">%1$s added to %2$s.</string>
     <string name="feedback_widget_needs_setup">%1$s needs setup before it can be added.</string>
     <string name="feedback_widget_host_not_ready">Widget host is not ready yet.</string>

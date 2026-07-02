@@ -98,6 +98,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.oneuihomeclone.DefaultLauncherState
 import com.oneuihomeclone.LauncherApp
 import com.oneuihomeclone.R
 import com.oneuihomeclone.data.BoundWidget
@@ -135,6 +136,7 @@ import com.oneuihomeclone.widgets.PreviewSource
 import com.oneuihomeclone.widgets.WidgetBindRequest
 import com.oneuihomeclone.widgets.WidgetBindResult
 import com.oneuihomeclone.widgets.WidgetPreviewLoader
+import com.oneuihomeclone.shouldShowDefaultLauncherPrompt
 
 private fun sampleApps(): List<CloneApp> {
     return listOf(
@@ -220,6 +222,8 @@ private suspend fun loadWidgetProviderTemplates(
 fun OneUiHomeCloneApp(
     homeIntentTick: Int = 0,
     recoveryNotice: String? = null,
+    defaultLauncherState: DefaultLauncherState = DefaultLauncherState.Unknown,
+    onOpenDefaultLauncherSettings: () -> Unit = {},
 ) {
     val appContext = LocalContext.current.applicationContext
     val launcherDataStore = remember(appContext) { LauncherDataStore(appContext) }
@@ -247,6 +251,7 @@ fun OneUiHomeCloneApp(
     }
     var widgetTemplates by remember { mutableStateOf(fallbackWidgetTemplates) }
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
+    var defaultLauncherPromptDismissed by remember { mutableStateOf(false) }
     val homeScreenSettingsTitle = stringResource(R.string.settings_title_home_screen)
     val hideAppsTitle = stringResource(R.string.settings_hide_apps)
     val lockLayoutTitle = stringResource(R.string.settings_lock_layout)
@@ -317,6 +322,12 @@ fun OneUiHomeCloneApp(
     LaunchedEffect(recoveryNotice) {
         if (!recoveryNotice.isNullOrBlank()) {
             feedbackMessage = recoveryNotice
+        }
+    }
+
+    LaunchedEffect(defaultLauncherState.isDefaultLauncher) {
+        if (defaultLauncherState.isDefaultLauncher) {
+            defaultLauncherPromptDismissed = false
         }
     }
 
@@ -859,6 +870,9 @@ fun OneUiHomeCloneApp(
             MotionPresetMode.REDUCED -> MotionPresetKey.REDUCED
         }
     }
+    val showDefaultLauncherPrompt = remember(defaultLauncherState, defaultLauncherPromptDismissed) {
+        shouldShowDefaultLauncherPrompt(defaultLauncherState, defaultLauncherPromptDismissed)
+    }
 
     ProvideMotionScheme(presetOverride = motionPresetKey) {
     Box(
@@ -958,6 +972,22 @@ fun OneUiHomeCloneApp(
             onRemoveWidget = removeBoundWidget,
             onPageChange = { pageIndex = it },
         )
+
+        AnimatedVisibility(
+            visible = showDefaultLauncherPrompt,
+            enter = slideInVertically(initialOffsetY = { -it / 3 }, animationSpec = tween(220)) + fadeIn(tween(160)),
+            exit = slideOutVertically(targetOffsetY = { -it / 3 }, animationSpec = tween(160)) + fadeOut(tween(120)),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(start = 24.dp, end = 24.dp, top = 80.dp),
+        ) {
+            DefaultLauncherPrompt(
+                canOpenSettings = defaultLauncherState.canOpenSettings,
+                onOpenSettings = onOpenDefaultLauncherSettings,
+                onDismiss = { defaultLauncherPromptDismissed = true },
+            )
+        }
 
         AnimatedVisibility(
             visible = activeOverlay == OverlayPanel.DRAWER,
@@ -1084,6 +1114,7 @@ fun OneUiHomeCloneApp(
                 appsScreenSortTitle = localizedDrawerSortTitle,
                 hiddenAppCount = hiddenAppIds.size,
                 boundWidgetCount = activeBoundWidgetCount,
+                defaultLauncherState = defaultLauncherState,
                 focusedSettingTitle = settingsFocusTitle,
                 onClose = {
                     settingsFocusTitle = null
@@ -1099,6 +1130,7 @@ fun OneUiHomeCloneApp(
                 onMotionPresetChange = { motionPreset = it },
                 onFolderGridChange = { folderGrid = it },
                 onResetWidgets = resetWidgets,
+                onOpenDefaultLauncherSettings = onOpenDefaultLauncherSettings,
             )
         }
 

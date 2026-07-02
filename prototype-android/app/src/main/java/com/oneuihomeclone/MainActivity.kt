@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
      */
     private var homeIntentTick by mutableIntStateOf(0)
     private var recoveryGate by mutableStateOf<RecoveryGate>(RecoveryGate.Checking)
+    private var defaultLauncherState by mutableStateOf(DefaultLauncherState.Unknown)
 
     /**
      * ActivityResultLauncher for `ACTION_APPWIDGET_BIND`. Registered before `setContent`
@@ -70,6 +71,8 @@ class MainActivity : ComponentActivity() {
                         OneUiHomeCloneApp(
                             homeIntentTick = homeIntentTick,
                             recoveryNotice = gate.recoveryNotice,
+                            defaultLauncherState = defaultLauncherState,
+                            onOpenDefaultLauncherSettings = ::openDefaultLauncherSettings,
                         )
                     }
                     is RecoveryGate.SafeMode -> {
@@ -109,6 +112,11 @@ class MainActivity : ComponentActivity() {
             .onFailure { Log.e(TAG, "Widget host startListening failed", it) }
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshDefaultLauncherState()
+    }
+
     override fun onStop() {
         super.onStop()
         runCatching { LauncherApp.appWidgetHost()?.stopListening() }
@@ -144,6 +152,30 @@ class MainActivity : ComponentActivity() {
 
     private fun continueFromSafeMode() {
         recoveryGate = RecoveryGate.Ready(getString(R.string.feedback_recovery_continue))
+    }
+
+    private fun refreshDefaultLauncherState() {
+        lifecycleScope.launch {
+            val state = withContext(Dispatchers.IO) {
+                queryDefaultLauncherState(applicationContext)
+            }
+            defaultLauncherState = state
+        }
+    }
+
+    private fun openDefaultLauncherSettings() {
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { createDefaultLauncherSettingsIntent(applicationContext) }
+            }
+            result.fold(
+                onSuccess = { intent ->
+                    runCatching { startActivity(intent) }
+                        .onFailure { cause -> Log.e(TAG, "Default launcher settings launch failed", cause) }
+                },
+                onFailure = { cause -> Log.e(TAG, "Default launcher settings launch failed", cause) },
+            )
+        }
     }
 
     private fun resetLayoutFromSafeMode() {

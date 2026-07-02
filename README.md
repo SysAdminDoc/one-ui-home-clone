@@ -61,6 +61,7 @@ Unreleased work moves launcher settings onto a single DataStore path:
 - The old SharedPreferences file is used only as a one-shot migration source on first DataStore read
 - Motion preset changes now feed `ProvideMotionScheme` live without requiring Activity recreation
 - Crash-safe recovery mode opens after a previous crash with local reset layout, reset settings, clear widgets, sanitized diagnostics export, and continue-to-Home actions
+- Default-launcher onboarding detects when Android is using another Home app and opens the system Home role/settings flow without blocking the launcher
 
 v0.2.0 landed the widgets + persistence + motion primitives:
 
@@ -116,6 +117,8 @@ adb install -r prototype-android/app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME
 # then select "One UI Home Clone" → "Always"
 ```
+
+If Android keeps another launcher as the default Home app, One UI Home Clone shows an in-app prompt with an `Open Home settings` action. Dismissing the prompt is non-blocking; the app refreshes Home-role status when returning from Android settings.
 
 ## Roadmap
 

@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.oneuihomeclone.DefaultLauncherState
 import com.oneuihomeclone.R
 import com.oneuihomeclone.ui.theme.OneUiAccent
 import com.oneuihomeclone.ui.theme.OneUiAccentSoft
@@ -55,6 +56,7 @@ internal fun SettingsOverlay(
     appsScreenSortTitle: String,
     hiddenAppCount: Int,
     boundWidgetCount: Int,
+    defaultLauncherState: DefaultLauncherState,
     focusedSettingTitle: String?,
     onClose: () -> Unit,
     onMediaPageChange: (Boolean) -> Unit,
@@ -67,6 +69,7 @@ internal fun SettingsOverlay(
     onMotionPresetChange: (MotionPresetMode) -> Unit,
     onFolderGridChange: (FolderGridMode) -> Unit,
     onResetWidgets: () -> Unit,
+    onOpenDefaultLauncherSettings: () -> Unit,
 ) {
     val homeScreenLayoutLabel = stringResource(R.string.settings_home_screen_layout)
     val homeScreenGridLabel = stringResource(R.string.settings_home_screen_grid)
@@ -88,6 +91,11 @@ internal fun SettingsOverlay(
         boundWidgetCount == 0 -> stringResource(R.string.settings_reset_widgets_empty)
         boundWidgetCount == 1 -> stringResource(R.string.settings_reset_widgets_one)
         else -> stringResource(R.string.settings_reset_widgets_many, boundWidgetCount)
+    }
+    val defaultLauncherDescription = if (defaultLauncherState.isDefaultLauncher) {
+        stringResource(R.string.settings_default_launcher_current)
+    } else {
+        stringResource(R.string.settings_default_launcher_not_current)
     }
     val behaviorRows = listOf(
         SettingRowState(stringResource(R.string.settings_add_new_apps), stringResource(R.string.settings_value_on)),
@@ -269,6 +277,15 @@ internal fun SettingsOverlay(
                     )
                 }
                 item {
+                    SettingsActionCard(
+                        title = stringResource(R.string.settings_default_launcher),
+                        description = defaultLauncherDescription,
+                        actionLabel = stringResource(R.string.default_launcher_prompt_action),
+                        onClick = onOpenDefaultLauncherSettings,
+                        enabled = defaultLauncherState.canOpenSettings,
+                    )
+                }
+                item {
                     SettingsSection(
                         title = stringResource(R.string.settings_section_behavior),
                         summary = stringResource(R.string.settings_summary_behavior),
@@ -286,6 +303,7 @@ private fun SettingsActionCard(
     description: String,
     actionLabel: String,
     onClick: () -> Unit,
+    enabled: Boolean = true,
 ) {
     Surface(
         shape = OneUiPanelShape,
@@ -303,7 +321,7 @@ private fun SettingsActionCard(
                 Spacer(Modifier.height(4.dp))
                 Text(description, color = OneUiTextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
             }
-            SettingsCapsule(label = actionLabel, onClick = onClick, accent = true)
+            SettingsCapsule(label = actionLabel, onClick = onClick, accent = true, enabled = enabled)
         }
     }
 }
