@@ -92,6 +92,10 @@ $env:Path="$env:JAVA_HOME\bin;$env:Path"
 
 APK output: `prototype-android/app/build/outputs/apk/debug/app-debug.apk`
 
+The prototype builds with AGP 8.6, Gradle 8.7, JDK 17, and Android API 35
+(`compileSdk`/`targetSdk`). Install the Android 15 SDK platform before building
+on a fresh machine.
+
 ## Install as launcher
 
 ```bash

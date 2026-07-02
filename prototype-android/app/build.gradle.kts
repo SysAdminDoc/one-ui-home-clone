@@ -17,12 +17,12 @@ val hasReleaseKeystore: Boolean = keystoreProps.getProperty("storeFile")?.isNotB
 
 android {
     namespace = "com.oneuihomeclone"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.oneuihomeclone"
         minSdk = 28
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 4
         versionName = "0.2.2"
 
@@ -96,8 +96,6 @@ android {
     lint {
         abortOnError = true
         warningsAsErrors = false
-        // targetSdk bump 34 -> 35 requires AGP 8.6+ / Gradle 8.9+ — tracked on v0.2.x roadmap.
-        disable += setOf("OldTargetApi")
         // Platform convention forces -v26 qualifier on adaptive-icon resources even when
         // minSdk>=26; lint's "obsolete" heuristic doesn't account for this, so ignore.
         disable += setOf("ObsoleteSdkInt")
