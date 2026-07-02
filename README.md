@@ -2,7 +2,7 @@
 
 <p align="center">
 
-[![Version](https://img.shields.io/badge/version-0.2.2-4A88FF)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.3-4A88FF)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-4A88FF)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%209.0%2B-4A88FF)](prototype-android/app/build.gradle.kts)
 [![Stack](https://img.shields.io/badge/stack-Kotlin%20%2B%20Compose-4A88FF)](prototype-android/)
@@ -27,7 +27,7 @@ Unlike Lawnchair / Niagara / OpenLauncher, the project's north star is **Samsung
 - [ROADMAP.md](ROADMAP.md) — planned features + competitive research (3 rounds) + implementation deep dive
 - [prototype-android/](prototype-android/) — standalone Android Compose prototype (app package)
 
-## Current state (v0.2.2)
+## Current state (v0.2.3)
 
 Compose-first prototype covering:
 
@@ -55,14 +55,14 @@ v0.2.2 moves app inventory onto Android's launcher contract:
 - Package/profile changes refresh the inventory through `LauncherApps.Callback`
 - Launch targets carry their profile-aware component and user handle, with the existing sample apps retained only as the empty/error fallback
 
-Unreleased work moves launcher settings onto a single DataStore path:
+v0.2.3 adds local data-safety, widget, Finder, layout, packaging, and gate hardening:
 
 - `LauncherDataStore.state` is collected by Compose and is now the only writer for media page, Apps button, labels, notification swipe, locked layout, home layout, drawer sort, motion preset, and folder grid toggles
 - The old SharedPreferences file is used only as a one-shot migration source on first DataStore read
 - Motion preset changes now feed `ProvideMotionScheme` live without requiring Activity recreation
 - Crash-safe recovery mode opens after a previous crash with local reset layout, reset settings, clear widgets, sanitized diagnostics export, and continue-to-Home actions
 - Default-launcher onboarding detects when Android is using another Home app and opens the system Home role/settings flow without blocking the launcher
-- Long-press app and widget action sheets expose App info, Home add/remove, hide/restore, widget settings/remove, and Android dynamic shortcuts where available
+- Long-press app and widget action sheets expose App info, Home add/remove, hide/restore, widget settings/remove, and Android app shortcuts where available
 - Launcher icons and widget previews load lazily through bounded caches, and release builds consume a generated Baseline Profile for the core launcher journey
 - Widget picker supports local provider/title search, explicit empty search results, and health labels for ready, template, setup-required, missing-provider, and preview-unavailable widgets
 - Finder surfaces local Android app shortcuts in a dedicated App shortcuts group when this launcher is the Home role holder
@@ -117,7 +117,7 @@ Copy-Item ..\keystore.properties.example .\keystore.properties
 Output lands in `prototype-android/app/build/outputs/release-channel/` as a
 versioned signed APK plus a JSON metadata file containing version, SDK, signing,
 size, SHA-256, and upgrade-install information. Upgrade an existing install with
-`adb install -r app/build/outputs/release-channel/one-ui-home-clone-v0.2.2-release.apk`.
+`adb install -r app/build/outputs/release-channel/one-ui-home-clone-v0.2.3-release.apk`.
 
 Device-backed parity/performance smoke:
 

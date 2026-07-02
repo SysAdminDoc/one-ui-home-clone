@@ -37,7 +37,7 @@ JSON metadata with version, SDK, signing, size, SHA-256, and upgrade-install
 fields. Install upgrades with:
 
 ```powershell
-adb install -r app/build/outputs/release-channel/one-ui-home-clone-v0.2.2-release.apk
+adb install -r app/build/outputs/release-channel/one-ui-home-clone-v0.2.3-release.apk
 ```
 
 ## Install + set as launcher
