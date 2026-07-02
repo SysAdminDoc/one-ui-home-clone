@@ -112,8 +112,10 @@ cd prototype-android
 
 The report lands in `prototype-android/app/build/reports/device-gates/` with
 Home/Apps screenshots, cold-launch timing, drawer frame pacing, RSS, app-launch
-tap timing, and pass/fail status against the roadmap thresholds. Use
-`deviceGatesEnforced` on Pixel-class hardware when threshold misses should fail.
+tap timing, HOME/back retention, drawer swipe-down close, Finder IME back
+behavior, landscape Finder visibility, edge-to-edge system-bar contrast, and
+pass/fail status against the roadmap thresholds. Use `deviceGatesEnforced` on
+Pixel-class hardware when threshold misses should fail.
 
 Generate the release Baseline Profile after changing startup, drawer, Finder, or
 app-launch behavior:
