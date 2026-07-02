@@ -180,15 +180,22 @@ private sealed interface LauncherContextTarget {
     ) : LauncherContextTarget
 }
 
-private suspend fun loadWidgetProviderTemplates(
+private data class WidgetProviderCatalog(
+    val widgets: List<WidgetTemplateModel>,
+    val providerQueryFailed: Boolean,
+)
+
+private suspend fun loadWidgetProviderCatalog(
     context: Context,
     fallbackWidgets: List<WidgetTemplateModel>,
-): List<WidgetTemplateModel> = withContext(Dispatchers.IO) {
+): WidgetProviderCatalog = withContext(Dispatchers.IO) {
     val packageManager = context.packageManager
+    var providerQueryFailed = false
     val providers = runCatching {
         AppWidgetManager.getInstance(context).getInstalledProviders()
     }.getOrElse { cause ->
         Log.w("OneUiHome/widgets", "Widget provider query failed (${cause.javaClass.simpleName})")
+        providerQueryFailed = true
         emptyList()
     }
     val widgetsFallbackLabel = context.getString(R.string.widgets_title)
@@ -231,7 +238,10 @@ private suspend fun loadWidgetProviderTemplates(
         }
         .toList()
 
-    widgets.ifEmpty { fallbackWidgets }
+    WidgetProviderCatalog(
+        widgets = widgets.ifEmpty { fallbackWidgets },
+        providerQueryFailed = providerQueryFailed,
+    )
 }
 
 @Composable
@@ -465,6 +475,8 @@ fun OneUiHomeCloneApp(
     }
     var settingsFocusTitle by remember { mutableStateOf<String?>(null) }
     var selectedWidgetCategory by remember { mutableStateOf("Recommended") }
+    var widgetSearchQuery by remember { mutableStateOf("") }
+    var widgetProviderWarning by remember { mutableStateOf<String?>(null) }
     var nextPageId by remember { mutableIntStateOf(3) }
     var nextFolderId by remember { mutableIntStateOf(3) }
     var isHomeItemDragActive by remember { mutableStateOf(false) }
@@ -488,7 +500,13 @@ fun OneUiHomeCloneApp(
     }
 
     LaunchedEffect(appContext, fallbackWidgetTemplates) {
-        widgetTemplates = loadWidgetProviderTemplates(appContext, fallbackWidgetTemplates)
+        val catalog = loadWidgetProviderCatalog(appContext, fallbackWidgetTemplates)
+        widgetTemplates = catalog.widgets
+        widgetProviderWarning = if (catalog.providerQueryFailed) {
+            appContext.getString(R.string.widgets_provider_scan_failed)
+        } else {
+            null
+        }
     }
 
     LaunchedEffect(widgetPersistence, widgetTemplates) {
@@ -620,8 +638,8 @@ fun OneUiHomeCloneApp(
         }
     }
     val widgetCategories = remember(widgetTemplates) { buildWidgetCategories(widgetTemplates) }
-    val filteredWidgetTemplates = remember(selectedWidgetCategory, widgetTemplates) {
-        filterWidgetsForCategory(widgetTemplates, selectedWidgetCategory)
+    val filteredWidgetTemplates = remember(selectedWidgetCategory, widgetSearchQuery, widgetTemplates) {
+        filterWidgetsForPicker(widgetTemplates, selectedWidgetCategory, widgetSearchQuery)
     }
     val activeBoundWidgetCount = remember(homePages) { boundWidgetCount(homePages) }
     val localizedHomeLayoutTitle = homeLayoutMode.localizedTitle()
@@ -1403,6 +1421,7 @@ fun OneUiHomeCloneApp(
                         }
                         FinderActionType.WIDGETS -> {
                             selectedWidgetCategory = "Recommended"
+                            widgetSearchQuery = ""
                             activeOverlay = OverlayPanel.WIDGET_PICKER
                         }
                         FinderActionType.MEDIA_PAGE -> {
@@ -1529,6 +1548,7 @@ fun OneUiHomeCloneApp(
                 },
                 onOpenWidgetPicker = {
                     selectedWidgetCategory = "Recommended"
+                    widgetSearchQuery = ""
                     activeOverlay = OverlayPanel.WIDGET_PICKER
                 },
                 currentWidgetCount = currentHomePage?.widgets?.size ?: 0,
@@ -1633,9 +1653,15 @@ fun OneUiHomeCloneApp(
             WidgetPickerOverlay(
                 categories = widgetCategories,
                 selectedCategory = selectedWidgetCategory,
+                searchQuery = widgetSearchQuery,
                 widgets = filteredWidgetTemplates,
+                providerWarning = widgetProviderWarning,
                 targetPageLabel = widgetTargetPage?.label ?: fallbackHomePageLabel,
-                onSelectCategory = { selectedWidgetCategory = it },
+                onSelectCategory = {
+                    selectedWidgetCategory = it
+                    widgetSearchQuery = ""
+                },
+                onSearchQueryChange = { widgetSearchQuery = it },
                 onAddWidget = addWidgetFromPicker,
                 onClose = { activeOverlay = null },
             )

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,9 +43,12 @@ import com.oneuihomeclone.widgets.PreviewSource
 internal fun WidgetPickerOverlay(
     categories: List<String>,
     selectedCategory: String,
+    searchQuery: String,
     widgets: List<WidgetTemplateModel>,
+    providerWarning: String?,
     targetPageLabel: String,
     onSelectCategory: (String) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
     onAddWidget: (WidgetTemplateModel) -> Unit,
     onClose: () -> Unit,
 ) {
@@ -92,14 +96,28 @@ internal fun WidgetPickerOverlay(
                     )
                 }
             }
+            Spacer(Modifier.height(14.dp))
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text(stringResource(R.string.widgets_search_label)) },
+                placeholder = { Text(stringResource(R.string.widgets_search_placeholder)) },
+            )
             Spacer(Modifier.height(18.dp))
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 28.dp),
             ) {
+                if (providerWarning != null) {
+                    item {
+                        WidgetPickerNotice(message = providerWarning)
+                    }
+                }
                 if (widgets.isEmpty()) {
                     item {
-                        WidgetPickerEmptyState(selectedCategory = selectedCategory)
+                        WidgetPickerEmptyState(selectedCategory = selectedCategory, searchQuery = searchQuery)
                     }
                 } else {
                     lazyItems(widgets) { widget ->
@@ -116,6 +134,29 @@ internal fun WidgetTemplateCard(
     widget: WidgetTemplateModel,
     onAddWidget: (WidgetTemplateModel) -> Unit,
 ) {
+    val providerUnavailable = widget.isProviderUnavailable()
+    val requiresSetup = widget.requiresConfiguration()
+    val previewFallback = widget.hasPreviewFallback()
+    val healthLabel = when {
+        providerUnavailable -> stringResource(R.string.widgets_health_unavailable)
+        requiresSetup -> stringResource(R.string.widgets_health_setup_required)
+        previewFallback -> stringResource(R.string.widgets_health_preview_unavailable)
+        widget.providerInfo != null -> stringResource(R.string.widgets_health_ready)
+        else -> stringResource(R.string.widgets_health_template)
+    }
+    val healthSummary = when {
+        providerUnavailable -> stringResource(R.string.widgets_health_unavailable_summary)
+        requiresSetup -> stringResource(R.string.widgets_health_setup_required_summary)
+        previewFallback -> stringResource(R.string.widgets_health_preview_unavailable_summary)
+        widget.providerInfo != null -> stringResource(R.string.widgets_health_ready_summary)
+        else -> stringResource(R.string.widgets_health_template_summary)
+    }
+    val addEnabled = !providerUnavailable && !requiresSetup
+    val actionLabel = when {
+        providerUnavailable -> stringResource(R.string.widgets_health_unavailable)
+        requiresSetup -> stringResource(R.string.widgets_health_setup_required)
+        else -> stringResource(R.string.action_add)
+    }
     Surface(
         shape = OneUiPanelShape,
         color = OneUiSurface,
@@ -127,11 +168,19 @@ internal fun WidgetTemplateCard(
                     Text(widget.title, color = OneUiText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Text(widget.summary, color = OneUiTextSecondary, fontSize = 12.sp, lineHeight = 18.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text(healthSummary, color = OneUiTextSecondary, fontSize = 12.sp, lineHeight = 18.sp)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     SettingsCapsule(label = widget.span, accent = false, enabled = false)
                     Spacer(Modifier.height(8.dp))
-                    SettingsCapsule(label = stringResource(R.string.action_add), onClick = { onAddWidget(widget) })
+                    SettingsCapsule(label = healthLabel, accent = false, enabled = false)
+                    Spacer(Modifier.height(8.dp))
+                    SettingsCapsule(
+                        label = actionLabel,
+                        onClick = { onAddWidget(widget) },
+                        enabled = addEnabled,
+                    )
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -183,17 +232,48 @@ internal fun WidgetTemplateCard(
 }
 
 @Composable
-private fun WidgetPickerEmptyState(selectedCategory: String) {
+private fun WidgetPickerNotice(message: String) {
+    Surface(
+        shape = OneUiPanelShape,
+        color = OneUiSurface,
+        shadowElevation = 1.dp,
+    ) {
+        Text(
+            text = message,
+            color = OneUiTextSecondary,
+            fontSize = 13.sp,
+            lineHeight = 19.sp,
+            modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp),
+        )
+    }
+}
+
+@Composable
+private fun WidgetPickerEmptyState(
+    selectedCategory: String,
+    searchQuery: String,
+) {
+    val hasQuery = searchQuery.isNotBlank()
+    val title = if (hasQuery) {
+        stringResource(R.string.widgets_empty_search_title, searchQuery)
+    } else {
+        stringResource(R.string.widgets_empty_title, selectedCategory)
+    }
+    val summary = if (hasQuery) {
+        stringResource(R.string.widgets_empty_search_summary)
+    } else {
+        stringResource(R.string.widgets_empty_summary)
+    }
     Surface(
         shape = OneUiPanelShape,
         color = OneUiSurface,
         shadowElevation = 1.dp,
     ) {
         Column(Modifier.padding(horizontal = 22.dp, vertical = 22.dp)) {
-            Text(stringResource(R.string.widgets_empty_title, selectedCategory), color = OneUiText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = OneUiText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(
-                stringResource(R.string.widgets_empty_summary),
+                summary,
                 color = OneUiTextSecondary,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,

@@ -49,6 +49,8 @@ class LauncherLogicTest {
 
     private fun widget(
         title: String,
+        summary: String = "$title summary",
+        category: String = "Recommended",
         hostWidgetId: Int? = null,
         cellX: Int = 0,
         cellY: Int = 0,
@@ -60,11 +62,13 @@ class LauncherLogicTest {
         maxSpanY: Int = 4,
         canResizeHorizontal: Boolean = true,
         canResizeVertical: Boolean = true,
+        restoredProviderPackage: String? = null,
+        restoredProviderClass: String? = null,
     ) =
         WidgetTemplateModel(
             title = title,
-            summary = "$title summary",
-            category = "Recommended",
+            summary = summary,
+            category = category,
             span = "$spanX x $spanY",
             accent = Color.Gray,
             hostWidgetId = hostWidgetId,
@@ -78,6 +82,8 @@ class LauncherLogicTest {
             maxSpanY = maxSpanY,
             canResizeHorizontal = canResizeHorizontal,
             canResizeVertical = canResizeVertical,
+            restoredProviderPackage = restoredProviderPackage,
+            restoredProviderClass = restoredProviderClass,
         )
 
     @Test
@@ -320,6 +326,43 @@ class LauncherLogicTest {
             actions.map(LauncherContextAction::type),
         )
         assertTrue(actions.none(LauncherContextAction::enabled))
+    }
+
+    @Test
+    fun filterWidgetsForPicker_filtersByCategoryAndQuery() {
+        val widgets = listOf(
+            widget("Calendar", summary = "Month agenda", category = "Google Calendar"),
+            widget("Battery", summary = "Device status", category = "Device"),
+            widget("Weather", summary = "Forecast", category = "Weather"),
+        )
+
+        assertEquals(
+            listOf("Calendar"),
+            filterWidgetsForPicker(widgets, selectedCategory = "All", query = "calendar")
+                .map { it.title },
+        )
+        assertEquals(
+            listOf("Battery"),
+            filterWidgetsForPicker(widgets, selectedCategory = "Device", query = "status")
+                .map { it.title },
+        )
+        assertTrue(filterWidgetsForPicker(widgets, selectedCategory = "Weather", query = "calendar").isEmpty())
+    }
+
+    @Test
+    fun filterWidgetsForPicker_matchesRestoredProviderMetadata() {
+        val restored = widget(
+            "ClockWidget",
+            category = "Restored",
+            restoredProviderPackage = "com.example.clock",
+            restoredProviderClass = "com.example.clock.ClockWidget",
+        )
+
+        assertEquals(
+            listOf(restored),
+            filterWidgetsForPicker(listOf(restored), selectedCategory = "All", query = "example clock"),
+        )
+        assertTrue(restored.isProviderUnavailable())
     }
 
     @Test

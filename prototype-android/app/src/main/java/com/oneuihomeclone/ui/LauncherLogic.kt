@@ -15,6 +15,7 @@ import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.PersistedHomeItem
 import com.oneuihomeclone.data.PersistedHomePage
 import com.oneuihomeclone.data.PersistedLauncherLayout
+import com.oneuihomeclone.widgets.PreviewSource
 import java.util.Locale
 
 internal fun totalPageCount(homePageCount: Int, mediaPageEnabled: Boolean): Int {
@@ -347,6 +348,45 @@ internal fun filterWidgetsForCategory(
         else -> widgets.filter { it.category == selectedCategory }
     }
 }
+
+internal fun filterWidgetsForPicker(
+    widgets: List<WidgetTemplateModel>,
+    selectedCategory: String,
+    query: String,
+): List<WidgetTemplateModel> {
+    val categoryMatches = filterWidgetsForCategory(widgets, selectedCategory)
+    val terms = query.trim()
+        .lowercase(Locale.getDefault())
+        .split(Regex("\\s+"))
+        .filter { it.isNotBlank() }
+    if (terms.isEmpty()) return categoryMatches
+
+    return categoryMatches.filter { widget ->
+        val searchable = widget.widgetSearchText().lowercase(Locale.getDefault())
+        terms.all(searchable::contains)
+    }
+}
+
+internal fun WidgetTemplateModel.requiresConfiguration(): Boolean =
+    providerInfo?.configure != null
+
+internal fun WidgetTemplateModel.isProviderUnavailable(): Boolean =
+    providerInfo == null && restoredProviderPackage != null
+
+internal fun WidgetTemplateModel.hasPreviewFallback(): Boolean =
+    providerInfo != null && previewSource == PreviewSource.Empty
+
+private fun WidgetTemplateModel.widgetSearchText(): String =
+    listOfNotNull(
+        title,
+        summary,
+        category,
+        span,
+        providerInfo?.provider?.packageName,
+        providerInfo?.provider?.className,
+        restoredProviderPackage,
+        restoredProviderClass,
+    ).joinToString(" ")
 
 internal fun mergeBoundWidgetsIntoPages(
     pages: List<HomePageModel>,

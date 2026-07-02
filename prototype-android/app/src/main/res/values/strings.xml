@@ -147,9 +147,24 @@
     <string name="widgets_title">Widgets</string>
     <string name="widgets_intro">Recommended widgets first, then grouped by provider and task.</string>
     <string name="widgets_adding_to">Adding to %1$s</string>
+    <string name="widgets_search_label">Search widgets</string>
+    <string name="widgets_search_placeholder">Provider or widget name</string>
     <string name="widgets_empty_title">No widgets in %1$s</string>
     <string name="widgets_empty_summary">Choose another category or install apps that expose widgets.</string>
+    <string name="widgets_empty_search_title">No widgets matching %1$s</string>
+    <string name="widgets_empty_search_summary">Try another provider or widget name, or clear search to show this category.</string>
     <string name="widgets_provider_summary">Provided by %1$s</string>
+    <string name="widgets_provider_scan_failed">Widget provider scan failed, so built-in launcher templates are shown instead.</string>
+    <string name="widgets_health_ready">Ready</string>
+    <string name="widgets_health_ready_summary">Provider is installed and can be added to Home.</string>
+    <string name="widgets_health_template">Template</string>
+    <string name="widgets_health_template_summary">Built-in launcher template for parity testing.</string>
+    <string name="widgets_health_setup_required">Setup required</string>
+    <string name="widgets_health_setup_required_summary">This provider requires configuration before binding; setup support is not wired yet.</string>
+    <string name="widgets_health_preview_unavailable">Preview unavailable</string>
+    <string name="widgets_health_preview_unavailable_summary">Provider loaded, but Android did not return a preview image or layout.</string>
+    <string name="widgets_health_unavailable">Unavailable</string>
+    <string name="widgets_health_unavailable_summary">Provider is missing. Reinstall the app or remove the restored Home placeholder.</string>
 
     <string name="home_search_apps">Search apps</string>
     <string name="home_default_label">Home</string>
