@@ -18,6 +18,44 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
 
+data class PreviousCrashSummary(
+    val timestamp: String?,
+    val thread: String?,
+    val versionName: String?,
+    val versionCode: String?,
+    val exceptionClass: String?,
+) {
+    fun toLogLine(): String = listOfNotNull(
+        timestamp?.let { "timestamp=$it" },
+        thread?.let { "thread=$it" },
+        versionName?.let { "versionName=$it" },
+        versionCode?.let { "versionCode=$it" },
+        exceptionClass?.let { "exception=$it" },
+    ).joinToString(separator = " ").ifBlank { "summary=unavailable" }
+}
+
+internal fun summarizeCrashLog(content: String): PreviousCrashSummary {
+    val fields = content
+        .lineSequence()
+        .takeWhile { it != "---" }
+        .mapNotNull { line ->
+            val separator = line.indexOf('=')
+            if (separator <= 0) {
+                null
+            } else {
+                line.substring(0, separator) to line.substring(separator + 1)
+            }
+        }
+        .toMap()
+    return PreviousCrashSummary(
+        timestamp = fields["timestamp"],
+        thread = fields["thread"],
+        versionName = fields["build.versionName"],
+        versionCode = fields["build.versionCode"],
+        exceptionClass = fields["exception"],
+    )
+}
+
 /**
  * Application subclass. Two jobs:
  *
@@ -98,12 +136,12 @@ class LauncherApp : Application() {
      * reporter). Clearing on read guarantees we don't re-notify the user on subsequent
      * cold starts of the same crash.
      */
-    fun consumePreviousCrashLog(): String? {
+    fun consumePreviousCrashLog(): PreviousCrashSummary? {
         val file = crashLogFile
         if (!file.exists() || file.length() == 0L) return null
         val content = runCatching { file.readText() }.getOrNull()
         file.delete()
-        return content
+        return content?.let(::summarizeCrashLog)
     }
 
     companion object {
@@ -145,7 +183,7 @@ class LauncherApp : Application() {
                 .onFailure { Log.w(TAG, "Widget host reset failed (${it.javaClass.simpleName})") }
         }
 
-        fun consumePreviousCrashLog(): String? = instance?.consumePreviousCrashLog()
+        fun consumePreviousCrashLog(): PreviousCrashSummary? = instance?.consumePreviousCrashLog()
 
         /** Called once per Activity creation so Compose-layer code can dispatch a bind. */
         internal fun registerWidgetBindLauncher(launcher: ActivityResultLauncher<WidgetBindRequest>) {

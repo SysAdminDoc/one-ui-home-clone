@@ -3,19 +3,23 @@ package com.oneuihomeclone
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.lifecycleScope
 import com.oneuihomeclone.ui.OneUiHomeCloneApp
 import com.oneuihomeclone.ui.theme.OneUiHomeCloneTheme
 import com.oneuihomeclone.widgets.WidgetBindContract
 import com.oneuihomeclone.widgets.WidgetBindRequest
 import com.oneuihomeclone.widgets.WidgetBindResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
@@ -25,6 +29,7 @@ class MainActivity : ComponentActivity() {
      * overlay state and scroll back to the default home page.
      */
     private var homeIntentTick by mutableIntStateOf(0)
+    private var previousCrashRecoveryMessage by mutableStateOf<String?>(null)
 
     /**
      * ActivityResultLauncher for `ACTION_APPWIDGET_BIND`. Registered before `setContent`
@@ -50,22 +55,24 @@ class MainActivity : ComponentActivity() {
         }
         LauncherApp.registerWidgetBindLauncher(widgetBindLauncher)
 
-        // Surface a toast if the launcher died on the previous run. The log file is
+        // Crash recovery is loaded below after composition starts, keeping disk IO off
         // cleared atomically in consume — user only sees this once per crash.
-        LauncherApp.consumePreviousCrashLog()?.let { log ->
-            Log.w(TAG, "Previous crash:\n$log")
-            Toast.makeText(
-                this,
-                "One UI Home Clone recovered from a crash on its previous run.",
-                Toast.LENGTH_LONG,
-            ).show()
-        }
-
         setContent {
             OneUiHomeCloneTheme {
                 OneUiHomeCloneApp(
                     homeIntentTick = homeIntentTick,
+                    recoveryNotice = previousCrashRecoveryMessage,
                 )
+            }
+        }
+
+        lifecycleScope.launch {
+            val summary = withContext(Dispatchers.IO) {
+                LauncherApp.consumePreviousCrashLog()
+            }
+            if (summary != null) {
+                Log.w(TAG, "Previous crash recovered: ${summary.toLogLine()}")
+                previousCrashRecoveryMessage = "One UI Home Clone recovered from a crash on its previous run."
             }
         }
     }

@@ -202,7 +202,10 @@ private suspend fun loadWidgetProviderTemplates(
 }
 
 @Composable
-fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
+fun OneUiHomeCloneApp(
+    homeIntentTick: Int = 0,
+    recoveryNotice: String? = null,
+) {
     val appContext = LocalContext.current.applicationContext
     val preferences = remember(appContext) { LauncherPreferences(appContext) }
     val widgetPersistence = remember(appContext) { WidgetPersistence(appContext) }
@@ -234,6 +237,12 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
         if (feedbackMessage != null) {
             delay(2600)
             feedbackMessage = null
+        }
+    }
+
+    LaunchedEffect(recoveryNotice) {
+        if (!recoveryNotice.isNullOrBlank()) {
+            feedbackMessage = recoveryNotice
         }
     }
 
