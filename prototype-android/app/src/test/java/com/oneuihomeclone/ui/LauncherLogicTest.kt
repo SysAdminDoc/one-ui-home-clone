@@ -450,6 +450,23 @@ class LauncherLogicTest {
     }
 
     @Test
+    fun selectedSeslInteropAssessment_recordsCostsAndKeepsComposeToggle() {
+        val assessment = selectedSeslInteropAssessment()
+
+        assertEquals("SettingsToggleCard", assessment.composeImplementation)
+        assertEquals("dev.oneuiproject.oneui.preference.SwitchBarPreference", assessment.seslComponent)
+        assertEquals(SeslInteropCost.HIGH, assessment.binaryCost)
+        assertEquals(SeslInteropCost.HIGH, assessment.dependencyCost)
+        assertEquals(SeslInteropCost.HIGH, assessment.lifecycleRisk)
+        assertEquals(SeslInteropCost.MEDIUM, assessment.fidelityGain)
+        assertEquals(SeslInteropDecision.KEEP_COMPOSE, assessment.decision)
+        assertTrue(assessment.requiresAuthenticatedPackageRegistry)
+        assertTrue(assessment.needsAndroidViewBridge)
+        assertFalse(assessment.shouldAdoptSesl())
+        assertTrue(assessment.evidence.any { it.contains("SwitchBarPreference") })
+    }
+
+    @Test
     fun filterWidgetsForPicker_filtersByCategoryAndQuery() {
         val widgets = listOf(
             widget("Calendar", summary = "Month agenda", category = "Google Calendar"),
