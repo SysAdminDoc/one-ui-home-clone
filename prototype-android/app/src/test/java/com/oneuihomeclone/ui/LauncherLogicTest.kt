@@ -183,4 +183,62 @@ class LauncherLogicTest {
         val result = applyHiddenAppsToPages(pages, emptySet())
         assertEquals(pages, result)
     }
+
+    @Test
+    fun launcherAppStableId_includesProfileSerial() {
+        assertEquals(
+            "10:com.example/.MainActivity",
+            launcherAppStableId(
+                userSerial = 10,
+                packageName = "com.example",
+                className = ".MainActivity",
+            ),
+        )
+    }
+
+    @Test
+    fun normalizedLauncherAppRecords_filtersHostAndBlankComponents() {
+        val records = listOf(
+            LauncherAppRecord(0, "com.oneuihomeclone", ".MainActivity", "Host"),
+            LauncherAppRecord(0, "", ".MissingPackage", "Broken"),
+            LauncherAppRecord(0, "com.example", "", "Broken"),
+            LauncherAppRecord(0, "com.example", ".MainActivity", "Example"),
+        )
+
+        val result = normalizedLauncherAppRecords(records, hostPackageName = "com.oneuihomeclone")
+
+        assertEquals(listOf("0:com.example/.MainActivity"), result.map { it.stableId() })
+    }
+
+    @Test
+    fun normalizedLauncherAppRecords_dedupesPerProfileComponent() {
+        val records = listOf(
+            LauncherAppRecord(0, "com.example", ".MainActivity", "Example"),
+            LauncherAppRecord(0, "com.example", ".MainActivity", "Duplicate"),
+            LauncherAppRecord(10, "com.example", ".MainActivity", "Work Example"),
+        )
+
+        val result = normalizedLauncherAppRecords(records, hostPackageName = "com.oneuihomeclone")
+
+        assertEquals(
+            listOf("0:com.example/.MainActivity", "10:com.example/.MainActivity"),
+            result.map { it.stableId() },
+        )
+    }
+
+    @Test
+    fun normalizedLauncherAppRecords_sortsByDisplayLabel() {
+        val records = listOf(
+            LauncherAppRecord(0, "com.zeta", ".MainActivity", "Zeta"),
+            LauncherAppRecord(0, "com.alpha", ".MainActivity", "Alpha"),
+            LauncherAppRecord(0, "com.blanklabel", ".MainActivity", ""),
+        )
+
+        val result = normalizedLauncherAppRecords(records, hostPackageName = "com.oneuihomeclone")
+
+        assertEquals(
+            listOf("Alpha", "Blanklabel", "Zeta"),
+            result.map { it.displayLabel() },
+        )
+    }
 }

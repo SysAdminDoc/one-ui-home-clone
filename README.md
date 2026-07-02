@@ -2,7 +2,7 @@
 
 <p align="center">
 
-[![Version](https://img.shields.io/badge/version-0.2.1-4A88FF)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.2-4A88FF)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-4A88FF)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%209.0%2B-4A88FF)](prototype-android/app/build.gradle.kts)
 [![Stack](https://img.shields.io/badge/stack-Kotlin%20%2B%20Compose-4A88FF)](prototype-android/)
@@ -27,7 +27,7 @@ Unlike Lawnchair / Niagara / OpenLauncher, the project's north star is **Samsung
 - [ROADMAP.md](ROADMAP.md) — planned features + competitive research (3 rounds) + implementation deep dive
 - [prototype-android/](prototype-android/) — standalone Android Compose prototype (app package)
 
-## Current state (v0.2.1)
+## Current state (v0.2.2)
 
 Compose-first prototype covering:
 
@@ -48,6 +48,12 @@ v0.2.1 adds a premium UI polish pass:
 - Cleaner user-facing copy across Finder, widgets, folders, notifications, edit mode, and settings
 - Better empty-state handling in the widget picker
 - More accessible semantics for page dots, app/folder targets, Finder rows, edit tiles, and settings toggles
+
+v0.2.2 moves app inventory onto Android's launcher contract:
+
+- Home, dock, Apps screen, Finder, and hide-apps state are now fed by a `LauncherApps` repository
+- Package/profile changes refresh the inventory through `LauncherApps.Callback`
+- Launch targets carry their profile-aware component and user handle, with the existing sample apps retained only as the empty/error fallback
 
 v0.2.0 landed the widgets + persistence + motion primitives:
 

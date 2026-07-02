@@ -5,10 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.app.WallpaperManager
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
-import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.util.Log
@@ -99,7 +96,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.graphics.drawable.toBitmap
 import com.oneuihomeclone.LauncherApp
 import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.DrawerSortKey
@@ -159,59 +155,6 @@ private fun sampleApps(): List<CloneApp> {
     )
 }
 
-private suspend fun loadLauncherApps(
-    packageManager: PackageManager,
-    hostPackageName: String,
-    fallbackApps: List<CloneApp>,
-): List<CloneApp> = withContext(Dispatchers.IO) {
-    val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-    val iconSizePx = 144
-    val resolveInfos = packageManager.queryIntentActivities(launcherIntent, 0)
-        .filter { resolveInfo -> resolveInfo.activityInfo?.packageName != hostPackageName }
-        .distinctBy { resolveInfo ->
-            "${resolveInfo.activityInfo.packageName}/${resolveInfo.activityInfo.name}"
-        }
-        .sortedBy { resolveInfo ->
-            resolveInfo.loadLabel(packageManager)?.toString()?.lowercase(Locale.getDefault()).orEmpty()
-        }
-
-    val apps = resolveInfos.mapIndexed { index, resolveInfo ->
-        val activityInfo = resolveInfo.activityInfo
-        val componentId = "${activityInfo.packageName}/${activityInfo.name}"
-        val label = resolveInfo.loadLabel(packageManager)?.toString().orEmpty().ifBlank {
-            activityInfo.packageName.substringAfterLast('.').replaceFirstChar(Char::titlecase)
-        }
-        // Cap eager icon decoding at MAX_ICONS_LOADED_EAGERLY: an ARGB_8888 144x144
-        // bitmap is ~82 KB, so 300 icons ≈ 24 MB. Devices with 400+ installed apps
-        // (or a hostile app registering many LAUNCHER-category aliases) could otherwise
-        // OOM the Compose snapshot. Entries beyond the cap render with their color
-        // swatch and first letter — lazy icon load is scheduled for v0.2.x.
-        val iconBitmap = if (index < MAX_ICONS_LOADED_EAGERLY) {
-            runCatching {
-                resolveInfo
-                    .loadIcon(packageManager)
-                    .toBitmap(width = iconSizePx, height = iconSizePx, config = Bitmap.Config.ARGB_8888)
-                    .asImageBitmap()
-            }.getOrNull()
-        } else {
-            null
-        }
-
-        CloneApp(
-            id = componentId,
-            name = label,
-            launchIntent = Intent(Intent.ACTION_MAIN)
-                .addCategory(Intent.CATEGORY_LAUNCHER)
-                .setClassName(activityInfo.packageName, activityInfo.name)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED),
-            icon = iconBitmap,
-            color = fallbackColorFor(componentId),
-        )
-    }
-
-    apps.ifEmpty { fallbackApps }
-}
-
 private suspend fun loadWidgetProviderTemplates(
     context: Context,
     fallbackWidgets: List<WidgetTemplateModel>,
@@ -266,6 +209,7 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
     val coroutineScope = rememberCoroutineScope()
     val initialPrefs = remember(preferences) { preferences.snapshot() }
     val fallbackApps = remember { sampleApps() }
+    val appInventory = remember(appContext, fallbackApps) { LauncherAppInventory(appContext, fallbackApps) }
     var allApps by remember { mutableStateOf(fallbackApps) }
     var hasSeededDeviceApps by remember { mutableStateOf(false) }
     val dockApps = remember(allApps) { allApps.take(4) }
@@ -294,14 +238,12 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
     }
 
     val launchSelectedApp: (CloneApp) -> Unit = { app ->
-        val launchIntent = app.launchIntent
-        if (launchIntent == null) {
-            showFeedback("${app.name} is available after device app loading finishes.")
-        } else {
-            runCatching { appContext.startActivity(Intent(launchIntent)) }
-                .onFailure {
-                    showFeedback("Couldn't open ${app.name}.")
-                }
+        if (!appInventory.launch(app)) {
+            if (app.launchIntent == null && app.launchTarget == null) {
+                showFeedback("${app.name} is available after device app loading finishes.")
+            } else {
+                showFeedback("Couldn't open ${app.name}.")
+            }
         }
     }
     val clock = rememberStatusClock()
@@ -371,12 +313,10 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
     var defaultHomePageIndex by remember { mutableIntStateOf(0) }
     var pageIndex by remember { mutableIntStateOf(1) }
 
-    LaunchedEffect(Unit) {
-        allApps = loadLauncherApps(
-            packageManager = appContext.packageManager,
-            hostPackageName = appContext.packageName,
-            fallbackApps = fallbackApps,
-        )
+    LaunchedEffect(appInventory) {
+        appInventory.apps().collect { loadedApps ->
+            allApps = loadedApps
+        }
     }
 
     LaunchedEffect(appContext, fallbackWidgetTemplates) {
@@ -555,7 +495,7 @@ fun OneUiHomeCloneApp(homeIntentTick: Int = 0) {
     }
 
     LaunchedEffect(allApps) {
-        if (!hasSeededDeviceApps && allApps.any { it.launchIntent != null }) {
+        if (!hasSeededDeviceApps && allApps.any { it.launchIntent != null || it.launchTarget != null }) {
             homePages = listOf(
                 buildHomePage(1, allApps),
                 buildHomePage(2, allApps),

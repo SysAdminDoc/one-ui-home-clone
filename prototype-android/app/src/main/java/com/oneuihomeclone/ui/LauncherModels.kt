@@ -1,7 +1,9 @@
 package com.oneuihomeclone.ui
 
+import android.content.ComponentName
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Intent
+import android.os.UserHandle
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import com.oneuihomeclone.widgets.PreviewSource
@@ -10,8 +12,14 @@ internal data class CloneApp(
     val id: String,
     val name: String,
     val launchIntent: Intent? = null,
+    val launchTarget: LauncherAppLaunchTarget? = null,
     val icon: ImageBitmap? = null,
     val color: Color,
+)
+
+internal data class LauncherAppLaunchTarget(
+    val componentName: ComponentName,
+    val user: UserHandle,
 )
 
 internal sealed interface HomeGridItemModel {
