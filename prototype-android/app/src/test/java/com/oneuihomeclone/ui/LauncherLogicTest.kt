@@ -1,6 +1,9 @@
 package com.oneuihomeclone.ui
 
 import androidx.compose.ui.graphics.Color
+import com.oneuihomeclone.data.PersistedHomeItem
+import com.oneuihomeclone.data.PersistedHomePage
+import com.oneuihomeclone.data.PersistedLauncherLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -216,6 +219,94 @@ class LauncherLogicTest {
 
         assertEquals(listOf(seed), result[0].widgets)
         assertTrue(result[1].widgets.isEmpty())
+    }
+
+    @Test
+    fun buildPersistedLauncherLayout_capturesPageFoldersHiddenAndRecents() {
+        val pages = listOf(
+            page(
+                id = 7,
+                items = listOf(
+                    appItem("a"),
+                    folder("tools", "b", "c"),
+                ),
+            ),
+        )
+
+        val layout = buildPersistedLauncherLayout(
+            pages = pages,
+            defaultHomePageIndex = 0,
+            hiddenAppIds = setOf("c"),
+            recentSearches = listOf("Widgets"),
+            nextPageId = 8,
+            nextFolderId = 3,
+        )
+
+        assertEquals(7, layout.pages.single().id)
+        assertEquals(PersistedHomeItem.App("a"), layout.pages.single().items[0])
+        assertEquals(PersistedHomeItem.Folder("tools", "Folder tools", listOf("b", "c")), layout.pages.single().items[1])
+        assertEquals(setOf("c"), layout.hiddenAppIds)
+        assertEquals(listOf("Widgets"), layout.recentSearches)
+    }
+
+    @Test
+    fun restorePersistedHomePages_reconcilesAppsAndDropsEmptyFolders() {
+        val layout = PersistedLauncherLayout(
+            pages = listOf(
+                PersistedHomePage(
+                    id = 3,
+                    label = "Home 3",
+                    eyebrow = "Day",
+                    value = "2",
+                    status = "Ready",
+                    note = "Note",
+                    items = listOf(
+                        PersistedHomeItem.App("keep"),
+                        PersistedHomeItem.App("missing"),
+                        PersistedHomeItem.Folder("folder", "Folder", listOf("missing")),
+                    ),
+                ),
+            ),
+            defaultHomePageIndex = 0,
+            hiddenAppIds = emptySet(),
+            recentSearches = emptyList(),
+            nextPageId = 4,
+            nextFolderId = 2,
+        )
+
+        val restored = restorePersistedHomePages(layout, listOf(app("keep", "Current label")))
+
+        assertEquals(listOf("keep"), restored.single().items.map { it.id })
+        assertEquals("Current label", (restored.single().items.single() as AppItemModel).app.name)
+        assertTrue(restored.single().widgets.isNotEmpty())
+    }
+
+    @Test
+    fun reconcileHomePagesWithApps_replacesCurrentAppRecordsAndPrunesMissing() {
+        val pages = listOf(
+            page(
+                id = 1,
+                items = listOf(
+                    appItem("old", "Old name"),
+                    folder("folder", "old", "gone"),
+                ),
+            ),
+        )
+
+        val result = reconcileHomePagesWithApps(pages, listOf(app("old", "New name")))
+
+        assertEquals("New name", ((result.single().items[0] as AppItemModel).app.name))
+        val folder = result.single().items[1] as FolderModel
+        assertEquals(listOf("old"), folder.apps.map { it.id })
+        assertEquals("New name", folder.apps.single().name)
+    }
+
+    @Test
+    fun reconcileHiddenAppIds_prunesRemovedApps() {
+        assertEquals(
+            setOf("a"),
+            reconcileHiddenAppIds(setOf("a", "missing"), listOf(app("a"))),
+        )
     }
 
     @Test

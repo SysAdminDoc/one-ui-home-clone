@@ -11,6 +11,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import com.oneuihomeclone.LauncherApp
 import com.oneuihomeclone.data.BoundWidget
+import com.oneuihomeclone.data.PersistedHomeItem
+import com.oneuihomeclone.data.PersistedHomePage
+import com.oneuihomeclone.data.PersistedLauncherLayout
 import java.util.Locale
 
 internal fun totalPageCount(homePageCount: Int, mediaPageEnabled: Boolean): Int {
@@ -216,6 +219,112 @@ internal fun clearBoundWidgetsFromPages(pages: List<HomePageModel>): List<HomePa
     pages.map { page ->
         page.copy(widgets = page.widgets.filter { it.hostWidgetId == null })
     }
+
+internal fun buildPersistedLauncherLayout(
+    pages: List<HomePageModel>,
+    defaultHomePageIndex: Int,
+    hiddenAppIds: Set<String>,
+    recentSearches: List<String>,
+    nextPageId: Int,
+    nextFolderId: Int,
+): PersistedLauncherLayout =
+    PersistedLauncherLayout(
+        pages = pages.map { page ->
+            PersistedHomePage(
+                id = page.id,
+                label = page.label,
+                eyebrow = page.eyebrow,
+                value = page.value,
+                status = page.status,
+                note = page.note,
+                items = page.items.map { item ->
+                    when (item) {
+                        is AppItemModel -> PersistedHomeItem.App(item.app.id)
+                        is FolderModel -> PersistedHomeItem.Folder(
+                            id = item.id,
+                            title = item.title,
+                            appIds = item.apps.map(CloneApp::id),
+                        )
+                    }
+                },
+            )
+        },
+        defaultHomePageIndex = defaultHomePageIndex,
+        hiddenAppIds = hiddenAppIds,
+        recentSearches = recentSearches,
+        nextPageId = nextPageId,
+        nextFolderId = nextFolderId,
+    )
+
+internal fun restorePersistedHomePages(
+    layout: PersistedLauncherLayout,
+    allApps: List<CloneApp>,
+): List<HomePageModel> {
+    val appsById = allApps.associateBy(CloneApp::id)
+    return layout.pages.map { page ->
+        val restoredItems = page.items.mapNotNull { item ->
+            when (item) {
+                is PersistedHomeItem.App -> appsById[item.appId]?.let(::AppItemModel)
+                is PersistedHomeItem.Folder -> {
+                    val apps = item.appIds.mapNotNull(appsById::get).distinctBy(CloneApp::id)
+                    if (apps.isEmpty()) {
+                        null
+                    } else {
+                        FolderModel(
+                            id = item.id,
+                            title = item.title.ifBlank { "Folder" },
+                            summary = folderSummaryFor(apps),
+                            apps = apps,
+                        )
+                    }
+                }
+            }
+        }
+        HomePageModel(
+            id = page.id,
+            label = page.label.ifBlank { "Home ${page.id}" },
+            eyebrow = page.eyebrow,
+            value = page.value,
+            status = page.status,
+            note = page.note,
+            widgets = buildSeedWidgets(page.id),
+            items = restoredItems,
+        )
+    }
+}
+
+internal fun reconcileHomePagesWithApps(
+    pages: List<HomePageModel>,
+    allApps: List<CloneApp>,
+): List<HomePageModel> {
+    if (pages.isEmpty()) return pages
+    val appsById = allApps.associateBy(CloneApp::id)
+    return pages.mapNotNull { page ->
+        val reconciledItems = page.items.mapNotNull { item ->
+            when (item) {
+                is AppItemModel -> appsById[item.app.id]?.let(::AppItemModel)
+                is FolderModel -> {
+                    val apps = item.apps.mapNotNull { app -> appsById[app.id] }.distinctBy(CloneApp::id)
+                    if (apps.isEmpty()) {
+                        null
+                    } else {
+                        item.copy(apps = apps, summary = folderSummaryFor(apps))
+                    }
+                }
+            }
+        }
+        if (reconciledItems.isEmpty() && page.widgets.isEmpty()) {
+            null
+        } else {
+            page.copy(items = reconciledItems)
+        }
+    }
+}
+
+internal fun reconcileHiddenAppIds(hiddenAppIds: Set<String>, allApps: List<CloneApp>): Set<String> {
+    val appIds = allApps.mapTo(mutableSetOf(), CloneApp::id)
+    return hiddenAppIds.filterTo(mutableSetOf()) { it in appIds }
+}
 
 internal fun deleteWidgetId(widgetId: Int) {
     if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return

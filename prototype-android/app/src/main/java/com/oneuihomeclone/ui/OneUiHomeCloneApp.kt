@@ -101,6 +101,7 @@ import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.DrawerSortKey
 import com.oneuihomeclone.data.FolderGridKey
 import com.oneuihomeclone.data.HomeLayoutKey
+import com.oneuihomeclone.data.LauncherLayoutStore
 import com.oneuihomeclone.data.LauncherPreferences
 import com.oneuihomeclone.data.MotionPresetKey
 import com.oneuihomeclone.data.WidgetPersistence
@@ -209,11 +210,13 @@ fun OneUiHomeCloneApp(
     val appContext = LocalContext.current.applicationContext
     val preferences = remember(appContext) { LauncherPreferences(appContext) }
     val widgetPersistence = remember(appContext) { WidgetPersistence(appContext) }
+    val layoutStore = remember(appContext) { LauncherLayoutStore(appContext) }
     val coroutineScope = rememberCoroutineScope()
     val initialPrefs = remember(preferences) { preferences.snapshot() }
     val fallbackApps = remember { sampleApps() }
     val appInventory = remember(appContext, fallbackApps) { LauncherAppInventory(appContext, fallbackApps) }
     var allApps by remember { mutableStateOf(fallbackApps) }
+    var appInventoryLoaded by remember { mutableStateOf(false) }
     var hasSeededDeviceApps by remember { mutableStateOf(false) }
     val dockApps = remember(allApps) { allApps.take(4) }
     val fallbackWidgetTemplates = remember {
@@ -325,6 +328,7 @@ fun OneUiHomeCloneApp(
     LaunchedEffect(appInventory) {
         appInventory.apps().collect { loadedApps ->
             allApps = loadedApps
+            appInventoryLoaded = true
         }
     }
 
@@ -395,6 +399,29 @@ fun OneUiHomeCloneApp(
                                 FolderGridMode.GRID_5X5 -> FolderGridKey.GRID_5X5
                             },
                         )
+                }
+            }
+    }
+
+    LaunchedEffect(layoutStore) {
+        snapshotFlow {
+            if (!hasSeededDeviceApps) {
+                null
+            } else {
+                buildPersistedLauncherLayout(
+                    pages = homePages,
+                    defaultHomePageIndex = defaultHomePageIndex,
+                    hiddenAppIds = hiddenAppIds,
+                    recentSearches = recentSearches,
+                    nextPageId = nextPageId,
+                    nextFolderId = nextFolderId,
+                )
+            }
+        }
+            .drop(1)
+            .collect { layout ->
+                if (layout != null) {
+                    layoutStore.save(layout)
                 }
             }
     }
@@ -504,17 +531,48 @@ fun OneUiHomeCloneApp(
         )
     }
 
-    LaunchedEffect(allApps) {
-        if (!hasSeededDeviceApps && allApps.any { it.launchIntent != null || it.launchTarget != null }) {
-            homePages = listOf(
-                buildHomePage(1, allApps),
-                buildHomePage(2, allApps),
-            )
-            defaultHomePageIndex = 0
-            nextPageId = 3
-            nextFolderId = 3
-            pageIndex = if (mediaPageEnabled) 1 else 0
+    LaunchedEffect(appInventoryLoaded, allApps, layoutStore) {
+        val hasRealApps = allApps.any { it.launchIntent != null || it.launchTarget != null }
+        if (!appInventoryLoaded || !hasRealApps) return@LaunchedEffect
+
+        if (!hasSeededDeviceApps) {
+            val persistedLayout = layoutStore.read()
+            if (persistedLayout != null) {
+                val restoredPages = restorePersistedHomePages(persistedLayout, allApps).ifEmpty {
+                    listOf(
+                        buildHomePage(1, allApps),
+                        buildHomePage(2, allApps),
+                    )
+                }
+                homePages = restoredPages
+                hiddenAppIds = reconcileHiddenAppIds(persistedLayout.hiddenAppIds, allApps)
+                recentSearches = persistedLayout.recentSearches.ifEmpty { recentSearches }
+                defaultHomePageIndex = persistedLayout.defaultHomePageIndex.coerceIn(restoredPages.indices)
+                nextPageId = maxOf(persistedLayout.nextPageId, restoredPages.maxOf { it.id + 1 })
+                nextFolderId = persistedLayout.nextFolderId.coerceAtLeast(1)
+                pageIndex = visualIndexForHomePage(defaultHomePageIndex, mediaPageEnabled)
+            } else {
+                homePages = listOf(
+                    buildHomePage(1, allApps),
+                    buildHomePage(2, allApps),
+                )
+                defaultHomePageIndex = 0
+                nextPageId = 3
+                nextFolderId = 3
+                pageIndex = if (mediaPageEnabled) 1 else 0
+            }
             hasSeededDeviceApps = true
+        } else {
+            val reconciledPages = reconcileHomePagesWithApps(homePages, allApps).ifEmpty {
+                listOf(
+                    buildHomePage(1, allApps),
+                    buildHomePage(2, allApps),
+                )
+            }
+            homePages = reconciledPages
+            hiddenAppIds = reconcileHiddenAppIds(hiddenAppIds, allApps)
+            defaultHomePageIndex = defaultHomePageIndex.coerceIn(reconciledPages.indices)
+            pageIndex = pageIndex.coerceIn(0, totalPageCount(reconciledPages.size, mediaPageEnabled) - 1)
         }
     }
 
