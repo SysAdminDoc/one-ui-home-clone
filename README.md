@@ -96,6 +96,18 @@ The prototype builds with AGP 8.6, Gradle 8.7, JDK 17, and Android API 35
 (`compileSdk`/`targetSdk`). Install the Android 15 SDK platform before building
 on a fresh machine.
 
+Device-backed parity/performance smoke:
+
+```powershell
+cd prototype-android
+.\gradlew.bat deviceGates
+```
+
+The report lands in `prototype-android/app/build/reports/device-gates/` with
+Home/Apps screenshots, cold-launch timing, drawer frame pacing, RSS, app-launch
+tap timing, and pass/fail status against the roadmap thresholds. Use
+`deviceGatesEnforced` on Pixel-class hardware when threshold misses should fail.
+
 ## Install as launcher
 
 ```bash

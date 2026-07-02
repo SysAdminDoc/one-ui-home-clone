@@ -30,6 +30,20 @@ adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME
 # pick "One UI Home Clone" -> "Always"
 ```
 
+## Device gates
+
+With one emulator or device attached:
+
+```powershell
+.\gradlew.bat deviceGates
+```
+
+The task builds and installs the debug APK, cold-launches the launcher, captures
+Home and Apps screen screenshots, records RSS, drawer frame pacing, an app-launch
+tap probe, and a Perfetto trace when the device allows it. Reports are written to
+`app/build/reports/device-gates/`. Use `.\gradlew.bat deviceGatesEnforced` on
+Pixel-class hardware when the ROADMAP thresholds should fail the command.
+
 ## Architecture
 
 Compose-first launcher prototype split into surface-focused UI files under
