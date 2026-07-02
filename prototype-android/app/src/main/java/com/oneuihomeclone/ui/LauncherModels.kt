@@ -47,7 +47,7 @@ internal data class LauncherShortcutAction(
     val longLabel: String?,
     val isEnabled: Boolean,
     val disabledMessage: String?,
-    val user: UserHandle,
+    val user: UserHandle?,
 )
 
 internal sealed interface HomeGridItemModel {
@@ -105,6 +105,7 @@ internal data class FinderActionItem(
     val type: FinderActionType,
     val title: String,
     val summary: String,
+    val shortcut: LauncherShortcutAction? = null,
 )
 
 internal enum class AppContextSource {
@@ -152,7 +153,7 @@ internal data class LauncherContextActionText(
     val widgetSettingsUnavailableSummary: String = "This widget does not expose settings",
     val removeWidget: String = "Remove widget",
     val removeWidgetSummary: String = "Remove this widget from Home",
-    val shortcutSummary: String = "Dynamic shortcut",
+    val shortcutSummary: String = "App shortcut",
 )
 
 internal data class WidgetTemplateModel(
@@ -192,6 +193,7 @@ internal enum class FinderActionType {
     MEDIA_PAGE,
     HOME_PAGE,
     HIDE_APPS,
+    APP_SHORTCUT,
 }
 
 internal enum class FinderSettingType {
@@ -311,4 +313,6 @@ internal fun PersistedToggles.toLauncherState(): LauncherState = LauncherState(
 internal const val MAX_WIDGET_PROVIDERS_LOADED = 150
 internal const val MAX_HOME_GRID_ITEMS = 16
 internal const val MAX_CONTEXT_SHORTCUTS = 4
+internal const val MAX_FINDER_SHORTCUT_RESULTS = 8
+internal const val MAX_FINDER_SHORTCUT_APPS_SCANNED = 96
 internal const val MAX_APP_ICON_CACHE_ENTRIES = 96

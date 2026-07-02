@@ -207,7 +207,11 @@ internal class LauncherAppInventory(
             val query = LauncherApps.ShortcutQuery()
                 .setPackage(target.componentName.packageName)
                 .setActivity(target.componentName)
-                .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC)
+                .setQueryFlags(
+                    LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or
+                        LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or
+                        LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED,
+                )
             service.getShortcuts(query, target.user).orEmpty()
                 .asSequence()
                 .filter { shortcut -> shortcut.`package` == target.componentName.packageName }
@@ -234,8 +238,9 @@ internal class LauncherAppInventory(
 
     fun launchShortcut(shortcut: LauncherShortcutAction): Boolean {
         val service = launcherApps ?: return false
+        val user = shortcut.user ?: return false
         return runCatching {
-            service.startShortcut(shortcut.packageName, shortcut.id, null, null, shortcut.user)
+            service.startShortcut(shortcut.packageName, shortcut.id, null, null, user)
         }.isSuccess
     }
 

@@ -22,6 +22,22 @@ class LauncherLogicTest {
     private fun app(id: String, name: String = id) =
         CloneApp(id = id, name = name, color = Color.Gray)
 
+    private fun shortcut(
+        id: String,
+        shortLabel: String,
+        longLabel: String? = null,
+        packageName: String = "com.example",
+        isEnabled: Boolean = true,
+    ) = LauncherShortcutAction(
+        id = id,
+        packageName = packageName,
+        shortLabel = shortLabel,
+        longLabel = longLabel,
+        isEnabled = isEnabled,
+        disabledMessage = null,
+        user = null,
+    )
+
     private fun appItem(id: String, name: String = id) =
         AppItemModel(app(id, name))
 
@@ -375,6 +391,62 @@ class LauncherLogicTest {
             actions.map(LauncherContextAction::type),
         )
         assertTrue(actions.none(LauncherContextAction::enabled))
+    }
+
+    @Test
+    fun buildFinderShortcutResults_returnsEmptyForBlankQuery() {
+        val messages = app("messages", "Messages")
+
+        assertTrue(
+            buildFinderShortcutResults(
+                query = "   ",
+                shortcutsByApp = mapOf(messages to listOf(shortcut("compose", "Compose"))),
+            ).isEmpty(),
+        )
+    }
+
+    @Test
+    fun buildFinderShortcutResults_matchesShortcutAndAppText() {
+        val messages = app("messages", "Messages")
+        val results = buildFinderShortcutResults(
+            query = "messages",
+            shortcutsByApp = mapOf(
+                messages to listOf(
+                    shortcut(
+                        id = "compose",
+                        shortLabel = "Compose",
+                        longLabel = "Start a new message",
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(1, results.size)
+        assertEquals(FinderActionType.APP_SHORTCUT, results.single().type)
+        assertEquals("Compose", results.single().title)
+        assertEquals("Messages - Start a new message", results.single().summary)
+        assertEquals("compose", results.single().shortcut?.id)
+    }
+
+    @Test
+    fun buildFinderShortcutResults_skipsDisabledDedupesAndCapsResults() {
+        val messages = app("messages", "Messages")
+        val shortcuts = List(MAX_FINDER_SHORTCUT_RESULTS + 3) { index ->
+            shortcut(id = "shortcut-$index", shortLabel = "Open $index")
+        } + shortcut(id = "shortcut-0", shortLabel = "Open duplicate") +
+            shortcut(id = "disabled", shortLabel = "Open disabled", isEnabled = false)
+
+        val results = buildFinderShortcutResults(
+            query = "open",
+            shortcutsByApp = mapOf(messages to shortcuts),
+        )
+
+        assertEquals(MAX_FINDER_SHORTCUT_RESULTS, results.size)
+        assertEquals(
+            (0 until MAX_FINDER_SHORTCUT_RESULTS).map { "shortcut-$it" },
+            results.map { it.shortcut?.id },
+        )
+        assertTrue(results.none { it.title == "Open disabled" })
     }
 
     @Test

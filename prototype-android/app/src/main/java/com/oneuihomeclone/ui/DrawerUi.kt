@@ -75,6 +75,7 @@ internal fun DrawerOverlay(
     hiddenAppCount: Int,
     settingResults: List<FinderSettingResult>,
     actionResults: List<FinderActionItem>,
+    shortcutResults: List<FinderActionItem>,
     recentSearches: List<String>,
     onQueryChange: (String) -> Unit,
     onClose: () -> Unit,
@@ -284,6 +285,16 @@ internal fun DrawerOverlay(
                             }
                         }
                     } else {
+                        if (shortcutResults.isNotEmpty()) {
+                            item {
+                                FinderSectionHeader(stringResource(R.string.drawer_section_app_shortcuts))
+                                Spacer(Modifier.height(10.dp))
+                                FinderActionList(
+                                    actions = shortcutResults,
+                                    onOpenAction = onOpenAction,
+                                )
+                            }
+                        }
                         if (actionResults.isNotEmpty()) {
                             item {
                                 FinderSectionHeader(stringResource(R.string.drawer_suggested_actions))
@@ -317,7 +328,7 @@ internal fun DrawerOverlay(
                                 )
                             }
                         }
-                        if (apps.isEmpty() && settingResults.isEmpty() && actionResults.isEmpty()) {
+                        if (apps.isEmpty() && settingResults.isEmpty() && actionResults.isEmpty() && shortcutResults.isEmpty()) {
                             item {
                                 FinderEmptyState()
                             }
@@ -574,4 +585,5 @@ private fun finderActionIcon(type: FinderActionType) = when (type) {
     FinderActionType.MEDIA_PAGE -> Icons.Default.Apps
     FinderActionType.HOME_PAGE -> Icons.Default.Home
     FinderActionType.HIDE_APPS -> Icons.Default.Tune
+    FinderActionType.APP_SHORTCUT -> Icons.Default.Apps
 }

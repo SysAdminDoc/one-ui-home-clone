@@ -286,6 +286,7 @@ fun OneUiHomeCloneApp(
     var defaultLauncherPromptDismissed by remember { mutableStateOf(false) }
     var contextTarget by remember { mutableStateOf<LauncherContextTarget?>(null) }
     var contextShortcuts by remember { mutableStateOf(emptyList<LauncherShortcutAction>()) }
+    var finderShortcutsByAppId by remember { mutableStateOf(emptyMap<String, List<LauncherShortcutAction>>()) }
     val homeScreenSettingsTitle = stringResource(R.string.settings_title_home_screen)
     val hideAppsTitle = stringResource(R.string.settings_hide_apps)
     val lockLayoutTitle = stringResource(R.string.settings_lock_layout)
@@ -634,12 +635,34 @@ fun OneUiHomeCloneApp(
     val drawerPages = remember(drawerApps, hiddenAppIds, layoutContract.appsPageSize) {
         drawerApps.filterNot { it.id in hiddenAppIds }.chunked(layoutContract.appsPageSize)
     }
+    LaunchedEffect(appInventoryLoaded, appsScreenApps) {
+        if (!appInventoryLoaded) {
+            finderShortcutsByAppId = emptyMap()
+            return@LaunchedEffect
+        }
+
+        val launchableApps = appsScreenApps
+            .filter { app -> app.launchTarget != null }
+            .take(MAX_FINDER_SHORTCUT_APPS_SCANNED)
+        finderShortcutsByAppId = launchableApps
+            .mapNotNull { app ->
+                val shortcuts = appInventory.loadDynamicShortcuts(app)
+                if (shortcuts.isEmpty()) null else app.id to shortcuts
+            }
+            .toMap()
+    }
     val filteredApps = remember(searchQuery, appsScreenApps) {
         if (searchQuery.isBlank()) {
             appsScreenApps
         } else {
             appsScreenApps.filter { it.name.contains(searchQuery, ignoreCase = true) }
         }
+    }
+    val finderShortcutResults = remember(searchQuery, appsScreenApps, finderShortcutsByAppId) {
+        val shortcutsByApp = appsScreenApps
+            .associateWith { app -> finderShortcutsByAppId[app.id].orEmpty() }
+            .filterValues { shortcuts -> shortcuts.isNotEmpty() }
+        buildFinderShortcutResults(searchQuery, shortcutsByApp)
     }
     val widgetCategories = remember(widgetTemplates) { buildWidgetCategories(widgetTemplates) }
     val filteredWidgetTemplates = remember(selectedWidgetCategory, widgetSearchQuery, widgetTemplates) {
@@ -1415,6 +1438,7 @@ fun OneUiHomeCloneApp(
                 hiddenAppCount = hiddenAppIds.size,
                 settingResults = finderSettings,
                 actionResults = finderActions,
+                shortcutResults = finderShortcutResults,
                 recentSearches = recentSearches,
                 onQueryChange = { searchQuery = it },
                 onClose = closeDrawer,
@@ -1475,6 +1499,16 @@ fun OneUiHomeCloneApp(
                         FinderActionType.HIDE_APPS -> {
                             settingsFocusTitle = null
                             activeOverlay = OverlayPanel.HIDE_APPS
+                        }
+                        FinderActionType.APP_SHORTCUT -> {
+                            val shortcut = action.shortcut
+                            if (shortcut == null || !appInventory.launchShortcut(shortcut)) {
+                                showFeedback(appContext.getString(R.string.feedback_shortcut_open_failed, action.title))
+                            } else {
+                                activeOverlay = null
+                                openFolderTarget = null
+                                searchQuery = ""
+                            }
                         }
                     }
                 },

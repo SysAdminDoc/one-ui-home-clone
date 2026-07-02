@@ -1065,9 +1065,40 @@ internal fun buildFinderActionResults(
                     FinderActionType.MEDIA_PAGE -> normalizedQuery.contains("media") || normalizedQuery.contains("free")
                     FinderActionType.HOME_PAGE -> normalizedQuery.contains("home")
                     FinderActionType.HIDE_APPS -> normalizedQuery.contains("hide") || normalizedQuery.contains("hidden")
+                    FinderActionType.APP_SHORTCUT -> false
                 }
         }
     }
+}
+
+internal fun buildFinderShortcutResults(
+    query: String,
+    shortcutsByApp: Map<CloneApp, List<LauncherShortcutAction>>,
+): List<FinderActionItem> {
+    val terms = finderSearchTerms(query)
+    if (terms.isEmpty()) return emptyList()
+
+    return shortcutsByApp.asSequence()
+        .flatMap { (app, shortcuts) ->
+            shortcuts.asSequence()
+                .filter(LauncherShortcutAction::isEnabled)
+                .map { shortcut -> app to shortcut }
+        }
+        .distinctBy { (app, shortcut) -> shortcut.finderStableKey(app.id) }
+        .filter { (app, shortcut) ->
+            val searchable = shortcut.finderSearchText(app).lowercase(Locale.getDefault())
+            terms.all(searchable::contains)
+        }
+        .take(MAX_FINDER_SHORTCUT_RESULTS)
+        .map { (app, shortcut) ->
+            FinderActionItem(
+                type = FinderActionType.APP_SHORTCUT,
+                title = shortcut.shortLabel,
+                summary = shortcut.finderSummary(app),
+                shortcut = shortcut,
+            )
+        }
+        .toList()
 }
 
 internal fun rememberRecentSearch(
@@ -1080,6 +1111,31 @@ internal fun rememberRecentSearch(
     }
     return listOf(trimmedQuery) + recentSearches.filterNot { it.equals(trimmedQuery, ignoreCase = true) }
         .take(5)
+}
+
+private fun finderSearchTerms(query: String): List<String> =
+    query.trim()
+        .lowercase(Locale.getDefault())
+        .split(Regex("\\s+"))
+        .filter(String::isNotBlank)
+
+private fun LauncherShortcutAction.finderStableKey(appId: String): String =
+    "$appId:$packageName:$id:${user?.hashCode() ?: 0}"
+
+private fun LauncherShortcutAction.finderSearchText(app: CloneApp): String =
+    listOfNotNull(
+        app.name,
+        app.profileBadge,
+        packageName,
+        shortLabel,
+        longLabel,
+    ).joinToString(" ")
+
+private fun LauncherShortcutAction.finderSummary(app: CloneApp): String {
+    val detail = longLabel
+        ?.takeIf { it.isNotBlank() }
+        ?.takeUnless { it.equals(shortLabel, ignoreCase = true) }
+    return if (detail == null) app.name else "${app.name} - $detail"
 }
 
 internal fun widgetProviderLabel(

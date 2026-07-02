@@ -65,6 +65,7 @@ Unreleased work moves launcher settings onto a single DataStore path:
 - Long-press app and widget action sheets expose App info, Home add/remove, hide/restore, widget settings/remove, and Android dynamic shortcuts where available
 - Launcher icons and widget previews load lazily through bounded caches, and release builds consume a generated Baseline Profile for the core launcher journey
 - Widget picker supports local provider/title search, explicit empty search results, and health labels for ready, template, setup-required, missing-provider, and preview-unavailable widgets
+- Finder surfaces local Android app shortcuts in a dedicated App shortcuts group when this launcher is the Home role holder
 - Home screen settings can export/import `one-ui-home-clone-backup.json` for settings, pages, folders, hidden apps, recent searches, and bound-widget metadata; unavailable restored apps/widgets stay visible as repairable placeholders
 - Home screen settings can export `one-ui-home-clone-diagnostics.txt` with sanitized version, SDK, launcher-role, crash-summary, app-inventory, layout, and widget counts without app names or search history
 - Responsive layout contracts now select explicit phone portrait, phone landscape, foldable-width, and tablet grids; Home/Apps pagination, widget placement, Settings, folders, Widget Picker, edit tray, and default-launcher prompt are bounded per form factor

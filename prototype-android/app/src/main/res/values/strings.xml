@@ -101,6 +101,7 @@
     <string name="drawer_home_only_summary">All apps live on Home pages in this mode. Finder stays available for search and quick launch.</string>
     <string name="drawer_suggested_apps">Suggested apps</string>
     <string name="drawer_alphabetical_summary">Alphabetical order switches to a vertically scrolling apps list.</string>
+    <string name="drawer_section_app_shortcuts">App shortcuts</string>
     <string name="drawer_suggested_actions">Suggested actions</string>
     <string name="drawer_search_from_bottom">Search from the bottom</string>
     <string name="drawer_search_apps_settings">Search apps and settings</string>
@@ -142,7 +143,7 @@
     <string name="context_action_widget_settings_unavailable">This widget does not expose settings.</string>
     <string name="context_action_remove_widget">Remove widget</string>
     <string name="context_action_remove_widget_summary">Remove this widget from Home.</string>
-    <string name="context_action_shortcut_summary">Dynamic shortcut</string>
+    <string name="context_action_shortcut_summary">App shortcut</string>
 
     <string name="widgets_title">Widgets</string>
     <string name="widgets_intro">Recommended widgets first, then grouped by provider and task.</string>
