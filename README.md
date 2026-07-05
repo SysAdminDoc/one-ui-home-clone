@@ -68,7 +68,7 @@ v0.2.3 adds local data-safety, widget, Finder, layout, packaging, and gate harde
 - Widget picker enumerates Android widget providers across launcher-visible profiles, shows Work/Private/Clone-style profile badges when available, and keeps profile/provider diagnostics aggregate-only
 - Bound widgets receive active-grid size options on bind, restore, move, and resize so providers redraw against the current phone/landscape/foldable/tablet layout contract
 - Finder surfaces local Android app shortcuts in a dedicated App shortcuts group when this launcher is the Home role holder
-- Home screen settings can export/import `one-ui-home-clone-backup.json` for settings, pages, folders, hidden apps, recent searches, and bound-widget metadata; unavailable restored apps/widgets stay visible as repairable placeholders
+- Home screen settings can export/import `one-ui-home-clone-backup.json` for settings, pages, folders, hidden apps, recent searches, and bound-widget metadata; restore writes an app-private pre-restore snapshot, validates counts/provider availability, rolls back failed storage writes, reports changed/restored/missing counts, and keeps unavailable apps/widgets visible as repairable placeholders
 - Home screen settings can export `one-ui-home-clone-diagnostics.txt` with sanitized version, SDK, launcher-role, crash-summary, app-inventory, layout, and widget counts without app names or search history
 - Home screen settings persist "Add new apps to Home screen" and privacy-gated notification badge modes; badges stay local, default off, and require Android notification-listener access before dots or counts appear on Home, dock, drawer, and folders
 - Responsive layout contracts now select explicit phone portrait, phone landscape, foldable-width, and tablet grids; Home/Apps pagination, widget placement, Settings, folders, Widget Picker, edit tray, and default-launcher prompt are bounded per form factor
@@ -168,7 +168,7 @@ One UI Home Clone is local-only in the current prototype:
 - Searches and layout: recent Finder searches, hidden apps, Home pages, folders, settings, backup metadata, and widget IDs are stored in app-private DataStore/files. `android:allowBackup="false"` keeps this data out of Android backup.
 - Notification badges: badge mode is off by default. If enabled, Android notification access is required and the launcher uses aggregate per-app counts only; notification titles and text are not stored or exported.
 - Widgets and wallpaper: `EXPAND_STATUS_BAR`, `SET_WALLPAPER`, `VIBRATE`, `AppWidgetHost`, and wallpaper APIs are used for launcher behavior only.
-- Exports: `one-ui-home-clone-backup.json` intentionally contains launcher layout/search/widget data for restore; `one-ui-home-clone-diagnostics.txt` contains only version, SDK, default-launcher state, sanitized crash fields, and aggregate app/layout/widget counts.
+- Exports: `one-ui-home-clone-backup.json` intentionally contains launcher layout/search/widget data for restore. Restore also writes an app-private pre-restore snapshot for rollback. `one-ui-home-clone-diagnostics.txt` contains only version, SDK, default-launcher state, sanitized crash fields, and aggregate app/layout/widget counts.
 
 Store listing copy: no data is collected, shared, or transmitted by the app; launcher data remains on device unless the user manually exports a backup or diagnostics file.
 

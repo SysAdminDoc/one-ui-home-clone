@@ -281,7 +281,9 @@
     <string name="feedback_backup_exported">Backup written to %1$s.</string>
     <string name="feedback_backup_export_failed">Couldn\'t write launcher backup.</string>
     <string name="feedback_backup_missing">No launcher backup found at %1$s.</string>
+    <string name="feedback_backup_invalid">The launcher backup at %1$s could not be read.</string>
     <string name="feedback_backup_restored">Backup restored. Missing apps and widgets stay on Home as repairable placeholders.</string>
+    <string name="feedback_backup_restored_summary">Backup restored: %1$d changed settings, %2$d pages, %3$d apps, %4$d widgets. Missing: %5$d apps, %6$d widget providers.</string>
     <string name="feedback_backup_restore_failed">Couldn\'t restore launcher backup.</string>
     <string name="feedback_diagnostics_exported">Diagnostics written to %1$s.</string>
     <string name="feedback_diagnostics_export_failed">Couldn\'t write diagnostics.</string>

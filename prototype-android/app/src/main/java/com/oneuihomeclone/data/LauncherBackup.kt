@@ -15,6 +15,27 @@ data class LauncherBackup(
     val exportedAtMillis: Long,
 )
 
+data class LauncherRestoreSnapshot(
+    val settings: LauncherState,
+    val layout: PersistedLauncherLayout,
+    val widgets: List<BoundWidget>,
+)
+
+data class LauncherRestoreReport(
+    val changedSettingCount: Int,
+    val restoredPageCount: Int,
+    val restoredAppCount: Int,
+    val restoredWidgetCount: Int,
+    val missingAppCount: Int,
+    val missingWidgetProviderCount: Int,
+)
+
+sealed class LauncherBackupImportResult {
+    data class Success(val backup: LauncherBackup) : LauncherBackupImportResult()
+    object Missing : LauncherBackupImportResult()
+    object Invalid : LauncherBackupImportResult()
+}
+
 class LauncherBackupFileStore(context: Context) {
     private val appContext = context.applicationContext
 
@@ -28,9 +49,26 @@ class LauncherBackupFileStore(context: Context) {
     }
 
     suspend fun import(): LauncherBackup? = withContext(Dispatchers.IO) {
+        when (val result = importResult()) {
+            is LauncherBackupImportResult.Success -> result.backup
+            LauncherBackupImportResult.Invalid,
+            LauncherBackupImportResult.Missing,
+            -> null
+        }
+    }
+
+    suspend fun importResult(): LauncherBackupImportResult = withContext(Dispatchers.IO) {
         val file = backupFile()
-        if (!file.exists()) return@withContext null
-        LauncherBackupCodec.decode(file.readText(Charsets.UTF_8))
+        if (!file.exists()) return@withContext LauncherBackupImportResult.Missing
+        LauncherBackupCodec.decode(file.readText(Charsets.UTF_8))?.let(LauncherBackupImportResult::Success)
+            ?: LauncherBackupImportResult.Invalid
+    }
+
+    suspend fun exportPreRestoreSnapshot(backup: LauncherBackup): File = withContext(Dispatchers.IO) {
+        val file = preRestoreSnapshotFile()
+        file.parentFile?.mkdirs()
+        file.writeText(LauncherBackupCodec.encode(backup), Charsets.UTF_8)
+        file
     }
 
     private fun backupFile(): File {
@@ -38,10 +76,105 @@ class LauncherBackupFileStore(context: Context) {
         return File(dir, BACKUP_FILE_NAME)
     }
 
+    private fun preRestoreSnapshotFile(): File =
+        File(appContext.filesDir, PRE_RESTORE_SNAPSHOT_FILE_NAME)
+
     private companion object {
         private const val BACKUP_FILE_NAME = "one-ui-home-clone-backup.json"
+        private const val PRE_RESTORE_SNAPSHOT_FILE_NAME = "one-ui-home-clone-pre-restore.json"
     }
 }
+
+internal fun LauncherRestoreSnapshot.toBackup(exportedAtMillis: Long): LauncherBackup =
+    LauncherBackup(
+        settings = settings,
+        layout = layout,
+        widgets = widgets,
+        exportedAtMillis = exportedAtMillis,
+    )
+
+internal fun validateLauncherRestore(
+    snapshot: LauncherRestoreSnapshot,
+    backup: LauncherBackup,
+    availableAppIds: Set<String>,
+    availableWidgetProviderKeys: Set<String>,
+): LauncherRestoreReport? {
+    val pageCount = backup.layout.pages.size
+    val itemCount = backup.layout.pages.sumOf { page -> page.items.size }
+    if (pageCount > MAX_RESTORE_PAGES || itemCount > MAX_RESTORE_ITEMS) return null
+    if (backup.widgets.size > MAX_RESTORE_WIDGETS) return null
+    if (backup.widgets.any { it.hostWidgetId <= 0 || it.providerPackage.isBlank() || it.providerClass.isBlank() }) {
+        return null
+    }
+
+    val appIds = backup.layout.pages
+        .flatMap { page -> page.items.flatMap(PersistedHomeItem::restoreAppIds) }
+        .filter(String::isNotBlank)
+        .distinct()
+    val widgetProviderKeys = backup.widgets
+        .map(BoundWidget::restoreProviderKey)
+        .distinct()
+
+    return LauncherRestoreReport(
+        changedSettingCount = changedSettingCount(snapshot.settings, backup.settings),
+        restoredPageCount = pageCount,
+        restoredAppCount = appIds.count { it in availableAppIds },
+        restoredWidgetCount = backup.widgets.size,
+        missingAppCount = appIds.count { it !in availableAppIds },
+        missingWidgetProviderCount = widgetProviderKeys.count { it !in availableWidgetProviderKeys },
+    )
+}
+
+internal suspend fun applyLauncherRestoreTransaction(
+    snapshot: LauncherRestoreSnapshot,
+    backup: LauncherBackup,
+    writeSettings: suspend (LauncherState) -> Unit,
+    writeLayout: suspend (PersistedLauncherLayout) -> Unit,
+    writeWidgets: suspend (List<BoundWidget>) -> Unit,
+) {
+    try {
+        writeSettings(backup.settings)
+        writeLayout(backup.layout)
+        writeWidgets(backup.widgets)
+    } catch (cause: Throwable) {
+        runCatching {
+            writeSettings(snapshot.settings)
+            writeLayout(snapshot.layout)
+            writeWidgets(snapshot.widgets)
+        }.onFailure(cause::addSuppressed)
+        throw cause
+    }
+}
+
+private fun PersistedHomeItem.restoreAppIds(): List<String> =
+    when (this) {
+        is PersistedHomeItem.App -> listOf(appId)
+        is PersistedHomeItem.Folder -> appIds
+    }
+
+private fun BoundWidget.restoreProviderKey(): String =
+    "$providerPackage/$providerClass"
+
+private fun changedSettingCount(before: LauncherState, after: LauncherState): Int =
+    listOf(
+        before.mediaPageEnabled != after.mediaPageEnabled,
+        before.appsButtonEnabled != after.appsButtonEnabled,
+        before.appLabelsEnabled != after.appLabelsEnabled,
+        before.widgetLabelsEnabled != after.widgetLabelsEnabled,
+        before.swipeDownForNotifications != after.swipeDownForNotifications,
+        before.addNewAppsToHomeScreen != after.addNewAppsToHomeScreen,
+        before.notificationBadgeMode != after.notificationBadgeMode,
+        before.lockHomeScreenLayout != after.lockHomeScreenLayout,
+        before.homeLayoutMode != after.homeLayoutMode,
+        before.drawerSortMode != after.drawerSortMode,
+        before.motionPreset != after.motionPreset,
+        before.folderGrid != after.folderGrid,
+    ).count { it }
+
+private const val MAX_RESTORE_PAGES = 32
+private const val MAX_RESTORE_ITEMS_PER_PAGE = 128
+private const val MAX_RESTORE_ITEMS = MAX_RESTORE_PAGES * MAX_RESTORE_ITEMS_PER_PAGE
+private const val MAX_RESTORE_WIDGETS = 1024
 
 object LauncherBackupCodec {
     private const val SCHEMA_VERSION = 1

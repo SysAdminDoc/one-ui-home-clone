@@ -119,14 +119,19 @@ import com.oneuihomeclone.data.FolderGridKey
 import com.oneuihomeclone.data.HomeLayoutKey
 import com.oneuihomeclone.data.LauncherBackup
 import com.oneuihomeclone.data.LauncherBackupFileStore
+import com.oneuihomeclone.data.LauncherBackupImportResult
 import com.oneuihomeclone.data.LauncherDataStore
 import com.oneuihomeclone.data.LauncherDiagnosticsFileStore
 import com.oneuihomeclone.data.LauncherDiagnosticsSnapshot
 import com.oneuihomeclone.data.LauncherLayoutStore
+import com.oneuihomeclone.data.LauncherRestoreSnapshot
 import com.oneuihomeclone.data.LauncherState
 import com.oneuihomeclone.data.MotionPresetKey
 import com.oneuihomeclone.data.NotificationBadgeModeKey
 import com.oneuihomeclone.data.WidgetPersistence
+import com.oneuihomeclone.data.applyLauncherRestoreTransaction
+import com.oneuihomeclone.data.toBackup
+import com.oneuihomeclone.data.validateLauncherRestore
 import com.oneuihomeclone.notifications.NotificationBadgeRepository
 import com.oneuihomeclone.notifications.isNotificationBadgeAccessGranted
 import com.oneuihomeclone.notifications.notificationBadgeSettingsIntent
@@ -1019,20 +1024,57 @@ fun OneUiHomeCloneApp(
 
     fun importLauncherBackup() {
         coroutineScope.launch {
-            val backup = runCatching { backupStore.import() }
+            val importResult = runCatching { backupStore.importResult() }
                 .onFailure { cause -> Log.e("OneUiHome/backup", "Backup import failed", cause) }
                 .getOrNull()
-            if (backup == null) {
-                showFeedback(appContext.getString(R.string.feedback_backup_missing, backupStore.backupFileName))
+            val backup = when (importResult) {
+                is LauncherBackupImportResult.Success -> importResult.backup
+                LauncherBackupImportResult.Missing -> {
+                    showFeedback(appContext.getString(R.string.feedback_backup_missing, backupStore.backupFileName))
+                    return@launch
+                }
+                LauncherBackupImportResult.Invalid -> {
+                    showFeedback(appContext.getString(R.string.feedback_backup_invalid, backupStore.backupFileName))
+                    return@launch
+                }
+                null -> {
+                    showFeedback(appContext.getString(R.string.feedback_backup_restore_failed))
+                    return@launch
+                }
+            }
+
+            val preRestoreSnapshot = LauncherRestoreSnapshot(
+                settings = currentLauncherState(),
+                layout = currentPersistedLayout(),
+                widgets = boundWidgetsFromPages(homePages),
+            )
+            val restoreApps = badgedApps.ifEmpty { fallbackApps }
+            val availableWidgetProviderKeys = widgetTemplates
+                .mapNotNull { template ->
+                    template.providerInfo?.provider?.let { provider -> "${provider.packageName}/${provider.className}" }
+                }
+                .toSet()
+            val restoreReport = validateLauncherRestore(
+                snapshot = preRestoreSnapshot,
+                backup = backup,
+                availableAppIds = restoreApps.mapTo(mutableSetOf(), CloneApp::id),
+                availableWidgetProviderKeys = availableWidgetProviderKeys,
+            )
+            if (restoreReport == null) {
+                showFeedback(appContext.getString(R.string.feedback_backup_invalid, backupStore.backupFileName))
                 return@launch
             }
 
             runCatching {
-                launcherDataStore.update { setLauncherState(backup.settings) }
-                layoutStore.save(backup.layout)
-                widgetPersistence.replaceAll(backup.widgets)
+                backupStore.exportPreRestoreSnapshot(preRestoreSnapshot.toBackup(System.currentTimeMillis()))
+                applyLauncherRestoreTransaction(
+                    snapshot = preRestoreSnapshot,
+                    backup = backup,
+                    writeSettings = { state -> launcherDataStore.update { setLauncherState(state) } },
+                    writeLayout = layoutStore::save,
+                    writeWidgets = widgetPersistence::replaceAll,
+                )
             }.onSuccess {
-                val restoreApps = badgedApps.ifEmpty { fallbackApps }
                 val restoredPages = restorePersistedHomePages(backup.layout, restoreApps).ifEmpty {
                     listOf(
                         buildHomePage(1, restoreApps),
@@ -1051,9 +1093,36 @@ fun OneUiHomeCloneApp(
                 )
                 nextFolderId = backup.layout.nextFolderId.coerceAtLeast(1)
                 pageIndex = visualIndexForHomePage(defaultHomePageIndex, mediaPageEnabled)
-                showFeedback(appContext.getString(R.string.feedback_backup_restored))
+                showFeedback(
+                    appContext.getString(
+                        R.string.feedback_backup_restored_summary,
+                        restoreReport.changedSettingCount,
+                        restoreReport.restoredPageCount,
+                        restoreReport.restoredAppCount,
+                        restoreReport.restoredWidgetCount,
+                        restoreReport.missingAppCount,
+                        restoreReport.missingWidgetProviderCount,
+                    ),
+                )
             }.onFailure { cause ->
                 Log.e("OneUiHome/backup", "Backup restore failed", cause)
+                applyLauncherState(preRestoreSnapshot.settings)
+                val restoredPages = restorePersistedHomePages(preRestoreSnapshot.layout, restoreApps).ifEmpty {
+                    listOf(
+                        buildHomePage(1, restoreApps),
+                        buildHomePage(2, restoreApps),
+                    )
+                }
+                homePages = mergeBoundWidgetsIntoPages(restoredPages, preRestoreSnapshot.widgets, widgetTemplates)
+                hiddenAppIds = preRestoreSnapshot.layout.hiddenAppIds
+                recentSearches = preRestoreSnapshot.layout.recentSearches.ifEmpty { recentSearches }
+                defaultHomePageIndex = preRestoreSnapshot.layout.defaultHomePageIndex.coerceIn(homePages.indices)
+                nextPageId = maxOf(
+                    preRestoreSnapshot.layout.nextPageId,
+                    homePages.maxOfOrNull { it.id + 1 } ?: 1,
+                )
+                nextFolderId = preRestoreSnapshot.layout.nextFolderId.coerceAtLeast(1)
+                pageIndex = visualIndexForHomePage(defaultHomePageIndex, mediaPageEnabled)
                 showFeedback(appContext.getString(R.string.feedback_backup_restore_failed))
             }
         }
