@@ -72,6 +72,8 @@ v0.2.3 adds local data-safety, widget, Finder, layout, packaging, and gate harde
 - Finder supports simple typo-tolerant matching plus bounded local usage ranking for apps, settings, actions, and app shortcuts; ranking history can be cleared from Home screen settings and diagnostics stay aggregate-only
 - Finder can optionally search local Contacts after the Contacts in Finder setting and Android Contacts permission are both enabled; contact names remain live-only and are excluded from recent searches, backups, and diagnostics
 - Count labels use plural resources, and connected Compose smoke tests cover `en-XA` pseudo-locale plus RTL layout direction on Home, Drawer/Finder, Settings, and Widget Picker
+- Android toolchain and stable AndroidX dependencies now run on AGP 9.2.1, Gradle 9.4.1, API 37, built-in Kotlin, Compose compiler plugin 2.4.0, and Compose BOM 2026.06.01
+- Compact phone widget pages keep page indicators, Finder, the dock, and the Apps button visible above system navigation even when the page contains multiple large widgets
 - Home screen settings can export/import `one-ui-home-clone-backup.json` for settings, pages, folders, hidden apps, recent searches, and bound-widget metadata; restore writes an app-private pre-restore snapshot, validates counts/provider availability, rolls back failed storage writes, reports changed/restored/missing counts, and keeps unavailable apps/widgets visible as repairable placeholders
 - Home screen settings can export `one-ui-home-clone-diagnostics.txt` with sanitized version, SDK, launcher-role, crash-summary, app-inventory, layout, and widget counts without app names or search history
 - Home screen settings persist "Add new apps to Home screen" and privacy-gated notification badge modes; badges stay local, default off, and require Android notification-listener access before dots or counts appear on Home, dock, drawer, and folders
@@ -109,8 +111,8 @@ $env:Path="$env:JAVA_HOME\bin;$env:Path"
 
 APK output: `prototype-android/app/build/outputs/apk/debug/app-debug.apk`
 
-The prototype builds with AGP 8.6, Gradle 8.7, JDK 17, and Android API 35
-(`compileSdk`/`targetSdk`). Install the Android 15 SDK platform before building
+The prototype builds with AGP 9.2.1, Gradle 9.4.1, JDK 17+, and Android API 37
+(`compileSdk`/`targetSdk`). Install the Android API 37 SDK platform before building
 on a fresh machine.
 
 Release-channel package with metadata:

@@ -530,7 +530,7 @@ class LauncherComposeSmokeTest {
         }
 
         composeRule.onNodeWithText("[!! Finder !!]").assertIsDisplayed()
-        composeRule.onNodeWithText("[!! Apps !!]").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Open Apps screen").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Clock").assertIsDisplayed()
     }
 

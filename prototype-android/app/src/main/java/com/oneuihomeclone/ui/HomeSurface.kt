@@ -60,6 +60,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -92,7 +93,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 import kotlin.math.roundToInt
 
 
@@ -166,7 +166,7 @@ internal fun rememberStatusClock(): StatusClock {
         }
     }
 
-    val locale = Locale.getDefault()
+    val locale = LocalLocale.current.platformLocale
     return remember(now, locale) {
         StatusClock(
             timeText = now.format(DateTimeFormatter.ofPattern("h:mm", locale)),
@@ -347,6 +347,7 @@ internal fun HomeSurface(
                                 layoutContract = layoutContract,
                                 widgets = page.widgets,
                                 showLabels = widgetLabelsEnabled,
+                                compact = false,
                                 canEdit = !lockHomeScreenLayout,
                                 onMoveWidget = onMoveWidget,
                                 onResizeWidget = onResizeWidget,
@@ -364,20 +365,23 @@ internal fun HomeSurface(
                     if (isMediaPage) {
                         MediaPageCards()
                     } else {
-                        HomeGrid(
-                            layoutContract = layoutContract,
-                            items = currentHomePage?.items.orEmpty(),
-                            showLabels = appLabelsEnabled,
-                            compactLayout = currentHomePage?.widgets?.isNotEmpty() == true,
-                            canOrganize = !lockHomeScreenLayout,
-                            onReorderItem = onReorderHomeItem,
-                            onCreateFolder = onCreateFolder,
-                            onAddAppToFolder = onAddAppToFolder,
-                            onDragStateChange = onHomeItemDragStateChange,
-                            onOpenApp = onOpenApp,
-                            onOpenAppActions = onOpenAppActions,
-                            onOpenFolder = onOpenFolder,
-                        )
+                        val homeItems = currentHomePage?.items.orEmpty()
+                        if (homeItems.isNotEmpty()) {
+                            HomeGrid(
+                                layoutContract = layoutContract,
+                                items = homeItems,
+                                showLabels = appLabelsEnabled,
+                                compactLayout = currentHomePage?.widgets?.isNotEmpty() == true,
+                                canOrganize = !lockHomeScreenLayout,
+                                onReorderItem = onReorderHomeItem,
+                                onCreateFolder = onCreateFolder,
+                                onAddAppToFolder = onAddAppToFolder,
+                                onDragStateChange = onHomeItemDragStateChange,
+                                onOpenApp = onOpenApp,
+                                onOpenAppActions = onOpenAppActions,
+                                onOpenFolder = onOpenFolder,
+                            )
+                        }
                     }
                     Spacer(Modifier.weight(1f))
                     PageStrip(
@@ -402,74 +406,87 @@ internal fun HomeSurface(
                 }
             }
         } else {
-            Column(
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
                     .widthIn(max = layoutContract.homeMaxWidth),
             ) {
-                StatusRow(
-                    timeText = timeText,
-                    dateText = dateText,
-                    homeLayoutMode = homeLayoutMode,
-                    lockHomeScreenLayout = lockHomeScreenLayout,
-                )
-                Spacer(Modifier.height(18.dp))
-                if (isMediaPage) {
-                    MediaPageHero()
-                    Spacer(Modifier.height(16.dp))
-                    MediaPageCards()
-                    Spacer(Modifier.weight(1f))
-                } else {
-                    currentHomePage?.let { WidgetHeroCard(it) }
-                    currentHomePage?.takeIf { it.widgets.isNotEmpty() }?.let { page ->
-                        Spacer(Modifier.height(14.dp))
-                        WidgetGrid(
-                            layoutContract = layoutContract,
-                            widgets = page.widgets,
-                            showLabels = widgetLabelsEnabled,
-                            canEdit = !lockHomeScreenLayout,
-                            onMoveWidget = onMoveWidget,
-                            onResizeWidget = onResizeWidget,
-                            onRemoveWidget = onRemoveWidget,
-                            onOpenWidgetActions = onOpenWidgetActions,
-                        )
+                val compactViewport = maxHeight < 800.dp
+                val topGap = if (compactViewport) 12.dp else 18.dp
+                val homeGridGap = if (compactViewport) 14.dp else 22.dp
+                val controlGap = if (compactViewport) 8.dp else 18.dp
+                val dockGap = if (compactViewport) 8.dp else 14.dp
+
+                Column(Modifier.fillMaxSize()) {
+                    StatusRow(
+                        timeText = timeText,
+                        dateText = dateText,
+                        homeLayoutMode = homeLayoutMode,
+                        lockHomeScreenLayout = lockHomeScreenLayout,
+                    )
+                    Spacer(Modifier.height(topGap))
+                    if (isMediaPage) {
+                        MediaPageHero()
+                        Spacer(Modifier.height(if (compactViewport) 10.dp else 16.dp))
+                        MediaPageCards()
+                        Spacer(Modifier.weight(1f))
+                    } else {
+                        currentHomePage?.let { WidgetHeroCard(it) }
+                        currentHomePage?.takeIf { it.widgets.isNotEmpty() }?.let { page ->
+                            Spacer(Modifier.height(if (compactViewport) 10.dp else 14.dp))
+                            WidgetGrid(
+                                layoutContract = layoutContract,
+                                widgets = page.widgets,
+                                showLabels = widgetLabelsEnabled,
+                                compact = compactViewport,
+                                canEdit = !lockHomeScreenLayout,
+                                onMoveWidget = onMoveWidget,
+                                onResizeWidget = onResizeWidget,
+                                onRemoveWidget = onRemoveWidget,
+                                onOpenWidgetActions = onOpenWidgetActions,
+                            )
+                        }
+                        val homeItems = currentHomePage?.items.orEmpty()
+                        val hideHomeGridForWidgetPage = compactViewport && currentHomePage?.widgets?.isNotEmpty() == true
+                        if (homeItems.isNotEmpty() && !hideHomeGridForWidgetPage) {
+                            Spacer(Modifier.height(homeGridGap))
+                            HomeGrid(
+                                layoutContract = layoutContract,
+                                items = homeItems,
+                                showLabels = appLabelsEnabled,
+                                compactLayout = compactViewport || currentHomePage?.widgets?.isNotEmpty() == true,
+                                canOrganize = !lockHomeScreenLayout,
+                                onReorderItem = onReorderHomeItem,
+                                onCreateFolder = onCreateFolder,
+                                onAddAppToFolder = onAddAppToFolder,
+                                onDragStateChange = onHomeItemDragStateChange,
+                                onOpenApp = onOpenApp,
+                                onOpenAppActions = onOpenAppActions,
+                                onOpenFolder = onOpenFolder,
+                            )
+                        }
+                        Spacer(Modifier.weight(1f))
                     }
-                    Spacer(Modifier.height(22.dp))
-                    HomeGrid(
-                        layoutContract = layoutContract,
-                        items = currentHomePage?.items.orEmpty(),
+                    PageStrip(
+                        pageIndex = pageIndex,
+                        pageCount = pageCount,
+                        onPageChange = onPageChange,
+                    )
+                    Spacer(Modifier.height(controlGap))
+                    SearchBarButton(
+                        label = if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) stringResource(R.string.home_search_apps) else stringResource(R.string.drawer_title_finder),
+                        onOpenDrawer = onOpenDrawer,
+                    )
+                    Spacer(Modifier.height(dockGap))
+                    DockBar(
+                        apps = dockApps,
                         showLabels = appLabelsEnabled,
-                        compactLayout = currentHomePage?.widgets?.isNotEmpty() == true,
-                        canOrganize = !lockHomeScreenLayout,
-                        onReorderItem = onReorderHomeItem,
-                        onCreateFolder = onCreateFolder,
-                        onAddAppToFolder = onAddAppToFolder,
-                        onDragStateChange = onHomeItemDragStateChange,
+                        appsButtonEnabled = homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS && appsButtonEnabled,
                         onOpenApp = onOpenApp,
                         onOpenAppActions = onOpenAppActions,
-                        onOpenFolder = onOpenFolder,
+                        onOpenDrawer = onOpenDrawer,
                     )
-                    Spacer(Modifier.weight(1f))
                 }
-                PageStrip(
-                    pageIndex = pageIndex,
-                    pageCount = pageCount,
-                    onPageChange = onPageChange,
-                )
-                Spacer(Modifier.height(18.dp))
-                SearchBarButton(
-                    label = if (homeLayoutMode == HomeLayoutMode.HOME_SCREEN_ONLY) stringResource(R.string.home_search_apps) else stringResource(R.string.drawer_title_finder),
-                    onOpenDrawer = onOpenDrawer,
-                )
-                Spacer(Modifier.height(14.dp))
-                DockBar(
-                    apps = dockApps,
-                    showLabels = appLabelsEnabled,
-                    appsButtonEnabled = homeLayoutMode == HomeLayoutMode.HOME_AND_APPS_SCREENS && appsButtonEnabled,
-                    onOpenApp = onOpenApp,
-                    onOpenAppActions = onOpenAppActions,
-                    onOpenDrawer = onOpenDrawer,
-                )
             }
         }
     }
@@ -612,6 +629,7 @@ private fun WidgetGrid(
     layoutContract: LauncherLayoutContract,
     widgets: List<WidgetTemplateModel>,
     showLabels: Boolean,
+    compact: Boolean,
     canEdit: Boolean,
     onMoveWidget: (Int, Int, Int) -> Unit,
     onResizeWidget: (Int, Int, Int) -> Unit,
@@ -624,11 +642,12 @@ private fun WidgetGrid(
         placeWidgetsInGrid(widgets, columns = gridColumns, maxRows = maxRows)
     }
     val gridRows = (placedWidgets.maxOfOrNull { it.cellY + it.spanY } ?: 1).coerceIn(1, maxRows)
+    val cellHeight = if (compact) 72.dp else layoutContract.widgetGridCellHeight
     LazyVerticalGrid(
         columns = GridCells.Fixed(gridColumns),
         modifier = Modifier
             .fillMaxWidth()
-            .height((gridRows * layoutContract.widgetGridCellHeight.value).dp),
+            .height((gridRows * cellHeight.value).dp),
         userScrollEnabled = false,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -642,6 +661,7 @@ private fun WidgetGrid(
                 layoutContract = layoutContract,
                 widget = widget,
                 showLabels = showLabels,
+                compact = compact,
                 canEdit = canEdit,
                 onMoveWidget = onMoveWidget,
                 onResizeWidget = onResizeWidget,
@@ -657,6 +677,7 @@ private fun WidgetGridTile(
     layoutContract: LauncherLayoutContract,
     widget: WidgetTemplateModel,
     showLabels: Boolean,
+    compact: Boolean,
     canEdit: Boolean,
     onMoveWidget: (Int, Int, Int) -> Unit,
     onResizeWidget: (Int, Int, Int) -> Unit,
@@ -665,7 +686,8 @@ private fun WidgetGridTile(
 ) {
     val hostWidgetId = widget.hostWidgetId
     val boundProviderMissing = hostWidgetId != null && widget.providerInfo == null
-    val tileHeight = (layoutContract.widgetGridCellHeight.value - 6f).coerceAtLeast(58f)
+    val cellHeight = if (compact) 72f else layoutContract.widgetGridCellHeight.value
+    val tileHeight = (cellHeight - 6f).coerceAtLeast(58f)
     Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -689,7 +711,7 @@ private fun WidgetGridTile(
                         end = Offset(900f, 260f),
                     ),
                 )
-                .padding(12.dp),
+                .padding(if (compact) 10.dp else 12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (showLabels) {
@@ -723,7 +745,7 @@ private fun WidgetGridTile(
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(if (compact) 6.dp else 8.dp))
             if (boundProviderMissing) {
                 WidgetUnavailablePane(
                     widget = widget,
@@ -737,7 +759,7 @@ private fun WidgetGridTile(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    compact = false,
+                    compact = compact,
                     layoutContract = layoutContract,
                 )
             }

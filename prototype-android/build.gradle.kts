@@ -1,10 +1,8 @@
 plugins {
-    id("com.android.application") version "8.6.0" apply false
-    id("com.android.test") version "8.6.0" apply false
+    id("com.android.application") version "9.2.1" apply false
+    id("com.android.test") version "9.2.1" apply false
     id("androidx.baselineprofile") version "1.4.1" apply false
-    // Kotlin 1.9.24 pairs with Compose compiler 1.5.14 (Compose BOM 2024.10.01 line).
-    // See https://developer.android.com/jetpack/androidx/releases/compose-kotlin.
-    id("org.jetbrains.kotlin.android") version "1.9.24" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "2.4.0" apply false
 }
 
 fun deviceGatesCommand(enforce: Boolean): List<String> {
@@ -27,26 +25,16 @@ fun deviceGatesCommand(enforce: Boolean): List<String> {
     return command
 }
 
-tasks.register("deviceGates") {
+tasks.register<org.gradle.api.tasks.Exec>("deviceGates") {
     group = "verification"
     description = "Builds the debug APK and records local adb screenshots/performance gate data."
     dependsOn(":app:assembleDebug")
-
-    doLast {
-        exec {
-            commandLine(deviceGatesCommand(enforce = false))
-        }
-    }
+    commandLine(deviceGatesCommand(enforce = false))
 }
 
-tasks.register("deviceGatesEnforced") {
+tasks.register<org.gradle.api.tasks.Exec>("deviceGatesEnforced") {
     group = "verification"
     description = "Runs deviceGates and exits non-zero when ROADMAP.md thresholds are missed."
     dependsOn(":app:assembleDebug")
-
-    doLast {
-        exec {
-            commandLine(deviceGatesCommand(enforce = true))
-        }
-    }
+    commandLine(deviceGatesCommand(enforce = true))
 }
