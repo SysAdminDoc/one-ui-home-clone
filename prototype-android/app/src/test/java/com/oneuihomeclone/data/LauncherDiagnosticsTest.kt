@@ -41,6 +41,11 @@ class LauncherDiagnosticsTest {
                 launchableAppCount = 40,
                 unavailableAppCount = 2,
                 restoredPlaceholderAppCount = 1,
+                finderIndexedAppCount = 39,
+                finderIndexedShortcutCount = 6,
+                finderRecentSearchCount = 2,
+                finderUsageTargetCount = 4,
+                finderUsageLaunchCount = 11,
                 hiddenAppCount = 3,
                 homePageCount = 2,
                 folderCount = 1,
@@ -63,6 +68,11 @@ class LauncherDiagnosticsTest {
         assertTrue(diagnostics.contains("badges.notificationAccessGranted=true"))
         assertTrue(diagnostics.contains("badges.packageCount=3"))
         assertTrue(diagnostics.contains("badges.totalCount=8"))
+        assertTrue(diagnostics.contains("finder.indexedApps=39"))
+        assertTrue(diagnostics.contains("finder.indexedShortcuts=6"))
+        assertTrue(diagnostics.contains("finder.recentSearches=2"))
+        assertTrue(diagnostics.contains("finder.usageTargets=4"))
+        assertTrue(diagnostics.contains("finder.usageLaunches=11"))
         assertTrue(diagnostics.contains("defaultLauncher.isDefault=false"))
         assertTrue(diagnostics.contains("previousCrash.exception=java.lang.IllegalStateException"))
         assertTrue(diagnostics.contains("privacy.rawAppNames=false"))
@@ -98,6 +108,11 @@ class LauncherDiagnosticsTest {
                 launchableAppCount = 8,
                 unavailableAppCount = 1,
                 restoredPlaceholderAppCount = 0,
+                finderIndexedAppCount = 8,
+                finderIndexedShortcutCount = 1,
+                finderRecentSearchCount = 0,
+                finderUsageTargetCount = 0,
+                finderUsageLaunchCount = 0,
                 hiddenAppCount = 0,
                 homePageCount = 2,
                 folderCount = 1,

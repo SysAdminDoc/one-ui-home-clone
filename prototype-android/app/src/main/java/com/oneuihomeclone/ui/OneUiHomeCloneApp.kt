@@ -115,6 +115,7 @@ import com.oneuihomeclone.R
 import com.oneuihomeclone.BuildConfig
 import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.DrawerSortKey
+import com.oneuihomeclone.data.FinderUsageStats
 import com.oneuihomeclone.data.FolderGridKey
 import com.oneuihomeclone.data.HomeLayoutKey
 import com.oneuihomeclone.data.LauncherBackup
@@ -321,6 +322,7 @@ fun OneUiHomeCloneApp(
     }
     val launcherDataStore = remember(appContext) { LauncherDataStore(appContext) }
     val launcherState: LauncherState? by launcherDataStore.state.collectAsStateWithLifecycle(initialValue = null)
+    val finderUsageStats: FinderUsageStats by launcherDataStore.finderUsageStats.collectAsStateWithLifecycle(initialValue = FinderUsageStats())
     val widgetPersistence = remember(appContext) { WidgetPersistence(appContext) }
     val layoutStore = remember(appContext) { LauncherLayoutStore(appContext) }
     val backupStore = remember(appContext) { LauncherBackupFileStore(appContext) }
@@ -453,6 +455,12 @@ fun OneUiHomeCloneApp(
         feedbackMessage = message
     }
 
+    fun recordFinderUsage(targetKey: String) {
+        coroutineScope.launch {
+            launcherDataStore.recordFinderUsage(targetKey)
+        }
+    }
+
     LaunchedEffect(widgetPersistence) {
         val pendingWidgetIds = widgetPersistence.consumePendingWidgetIds()
         if (pendingWidgetIds.isNotEmpty()) {
@@ -513,8 +521,9 @@ fun OneUiHomeCloneApp(
         }
     }
 
-    val launchSelectedApp: (CloneApp) -> Unit = { app ->
-        if (!appInventory.launch(app)) {
+    val launchSelectedApp: (CloneApp) -> Boolean = { app ->
+        val launched = appInventory.launch(app)
+        if (!launched) {
             val statusText = app.statusText()
             if (statusText != null) {
                 showFeedback(appContext.getString(R.string.feedback_app_unavailable, app.name, statusText))
@@ -523,6 +532,12 @@ fun OneUiHomeCloneApp(
             } else {
                 showFeedback(appContext.getString(R.string.feedback_app_open_failed, app.name))
             }
+        }
+        launched
+    }
+    val launchAndRecordApp: (CloneApp) -> Unit = { app ->
+        if (launchSelectedApp(app)) {
+            recordFinderUsage(app.finderUsageKey())
         }
     }
     val clock = rememberStatusClock()
@@ -809,18 +824,18 @@ fun OneUiHomeCloneApp(
             }
             .toMap()
     }
-    val filteredApps = remember(searchQuery, appsScreenApps) {
-        if (searchQuery.isBlank()) {
-            appsScreenApps
-        } else {
-            appsScreenApps.filter { it.name.contains(searchQuery, ignoreCase = true) }
-        }
+    val filteredApps = remember(searchQuery, appsScreenApps, finderUsageStats) {
+        buildFinderAppResults(
+            query = searchQuery,
+            apps = appsScreenApps,
+            usageStats = finderUsageStats,
+        )
     }
-    val finderShortcutResults = remember(searchQuery, appsScreenApps, finderShortcutsByAppId) {
+    val finderShortcutResults = remember(searchQuery, appsScreenApps, finderShortcutsByAppId, finderUsageStats) {
         val shortcutsByApp = appsScreenApps
             .associateWith { app -> finderShortcutsByAppId[app.id].orEmpty() }
             .filterValues { shortcuts -> shortcuts.isNotEmpty() }
-        buildFinderShortcutResults(searchQuery, shortcutsByApp)
+        buildFinderShortcutResults(searchQuery, shortcutsByApp, finderUsageStats)
     }
     val widgetCategories = remember(widgetTemplates) { buildWidgetCategories(widgetTemplates) }
     val filteredWidgetTemplates = remember(selectedWidgetCategory, widgetSearchQuery, widgetTemplates) {
@@ -858,6 +873,7 @@ fun OneUiHomeCloneApp(
         layoutContract.homeGridLabel,
         layoutContract.appsGridLabel,
         localizedFolderGridTitle,
+        finderUsageStats,
     ) {
         buildFinderSettingResults(
             query = searchQuery,
@@ -879,9 +895,10 @@ fun OneUiHomeCloneApp(
             appsScreenGridValue = layoutContract.appsGridLabel,
             folderGridValue = localizedFolderGridTitle,
             notificationBadgeModeValue = localizedNotificationBadgeModeTitle,
+            usageStats = finderUsageStats,
         )
     }
-    val finderActions = remember(searchQuery, homeLayoutMode, lockHomeScreenLayout, mediaPageEnabled, hiddenAppIds, finderActionText) {
+    val finderActions = remember(searchQuery, homeLayoutMode, lockHomeScreenLayout, mediaPageEnabled, hiddenAppIds, finderActionText, finderUsageStats) {
         buildFinderActionResults(
             query = searchQuery,
             homeLayoutMode = homeLayoutMode,
@@ -889,6 +906,7 @@ fun OneUiHomeCloneApp(
             mediaPageEnabled = mediaPageEnabled,
             hasHiddenApps = hiddenAppIds.isNotEmpty(),
             text = finderActionText,
+            usageStats = finderUsageStats,
         )
     }
 
@@ -1179,6 +1197,11 @@ fun OneUiHomeCloneApp(
                 launchableAppCount = allApps.count { it.isLaunchable },
                 unavailableAppCount = allApps.count { !it.isLaunchable && !it.isRestoredPlaceholder },
                 restoredPlaceholderAppCount = restoredPlaceholderCount(homePages),
+                finderIndexedAppCount = appsScreenApps.size,
+                finderIndexedShortcutCount = finderShortcutsByAppId.values.sumOf { it.size },
+                finderRecentSearchCount = recentSearches.size,
+                finderUsageTargetCount = finderUsageStats.targetCount,
+                finderUsageLaunchCount = finderUsageStats.totalLaunchCount,
                 hiddenAppCount = hiddenAppIds.size,
                 homePageCount = homePages.size,
                 folderCount = folders.size,
@@ -1200,6 +1223,13 @@ fun OneUiHomeCloneApp(
                     Log.e("OneUiHome/diagnostics", "Diagnostics export failed", cause)
                     showFeedback(appContext.getString(R.string.feedback_diagnostics_export_failed))
                 }
+        }
+    }
+
+    fun clearFinderUsageStats() {
+        coroutineScope.launch {
+            launcherDataStore.clearFinderUsageStats()
+            showFeedback(appContext.getString(R.string.feedback_finder_history_cleared))
         }
     }
 
@@ -1696,7 +1726,7 @@ fun OneUiHomeCloneApp(
                 }
             },
             onHomeItemDragStateChange = { isHomeItemDragActive = it },
-            onOpenApp = { app -> launchSelectedApp(app) },
+            onOpenApp = { app -> launchAndRecordApp(app) },
             onOpenAppActions = openAppActions,
             onOpenFolder = { folder ->
                 currentHomePage?.let { page ->
@@ -1768,6 +1798,7 @@ fun OneUiHomeCloneApp(
                 onOpenHideApps = { activeOverlay = OverlayPanel.HIDE_APPS },
                 onSelectRecentSearch = { searchQuery = it },
                 onOpenSettingResult = { setting ->
+                    recordFinderUsage(setting.usageKey)
                     rememberSearch(setting.title)
                     if (setting.type == FinderSettingType.HIDE_APPS) {
                         settingsFocusTitle = null
@@ -1781,11 +1812,13 @@ fun OneUiHomeCloneApp(
                     rememberSearch(if (searchQuery.isBlank()) action.title else searchQuery)
                     when (action.type) {
                         FinderActionType.SETTINGS -> {
+                            recordFinderUsage(action.usageKey)
                             settingsFocusTitle = homeScreenSettingsTitle
                             activeOverlay = OverlayPanel.SETTINGS
                         }
                         FinderActionType.WALLPAPERS,
                         FinderActionType.PAGE_MANAGER -> {
+                            recordFinderUsage(action.usageKey)
                             if (lockHomeScreenLayout) {
                                 settingsFocusTitle = lockLayoutTitle
                                 activeOverlay = OverlayPanel.SETTINGS
@@ -1794,11 +1827,13 @@ fun OneUiHomeCloneApp(
                             }
                         }
                         FinderActionType.WIDGETS -> {
+                            recordFinderUsage(action.usageKey)
                             selectedWidgetCategory = "Recommended"
                             widgetSearchQuery = ""
                             activeOverlay = OverlayPanel.WIDGET_PICKER
                         }
                         FinderActionType.MEDIA_PAGE -> {
+                            recordFinderUsage(action.usageKey)
                             if (!mediaPageEnabled) {
                                 updateMediaPageEnabled(true)
                             }
@@ -1807,11 +1842,13 @@ fun OneUiHomeCloneApp(
                             searchQuery = ""
                         }
                         FinderActionType.HOME_PAGE -> {
+                            recordFinderUsage(action.usageKey)
                             pageIndex = visualIndexForHomePage(defaultHomePageIndex, mediaPageEnabled)
                             activeOverlay = null
                             searchQuery = ""
                         }
                         FinderActionType.HIDE_APPS -> {
+                            recordFinderUsage(action.usageKey)
                             settingsFocusTitle = null
                             activeOverlay = OverlayPanel.HIDE_APPS
                         }
@@ -1820,6 +1857,7 @@ fun OneUiHomeCloneApp(
                             if (shortcut == null || !appInventory.launchShortcut(shortcut)) {
                                 showFeedback(appContext.getString(R.string.feedback_shortcut_open_failed, action.title))
                             } else {
+                                recordFinderUsage(action.usageKey)
                                 activeOverlay = null
                                 openFolderTarget = null
                                 searchQuery = ""
@@ -1831,7 +1869,7 @@ fun OneUiHomeCloneApp(
                     rememberSearch(if (searchQuery.isBlank()) app.name else searchQuery)
                     activeOverlay = null
                     searchQuery = ""
-                    launchSelectedApp(app)
+                    launchAndRecordApp(app)
                 },
                 onOpenAppActions = openAppActions,
                 drawerReorderSourceAppId = if (drawerSortMode == DrawerSortMode.CUSTOM_ORDER && searchQuery.isBlank()) {
@@ -1914,6 +1952,8 @@ fun OneUiHomeCloneApp(
                 appsScreenSortTitle = localizedDrawerSortTitle,
                 hiddenAppCount = hiddenAppIds.size,
                 boundWidgetCount = activeBoundWidgetCount,
+                finderUsageTargetCount = finderUsageStats.targetCount,
+                finderUsageLaunchCount = finderUsageStats.totalLaunchCount,
                 backupFileName = backupStore.backupFileName,
                 diagnosticsFileName = diagnosticsStore.diagnosticsFileName,
                 defaultLauncherState = defaultLauncherState,
@@ -1946,6 +1986,7 @@ fun OneUiHomeCloneApp(
                 onMotionPresetChange = { motionPreset = it },
                 onFolderGridChange = { folderGrid = it },
                 onResetWidgets = resetWidgets,
+                onClearFinderUsageStats = ::clearFinderUsageStats,
                 onExportBackup = ::exportLauncherBackup,
                 onImportBackup = ::importLauncherBackup,
                 onExportDiagnostics = ::exportLauncherDiagnostics,
@@ -2063,7 +2104,7 @@ fun OneUiHomeCloneApp(
                     folder = folder,
                     appLabelsEnabled = appLabelsEnabled,
                     folderGrid = folderGrid,
-                    onOpenApp = { app -> launchSelectedApp(app) },
+                            onOpenApp = { app -> launchAndRecordApp(app) },
                     onOpenAppActions = openAppActions,
                     onRenameFolder = { newTitle ->
                         homePages = homePages.map { page ->

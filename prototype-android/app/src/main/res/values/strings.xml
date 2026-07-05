@@ -3,6 +3,7 @@
     <string name="action_add">Add</string>
     <string name="action_set_up">Set up</string>
     <string name="action_close">Close</string>
+    <string name="action_clear">Clear</string>
     <string name="action_done">Done</string>
     <string name="action_hide">Hide</string>
     <string name="action_open">Open</string>
@@ -70,6 +71,8 @@
     <string name="settings_reset_widgets_empty">Clear the launcher widget host and remove stale provider state.</string>
     <string name="settings_reset_widgets_one">Remove 1 bound widget and clear stale provider state.</string>
     <string name="settings_reset_widgets_many">Remove %1$d bound widgets and clear stale provider state.</string>
+    <string name="settings_clear_finder_history">Clear Finder history</string>
+    <string name="settings_clear_finder_history_summary">Reset local result ranking for %1$d targets and %2$d launches. Recent searches stay separate.</string>
     <string name="settings_export_backup">Back up launcher</string>
     <string name="settings_export_backup_summary">Write settings, pages, folders, hidden apps, and widget metadata to %1$s.</string>
     <string name="settings_restore_backup">Restore backup</string>
@@ -240,6 +243,7 @@
     <string name="feedback_app_restored">%1$s restored to Home and Apps screens.</string>
     <string name="feedback_drawer_reorder_started">Move %1$s after another app.</string>
     <string name="feedback_drawer_reordered">%1$s moved after %2$s.</string>
+    <string name="feedback_finder_history_cleared">Finder result ranking cleared.</string>
     <string name="feedback_shortcut_open_failed">Couldn\'t open %1$s.</string>
     <string name="feedback_badge_access_needed">Allow notification access in Android settings to show badges.</string>
     <string name="feedback_badge_access_revoked">Notification access was revoked; badge counts are hidden.</string>

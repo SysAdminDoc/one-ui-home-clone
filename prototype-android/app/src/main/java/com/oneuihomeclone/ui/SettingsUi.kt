@@ -62,6 +62,8 @@ internal fun SettingsOverlay(
     appsScreenSortTitle: String,
     hiddenAppCount: Int,
     boundWidgetCount: Int,
+    finderUsageTargetCount: Int,
+    finderUsageLaunchCount: Int,
     backupFileName: String,
     diagnosticsFileName: String,
     defaultLauncherState: DefaultLauncherState,
@@ -80,6 +82,7 @@ internal fun SettingsOverlay(
     onMotionPresetChange: (MotionPresetMode) -> Unit,
     onFolderGridChange: (FolderGridMode) -> Unit,
     onResetWidgets: () -> Unit,
+    onClearFinderUsageStats: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onExportDiagnostics: () -> Unit,
@@ -335,6 +338,19 @@ internal fun SettingsOverlay(
                         selectedEntry = motionPreset,
                         labelOf = { it.localizedTitle() },
                         onSelect = onMotionPresetChange,
+                    )
+                }
+                item {
+                    SettingsActionCard(
+                        title = stringResource(R.string.settings_clear_finder_history),
+                        description = stringResource(
+                            R.string.settings_clear_finder_history_summary,
+                            finderUsageTargetCount,
+                            finderUsageLaunchCount,
+                        ),
+                        actionLabel = stringResource(R.string.action_clear),
+                        onClick = onClearFinderUsageStats,
+                        enabled = finderUsageTargetCount > 0 || finderUsageLaunchCount > 0,
                     )
                 }
                 item {

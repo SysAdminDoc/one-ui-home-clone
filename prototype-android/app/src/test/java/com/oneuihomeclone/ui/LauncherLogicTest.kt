@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.DrawerSortKey
+import com.oneuihomeclone.data.FinderUsageEntry
+import com.oneuihomeclone.data.FinderUsageStats
 import com.oneuihomeclone.data.FolderGridKey
 import com.oneuihomeclone.data.HomeLayoutKey
 import com.oneuihomeclone.data.LauncherState
@@ -584,6 +586,68 @@ class LauncherLogicTest {
     }
 
     @Test
+    fun buildFinderAppResults_promotesUsageWithinExactMatches() {
+        val calendar = app("calendar", "Calendar")
+        val calculator = app("calculator", "Calculator")
+        val usageStats = FinderUsageStats(
+            mapOf(calculator.finderUsageKey() to FinderUsageEntry(count = 8, lastUsedAtMillis = 200L)),
+        )
+
+        val results = buildFinderAppResults(
+            query = "cal",
+            apps = listOf(calendar, calculator),
+            usageStats = usageStats,
+        )
+
+        assertEquals(listOf("calculator", "calendar"), results.map(CloneApp::id))
+    }
+
+    @Test
+    fun buildFinderAppResults_keepsExactMatchesBeforeFuzzyUsageMatches() {
+        val clock = app("clock", "Clock")
+        val cloak = app("cloak", "Cloak")
+        val usageStats = FinderUsageStats(
+            mapOf(cloak.finderUsageKey() to FinderUsageEntry(count = 50, lastUsedAtMillis = 500L)),
+        )
+
+        val results = buildFinderAppResults(
+            query = "clock",
+            apps = listOf(cloak, clock),
+            usageStats = usageStats,
+        )
+
+        assertEquals(listOf("clock", "cloak"), results.map(CloneApp::id))
+    }
+
+    @Test
+    fun buildFinderAppResults_matchesSimpleTypo() {
+        val results = buildFinderAppResults(
+            query = "clok",
+            apps = listOf(app("calendar", "Calendar"), app("clock", "Clock")),
+        )
+
+        assertEquals(listOf("clock"), results.map(CloneApp::id))
+    }
+
+    @Test
+    fun buildFinderActionResults_promotesUsageWithinExactMatches() {
+        val usageStats = FinderUsageStats(
+            mapOf("action:HOME_PAGE" to FinderUsageEntry(count = 4, lastUsedAtMillis = 400L)),
+        )
+
+        val results = buildFinderActionResults(
+            query = "home",
+            homeLayoutMode = HomeLayoutMode.HOME_AND_APPS_SCREENS,
+            lockHomeScreenLayout = false,
+            mediaPageEnabled = true,
+            hasHiddenApps = false,
+            usageStats = usageStats,
+        )
+
+        assertEquals(FinderActionType.HOME_PAGE, results.first().type)
+    }
+
+    @Test
     fun buildFinderShortcutResults_returnsEmptyForBlankQuery() {
         val messages = app("messages", "Messages")
 
@@ -615,6 +679,19 @@ class LauncherLogicTest {
         assertEquals(FinderActionType.APP_SHORTCUT, results.single().type)
         assertEquals("Compose", results.single().title)
         assertEquals("Messages - Start a new message", results.single().summary)
+        assertEquals("compose", results.single().shortcut?.id)
+    }
+
+    @Test
+    fun buildFinderShortcutResults_matchesSimpleTypo() {
+        val messages = app("messages", "Messages")
+        val results = buildFinderShortcutResults(
+            query = "mesage",
+            shortcutsByApp = mapOf(
+                messages to listOf(shortcut(id = "compose", shortLabel = "Compose")),
+            ),
+        )
+
         assertEquals("compose", results.single().shortcut?.id)
     }
 

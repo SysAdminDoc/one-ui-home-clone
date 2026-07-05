@@ -113,6 +113,7 @@ internal data class FinderSettingResult(
     val title: String,
     val category: String,
     val value: String,
+    val usageKey: String = "setting:${type.name}",
 )
 
 internal data class FinderActionItem(
@@ -120,6 +121,7 @@ internal data class FinderActionItem(
     val title: String,
     val summary: String,
     val shortcut: LauncherShortcutAction? = null,
+    val usageKey: String = "action:${type.name}",
 )
 
 internal enum class AppContextSource {

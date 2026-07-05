@@ -52,6 +52,10 @@ class LauncherComposeSmokeTest {
         store.clear()
         store.update { setAppLabelsEnabled(false) }
         assertFalse(store.state.first().appLabelsEnabled)
+        store.recordFinderUsage("app:clock", nowMillis = 100L)
+        assertEquals(1, store.finderUsageStats.first().targetCount)
+        store.clearFinderUsageStats()
+        assertEquals(0, store.finderUsageStats.first().targetCount)
 
         var appLabelsEnabled = true
         setLauncherContent {

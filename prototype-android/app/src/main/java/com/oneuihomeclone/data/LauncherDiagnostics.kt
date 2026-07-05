@@ -27,6 +27,11 @@ data class LauncherDiagnosticsSnapshot(
     val launchableAppCount: Int,
     val unavailableAppCount: Int,
     val restoredPlaceholderAppCount: Int,
+    val finderIndexedAppCount: Int,
+    val finderIndexedShortcutCount: Int,
+    val finderRecentSearchCount: Int,
+    val finderUsageTargetCount: Int,
+    val finderUsageLaunchCount: Int,
     val hiddenAppCount: Int,
     val homePageCount: Int,
     val folderCount: Int,
@@ -89,6 +94,11 @@ internal fun buildLauncherDiagnostics(snapshot: LauncherDiagnosticsSnapshot): St
     appendLine("apps.launchable=${snapshot.launchableAppCount}")
     appendLine("apps.unavailable=${snapshot.unavailableAppCount}")
     appendLine("apps.restoredPlaceholders=${snapshot.restoredPlaceholderAppCount}")
+    appendLine("finder.indexedApps=${snapshot.finderIndexedAppCount}")
+    appendLine("finder.indexedShortcuts=${snapshot.finderIndexedShortcutCount}")
+    appendLine("finder.recentSearches=${snapshot.finderRecentSearchCount}")
+    appendLine("finder.usageTargets=${snapshot.finderUsageTargetCount}")
+    appendLine("finder.usageLaunches=${snapshot.finderUsageLaunchCount}")
     appendLine("apps.hidden=${snapshot.hiddenAppCount}")
     appendLine("layout.homePages=${snapshot.homePageCount}")
     appendLine("layout.folders=${snapshot.folderCount}")

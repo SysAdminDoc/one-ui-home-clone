@@ -12,6 +12,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * DataStore Preferences store for launcher toggles.
@@ -55,7 +57,7 @@ class LauncherDataStore(context: Context) {
 
     private val dataStore: DataStore<Preferences> = context.applicationContext.launcherDataStore
 
-    val state: Flow<LauncherState> = dataStore.data
+    private val safeData: Flow<Preferences> = dataStore.data
         .catch { cause ->
             // IOException is the documented failure mode (disk full, corrupted proto). Emit
             // defaults rather than crashing the launcher — a broken preferences file must
@@ -63,12 +65,35 @@ class LauncherDataStore(context: Context) {
             if (cause is java.io.IOException) emit(emptyPreferences())
             else throw cause
         }
+    val state: Flow<LauncherState> = safeData
         .map { prefs -> prefs.toLauncherState() }
+
+    val finderUsageStats: Flow<FinderUsageStats> = safeData
+        .map { prefs -> FinderUsageStatsCodec.decode(prefs[Keys.FINDER_USAGE_STATS]) }
 
     suspend fun update(mutator: Mutator.() -> Unit) {
         dataStore.edit { prefs ->
             Mutator(prefs).mutator()
         }
+    }
+
+    suspend fun recordFinderUsage(targetKey: String, nowMillis: Long = System.currentTimeMillis()) {
+        val normalizedKey = targetKey.trim()
+        if (normalizedKey.isBlank()) return
+        dataStore.edit { prefs ->
+            val current = FinderUsageStatsCodec.decode(prefs[Keys.FINDER_USAGE_STATS])
+            prefs[Keys.FINDER_USAGE_STATS] = FinderUsageStatsCodec.encode(
+                FinderUsageStatsCodec.record(
+                    stats = current,
+                    targetKey = normalizedKey,
+                    nowMillis = nowMillis,
+                ),
+            )
+        }
+    }
+
+    suspend fun clearFinderUsageStats() {
+        dataStore.edit { prefs -> prefs.remove(Keys.FINDER_USAGE_STATS) }
     }
 
     suspend fun clear() {
@@ -118,6 +143,7 @@ class LauncherDataStore(context: Context) {
         val DRAWER_SORT = stringPreferencesKey("drawer_sort_mode")
         val MOTION_PRESET = stringPreferencesKey("motion_preset")
         val FOLDER_GRID = stringPreferencesKey("folder_grid")
+        val FINDER_USAGE_STATS = stringPreferencesKey("finder_usage_stats")
     }
 
     private fun Preferences.toLauncherState(): LauncherState = LauncherState(
@@ -134,6 +160,93 @@ class LauncherDataStore(context: Context) {
         motionPreset = MotionPresetKey.fromRaw(this[Keys.MOTION_PRESET]),
         folderGrid = FolderGridKey.fromRaw(this[Keys.FOLDER_GRID]),
     )
+}
+
+data class FinderUsageEntry(
+    val count: Int,
+    val lastUsedAtMillis: Long,
+)
+
+data class FinderUsageStats(
+    val entriesByTargetKey: Map<String, FinderUsageEntry> = emptyMap(),
+) {
+    val targetCount: Int = entriesByTargetKey.size
+    val totalLaunchCount: Int = entriesByTargetKey.values.sumOf { it.count }
+
+    fun entryFor(targetKey: String): FinderUsageEntry? = entriesByTargetKey[targetKey]
+}
+
+internal object FinderUsageStatsCodec {
+    private const val SCHEMA_VERSION = 1
+    private const val MAX_TARGETS = 128
+    private const val MAX_KEY_LENGTH = 180
+    private const val MAX_COUNT = 999_999
+
+    fun record(
+        stats: FinderUsageStats,
+        targetKey: String,
+        nowMillis: Long,
+    ): FinderUsageStats {
+        val normalizedKey = targetKey.trim().take(MAX_KEY_LENGTH)
+        if (normalizedKey.isBlank()) return stats
+        val current = stats.entriesByTargetKey[normalizedKey]
+        val nextEntries = (stats.entriesByTargetKey + (
+            normalizedKey to FinderUsageEntry(
+                count = ((current?.count ?: 0) + 1).coerceAtMost(MAX_COUNT),
+                lastUsedAtMillis = nowMillis.coerceAtLeast(0L),
+            )
+            ))
+            .entries
+            .sortedWith(finderUsageEntryOrder())
+            .take(MAX_TARGETS)
+            .associate { it.key to it.value }
+        return FinderUsageStats(nextEntries)
+    }
+
+    fun encode(stats: FinderUsageStats): String {
+        val targets = JSONArray()
+        stats.entriesByTargetKey
+            .entries
+            .sortedWith(finderUsageEntryOrder())
+            .take(MAX_TARGETS)
+            .forEach { (key, entry) ->
+                targets.put(
+                    JSONObject()
+                        .put("key", key.take(MAX_KEY_LENGTH))
+                        .put("count", entry.count.coerceIn(1, MAX_COUNT))
+                        .put("lastUsedAtMillis", entry.lastUsedAtMillis.coerceAtLeast(0L)),
+                )
+            }
+        return JSONObject()
+            .put("schemaVersion", SCHEMA_VERSION)
+            .put("targets", targets)
+            .toString()
+    }
+
+    fun decode(raw: String?): FinderUsageStats {
+        if (raw.isNullOrBlank()) return FinderUsageStats()
+        return runCatching {
+            val root = JSONObject(raw)
+            if (root.optInt("schemaVersion") != SCHEMA_VERSION) return FinderUsageStats()
+            val targets = root.optJSONArray("targets") ?: return FinderUsageStats()
+            val entries = linkedMapOf<String, FinderUsageEntry>()
+            for (index in 0 until minOf(targets.length(), MAX_TARGETS)) {
+                val item = targets.optJSONObject(index) ?: continue
+                val key = item.optString("key").trim().take(MAX_KEY_LENGTH)
+                if (key.isBlank() || key in entries) continue
+                entries[key] = FinderUsageEntry(
+                    count = item.optInt("count", 0).coerceIn(1, MAX_COUNT),
+                    lastUsedAtMillis = item.optLong("lastUsedAtMillis", 0L).coerceAtLeast(0L),
+                )
+            }
+            FinderUsageStats(entries)
+        }.getOrDefault(FinderUsageStats())
+    }
+
+    private fun finderUsageEntryOrder(): Comparator<Map.Entry<String, FinderUsageEntry>> =
+        compareByDescending<Map.Entry<String, FinderUsageEntry>> { it.value.lastUsedAtMillis }
+            .thenByDescending { it.value.count }
+            .thenBy { it.key }
 }
 
 /** Motion preset — threaded through [LocalMotionScheme] so Standard/Reduced swap affects every transition. */

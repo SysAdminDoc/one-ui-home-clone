@@ -13,11 +13,13 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import com.oneuihomeclone.LauncherApp
 import com.oneuihomeclone.data.BoundWidget
+import com.oneuihomeclone.data.FinderUsageStats
 import com.oneuihomeclone.data.PersistedHomeItem
 import com.oneuihomeclone.data.PersistedHomePage
 import com.oneuihomeclone.data.PersistedLauncherLayout
 import com.oneuihomeclone.widgets.PreviewSource
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 internal fun totalPageCount(homePageCount: Int, mediaPageEnabled: Boolean): Int {
@@ -1185,6 +1187,29 @@ internal data class FinderActionText(
     val hideAppsSummary: String = "Choose which apps disappear from Home and Apps screens",
 )
 
+internal fun CloneApp.finderUsageKey(): String = "app:$id"
+
+internal fun buildFinderAppResults(
+    query: String,
+    apps: List<CloneApp>,
+    usageStats: FinderUsageStats = FinderUsageStats(),
+): List<CloneApp> =
+    rankFinderMatches(
+        query = query,
+        items = apps,
+        usageStats = usageStats,
+        usageKey = CloneApp::finderUsageKey,
+        searchableText = { app ->
+            listOfNotNull(
+                app.name,
+                app.profileBadge,
+                app.statusText(),
+                app.packageName,
+                app.launchTarget?.componentName?.packageName,
+            ).joinToString(" ")
+        },
+    )
+
 internal fun buildFinderSettingResults(
     query: String,
     homeLayoutMode: HomeLayoutMode,
@@ -1205,6 +1230,7 @@ internal fun buildFinderSettingResults(
     appsScreenGridValue: String = "4x6",
     folderGridValue: String = "3x4",
     notificationBadgeModeValue: String = text.offValue,
+    usageStats: FinderUsageStats = FinderUsageStats(),
 ): List<FinderSettingResult> {
     val settings = listOf(
         FinderSettingResult(FinderSettingType.HOME_SCREEN_LAYOUT, text.homeScreenLayout, text.layoutCategory, homeLayoutModeTitle),
@@ -1232,11 +1258,13 @@ internal fun buildFinderSettingResults(
     return if (normalizedQuery.isBlank()) {
         settings.take(4)
     } else {
-        settings.filter { setting ->
-            listOf(setting.title, setting.category, setting.value).any {
-                it.lowercase().contains(normalizedQuery)
-            }
-        }
+        rankFinderMatches(
+            query = query,
+            items = settings,
+            usageStats = usageStats,
+            usageKey = FinderSettingResult::usageKey,
+            searchableText = { setting -> "${setting.title} ${setting.category} ${setting.value}" },
+        )
     }
 }
 
@@ -1247,6 +1275,7 @@ internal fun buildFinderActionResults(
     mediaPageEnabled: Boolean,
     hasHiddenApps: Boolean,
     text: FinderActionText = FinderActionText(),
+    usageStats: FinderUsageStats = FinderUsageStats(),
 ): List<FinderActionItem> {
     val actions = listOf(
         FinderActionItem(
@@ -1281,50 +1310,50 @@ internal fun buildFinderActionResults(
     return if (normalizedQuery.isBlank()) {
         actions.take(3)
     } else {
-        actions.filter { action ->
-            listOf(action.title, action.summary).any { it.lowercase().contains(normalizedQuery) } ||
-                when (action.type) {
-                    FinderActionType.SETTINGS -> normalizedQuery.contains("setting")
-                    FinderActionType.WALLPAPERS -> normalizedQuery.contains("wall") || normalizedQuery.contains("theme")
-                    FinderActionType.WIDGETS -> normalizedQuery.contains("widget")
-                    FinderActionType.PAGE_MANAGER -> normalizedQuery.contains("page")
-                    FinderActionType.MEDIA_PAGE -> normalizedQuery.contains("media") || normalizedQuery.contains("free")
-                    FinderActionType.HOME_PAGE -> normalizedQuery.contains("home")
-                    FinderActionType.HIDE_APPS -> normalizedQuery.contains("hide") || normalizedQuery.contains("hidden")
-                    FinderActionType.APP_SHORTCUT -> false
-                }
-        }
+        rankFinderMatches(
+            query = query,
+            items = actions,
+            usageStats = usageStats,
+            usageKey = FinderActionItem::usageKey,
+            searchableText = FinderActionItem::finderSearchText,
+        )
     }
 }
 
 internal fun buildFinderShortcutResults(
     query: String,
     shortcutsByApp: Map<CloneApp, List<LauncherShortcutAction>>,
+    usageStats: FinderUsageStats = FinderUsageStats(),
 ): List<FinderActionItem> {
     val terms = finderSearchTerms(query)
     if (terms.isEmpty()) return emptyList()
 
-    return shortcutsByApp.asSequence()
+    val shortcutPairs = shortcutsByApp.asSequence()
         .flatMap { (app, shortcuts) ->
             shortcuts.asSequence()
                 .filter(LauncherShortcutAction::isEnabled)
                 .map { shortcut -> app to shortcut }
         }
         .distinctBy { (app, shortcut) -> shortcut.finderStableKey(app.id) }
-        .filter { (app, shortcut) ->
-            val searchable = shortcut.finderSearchText(app).lowercase(Locale.getDefault())
-            terms.all(searchable::contains)
-        }
-        .take(MAX_FINDER_SHORTCUT_RESULTS)
+        .toList()
+
+    return rankFinderMatches(
+        query = query,
+        items = shortcutPairs,
+        usageStats = usageStats,
+        usageKey = { (app, shortcut) -> shortcut.finderUsageKey(app.id) },
+        searchableText = { (app, shortcut) -> shortcut.finderSearchText(app) },
+        limit = MAX_FINDER_SHORTCUT_RESULTS,
+    )
         .map { (app, shortcut) ->
             FinderActionItem(
                 type = FinderActionType.APP_SHORTCUT,
                 title = shortcut.shortLabel,
                 summary = shortcut.finderSummary(app),
                 shortcut = shortcut,
+                usageKey = shortcut.finderUsageKey(app.id),
             )
         }
-        .toList()
 }
 
 internal fun rememberRecentSearch(
@@ -1340,13 +1369,145 @@ internal fun rememberRecentSearch(
 }
 
 private fun finderSearchTerms(query: String): List<String> =
-    query.trim()
-        .lowercase(Locale.getDefault())
+    normalizeFinderText(query)
         .split(Regex("\\s+"))
         .filter(String::isNotBlank)
 
+private data class FinderRankedItem<T>(
+    val item: T,
+    val quality: Int,
+    val usageCount: Int,
+    val lastUsedAtMillis: Long,
+    val originalIndex: Int,
+)
+
+private fun <T> rankFinderMatches(
+    query: String,
+    items: List<T>,
+    usageStats: FinderUsageStats,
+    usageKey: (T) -> String,
+    searchableText: (T) -> String,
+    limit: Int? = null,
+): List<T> {
+    val normalizedQuery = normalizeFinderText(query)
+    val terms = finderSearchTerms(query)
+    if (terms.isEmpty()) return items
+    val ranked = items.mapIndexedNotNull { index, item ->
+        val normalizedSearchable = normalizeFinderText(searchableText(item))
+        val quality = finderMatchQuality(
+            normalizedQuery = normalizedQuery,
+            terms = terms,
+            normalizedSearchable = normalizedSearchable,
+        ) ?: return@mapIndexedNotNull null
+        val usageEntry = usageStats.entryFor(usageKey(item))
+        FinderRankedItem(
+            item = item,
+            quality = quality,
+            usageCount = usageEntry?.count ?: 0,
+            lastUsedAtMillis = usageEntry?.lastUsedAtMillis ?: 0L,
+            originalIndex = index,
+        )
+    }
+        .sortedWith(
+            compareBy<FinderRankedItem<T>> { it.quality }
+                .thenByDescending { it.usageCount }
+                .thenByDescending { it.lastUsedAtMillis }
+                .thenBy { it.originalIndex },
+        )
+        .map(FinderRankedItem<T>::item)
+    return limit?.let(ranked::take) ?: ranked
+}
+
+private fun finderMatchQuality(
+    normalizedQuery: String,
+    terms: List<String>,
+    normalizedSearchable: String,
+): Int? {
+    if (normalizedSearchable.isBlank()) return null
+    if (normalizedSearchable.contains(normalizedQuery) || terms.all(normalizedSearchable::contains)) {
+        return 0
+    }
+    val searchableTokens = normalizedSearchable
+        .split(Regex("\\s+"))
+        .filter(String::isNotBlank)
+    if (terms.all { term -> searchableTokens.any { token -> finderFuzzyMatches(term, token) } }) {
+        return 1
+    }
+    return null
+}
+
+private fun finderFuzzyMatches(term: String, token: String): Boolean {
+    if (term.length < 2 || token.length < 2) return false
+    val maxDistance = if (term.length <= 4) 1 else 2
+    return token.startsWith(term.take(2)) && levenshteinDistanceAtMost(term, token, maxDistance) ||
+        isSubsequence(term, token)
+}
+
+private fun levenshteinDistanceAtMost(
+    left: String,
+    right: String,
+    maxDistance: Int,
+): Boolean {
+    if (abs(left.length - right.length) > maxDistance) return false
+    var previous = IntArray(right.length + 1) { it }
+    var current = IntArray(right.length + 1)
+    left.forEachIndexed { leftIndex, leftChar ->
+        current[0] = leftIndex + 1
+        var rowMinimum = current[0]
+        right.forEachIndexed { rightIndex, rightChar ->
+            val substitutionCost = if (leftChar == rightChar) 0 else 1
+            current[rightIndex + 1] = minOf(
+                current[rightIndex] + 1,
+                previous[rightIndex + 1] + 1,
+                previous[rightIndex] + substitutionCost,
+            )
+            rowMinimum = minOf(rowMinimum, current[rightIndex + 1])
+        }
+        if (rowMinimum > maxDistance) return false
+        val temp = previous
+        previous = current
+        current = temp
+    }
+    return previous[right.length] <= maxDistance
+}
+
+private fun isSubsequence(term: String, token: String): Boolean {
+    var tokenIndex = 0
+    term.forEach { char ->
+        tokenIndex = token.indexOf(char, startIndex = tokenIndex)
+        if (tokenIndex == -1) return false
+        tokenIndex += 1
+    }
+    return true
+}
+
+private fun normalizeFinderText(value: String): String =
+    value
+        .trim()
+        .lowercase(Locale.getDefault())
+        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+        .trim()
+
+private fun FinderActionItem.finderSearchText(): String =
+    (listOf(title, summary) + type.finderAliases()).joinToString(" ")
+
+private fun FinderActionType.finderAliases(): List<String> =
+    when (this) {
+        FinderActionType.SETTINGS -> listOf("setting settings home screen preferences")
+        FinderActionType.WALLPAPERS -> listOf("wall wallpaper theme themes style")
+        FinderActionType.WIDGETS -> listOf("widget widgets")
+        FinderActionType.PAGE_MANAGER -> listOf("page pages screen screens")
+        FinderActionType.MEDIA_PAGE -> listOf("media free news")
+        FinderActionType.HOME_PAGE -> listOf("home default")
+        FinderActionType.HIDE_APPS -> listOf("hide hidden apps")
+        FinderActionType.APP_SHORTCUT -> emptyList()
+    }
+
 private fun LauncherShortcutAction.finderStableKey(appId: String): String =
     "$appId:$packageName:$id:${user?.hashCode() ?: 0}"
+
+private fun LauncherShortcutAction.finderUsageKey(appId: String): String =
+    "shortcut:${finderStableKey(appId)}"
 
 private fun LauncherShortcutAction.finderSearchText(app: CloneApp): String =
     listOfNotNull(
