@@ -49,7 +49,6 @@
     <string name="settings_sort_unavailable_home_only">Unavailable in Home screen only mode</string>
     <string name="settings_hide_apps">Hide apps</string>
     <string name="settings_value_none">None</string>
-    <string name="settings_value_hidden_count">%1$d hidden</string>
     <string name="settings_folder_grid">Folder grid</string>
     <string name="settings_default_home_page">Default home page</string>
     <string name="settings_visible_pages">Visible pages</string>
@@ -70,10 +69,8 @@
     <string name="settings_motion_description">Standard uses spring overshoot for One UI feel. Reduced softens transitions for accessibility.</string>
     <string name="settings_reset_widgets">Reset widgets</string>
     <string name="settings_reset_widgets_empty">Clear the launcher widget host and remove stale provider state.</string>
-    <string name="settings_reset_widgets_one">Remove 1 bound widget and clear stale provider state.</string>
-    <string name="settings_reset_widgets_many">Remove %1$d bound widgets and clear stale provider state.</string>
     <string name="settings_clear_finder_history">Clear Finder history</string>
-    <string name="settings_clear_finder_history_summary">Reset local result ranking for %1$d targets and %2$d launches. Recent searches stay separate.</string>
+    <string name="settings_clear_finder_history_summary">Reset local result ranking for %1$s and %2$s. Recent searches stay separate.</string>
     <string name="settings_export_backup">Back up launcher</string>
     <string name="settings_export_backup_summary">Write settings, pages, folders, hidden apps, and widget metadata to %1$s.</string>
     <string name="settings_restore_backup">Restore backup</string>
@@ -98,7 +95,7 @@
     <string name="settings_badge_access_granted_summary">Notification access is granted. Badges use only aggregate app counts; notification text is not stored or exported.</string>
     <string name="settings_badge_access_denied_summary">Open Android settings to allow notification access. Badges stay off until permission is granted, and notification text is never stored.</string>
     <string name="settings_badge_access_off_summary">Badge notifications are off. Turn on dots or numbers before granting Android notification access.</string>
-    <string name="settings_badge_count_summary">%1$d active notifications across %2$d apps.</string>
+    <string name="settings_badge_count_summary">%1$s across %2$s.</string>
     <string name="settings_finder_contacts">Contacts in Finder</string>
     <string name="settings_finder_contacts_off_summary">Contacts never appear in Finder unless this is turned on.</string>
     <string name="settings_finder_contacts_granted_summary">Finder queries Contacts only while you type. Contact names are not saved to recent searches, backups, or diagnostics.</string>
@@ -131,7 +128,6 @@
     <string name="drawer_close_hint">Swipe down or tap Close to return home</string>
     <string name="drawer_no_matches">No matches</string>
     <string name="drawer_no_matches_summary">Try a shorter term, or search for apps, settings, widgets, and pages.</string>
-    <string name="drawer_hide_apps_count">Hide apps (%1$d)</string>
 
     <string name="finder_action_settings_home_only">Adjust the launcher while Home screen only mode is active</string>
     <string name="finder_action_settings_default">Adjust layout, labels, badges, and gestures</string>
@@ -294,8 +290,6 @@
     <string name="feedback_widget_setup_canceled">Widget setup was canceled.</string>
     <string name="feedback_widget_setup_unavailable">%1$s setup could not be opened.</string>
     <string name="feedback_widget_host_reset">Widget host state reset.</string>
-    <string name="feedback_widget_reset_one">Reset 1 widget.</string>
-    <string name="feedback_widget_reset_many">Reset %1$d widgets.</string>
     <string name="feedback_widget_removed">Widget removed.</string>
     <string name="feedback_widget_settings_unavailable">%1$s settings are unavailable.</string>
     <string name="feedback_backup_exported">Backup written to %1$s.</string>
@@ -303,7 +297,7 @@
     <string name="feedback_backup_missing">No launcher backup found at %1$s.</string>
     <string name="feedback_backup_invalid">The launcher backup at %1$s could not be read.</string>
     <string name="feedback_backup_restored">Backup restored. Missing apps and widgets stay on Home as repairable placeholders.</string>
-    <string name="feedback_backup_restored_summary">Backup restored: %1$d changed settings, %2$d pages, %3$d apps, %4$d widgets. Missing: %5$d apps, %6$d widget providers.</string>
+    <string name="feedback_backup_restored_summary">Backup restored: %1$s, %2$s, %3$s, %4$s. Missing: %5$s, %6$s.</string>
     <string name="feedback_backup_restore_failed">Couldn\'t restore launcher backup.</string>
     <string name="feedback_diagnostics_exported">Diagnostics written to %1$s.</string>
     <string name="feedback_diagnostics_export_failed">Couldn\'t write diagnostics.</string>
@@ -326,4 +320,61 @@
     <string name="a11y_widget_resize_shorter">Make widget shorter</string>
     <string name="a11y_widget_resize_taller">Make widget taller</string>
     <string name="a11y_widget_remove">Remove widget</string>
+
+    <plurals name="settings_hidden_app_count">
+        <item quantity="one">%1$d hidden app</item>
+        <item quantity="other">%1$d hidden apps</item>
+    </plurals>
+    <plurals name="settings_visible_page_count">
+        <item quantity="one">%1$d visible page</item>
+        <item quantity="other">%1$d visible pages</item>
+    </plurals>
+    <plurals name="settings_reset_widgets_summary">
+        <item quantity="one">Remove %1$d bound widget and clear stale provider state.</item>
+        <item quantity="other">Remove %1$d bound widgets and clear stale provider state.</item>
+    </plurals>
+    <plurals name="settings_finder_target_count">
+        <item quantity="one">%1$d target</item>
+        <item quantity="other">%1$d targets</item>
+    </plurals>
+    <plurals name="settings_finder_launch_count">
+        <item quantity="one">%1$d launch</item>
+        <item quantity="other">%1$d launches</item>
+    </plurals>
+    <plurals name="settings_badge_active_notification_count">
+        <item quantity="one">%1$d active notification</item>
+        <item quantity="other">%1$d active notifications</item>
+    </plurals>
+    <plurals name="settings_badge_active_app_count">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <plurals name="feedback_widget_reset_count">
+        <item quantity="one">Reset %1$d widget.</item>
+        <item quantity="other">Reset %1$d widgets.</item>
+    </plurals>
+    <plurals name="feedback_backup_changed_setting_count">
+        <item quantity="one">%1$d changed setting</item>
+        <item quantity="other">%1$d changed settings</item>
+    </plurals>
+    <plurals name="feedback_backup_restored_page_count">
+        <item quantity="one">%1$d page</item>
+        <item quantity="other">%1$d pages</item>
+    </plurals>
+    <plurals name="feedback_backup_restored_app_count">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <plurals name="feedback_backup_restored_widget_count">
+        <item quantity="one">%1$d widget</item>
+        <item quantity="other">%1$d widgets</item>
+    </plurals>
+    <plurals name="feedback_backup_missing_app_count">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <plurals name="feedback_backup_missing_widget_provider_count">
+        <item quantity="one">%1$d widget provider</item>
+        <item quantity="other">%1$d widget providers</item>
+    </plurals>
 </resources>

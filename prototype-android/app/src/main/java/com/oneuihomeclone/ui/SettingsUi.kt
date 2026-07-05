@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -101,7 +102,7 @@ internal fun SettingsOverlay(
     val hiddenAppsValue = if (hiddenAppCount == 0) {
         stringResource(R.string.settings_value_none)
     } else {
-        stringResource(R.string.settings_value_hidden_count, hiddenAppCount)
+        pluralStringResource(R.plurals.settings_hidden_app_count, hiddenAppCount, hiddenAppCount)
     }
     val folderGridLabel = stringResource(R.string.settings_folder_grid)
     val homeLayoutModeTitle = homeLayoutMode.localizedTitle()
@@ -111,11 +112,32 @@ internal fun SettingsOverlay(
     val appsGridLabel = layoutContract.appsGridLabel
     val defaultHomePageLabelText = stringResource(R.string.settings_default_home_page)
     val visiblePagesLabel = stringResource(R.string.settings_visible_pages)
-    val resetWidgetsDescription = when {
-        boundWidgetCount == 0 -> stringResource(R.string.settings_reset_widgets_empty)
-        boundWidgetCount == 1 -> stringResource(R.string.settings_reset_widgets_one)
-        else -> stringResource(R.string.settings_reset_widgets_many, boundWidgetCount)
+    val visiblePagesValue = pluralStringResource(R.plurals.settings_visible_page_count, homePageCount, homePageCount)
+    val resetWidgetsDescription = if (boundWidgetCount == 0) {
+        stringResource(R.string.settings_reset_widgets_empty)
+    } else {
+        pluralStringResource(R.plurals.settings_reset_widgets_summary, boundWidgetCount, boundWidgetCount)
     }
+    val finderUsageTargetsValue = pluralStringResource(
+        R.plurals.settings_finder_target_count,
+        finderUsageTargetCount,
+        finderUsageTargetCount,
+    )
+    val finderUsageLaunchesValue = pluralStringResource(
+        R.plurals.settings_finder_launch_count,
+        finderUsageLaunchCount,
+        finderUsageLaunchCount,
+    )
+    val notificationBadgeCountValue = pluralStringResource(
+        R.plurals.settings_badge_active_notification_count,
+        notificationBadgeActiveCount,
+        notificationBadgeActiveCount,
+    )
+    val notificationBadgeAppCountValue = pluralStringResource(
+        R.plurals.settings_badge_active_app_count,
+        notificationBadgeActiveAppCount,
+        notificationBadgeActiveAppCount,
+    )
     val defaultLauncherDescription = if (defaultLauncherState.isDefaultLauncher) {
         stringResource(R.string.settings_default_launcher_current)
     } else {
@@ -126,7 +148,7 @@ internal fun SettingsOverlay(
         notificationBadgePermissionGranted -> {
             val base = stringResource(R.string.settings_badge_access_granted_summary)
             if (notificationBadgeActiveCount > 0) {
-                "$base\n${stringResource(R.string.settings_badge_count_summary, notificationBadgeActiveCount, notificationBadgeActiveAppCount)}"
+                "$base\n${stringResource(R.string.settings_badge_count_summary, notificationBadgeCountValue, notificationBadgeAppCountValue)}"
             } else {
                 base
             }
@@ -178,6 +200,7 @@ internal fun SettingsOverlay(
         folderGridTitle,
         defaultHomePageLabelText,
         visiblePagesLabel,
+        visiblePagesValue,
     ) {
         listOf(
             SettingRowState(homeScreenLayoutLabel, homeLayoutModeTitle),
@@ -190,7 +213,7 @@ internal fun SettingsOverlay(
             SettingRowState(hideAppsLabel, hiddenAppsValue),
             SettingRowState(folderGridLabel, folderGridTitle),
             SettingRowState(defaultHomePageLabelText, defaultHomePageLabel),
-            SettingRowState(visiblePagesLabel, homePageCount.toString()),
+            SettingRowState(visiblePagesLabel, visiblePagesValue),
         )
     }
 
@@ -377,8 +400,8 @@ internal fun SettingsOverlay(
                         title = stringResource(R.string.settings_clear_finder_history),
                         description = stringResource(
                             R.string.settings_clear_finder_history_summary,
-                            finderUsageTargetCount,
-                            finderUsageLaunchCount,
+                            finderUsageTargetsValue,
+                            finderUsageLaunchesValue,
                         ),
                         actionLabel = stringResource(R.string.action_clear),
                         onClick = onClearFinderUsageStats,

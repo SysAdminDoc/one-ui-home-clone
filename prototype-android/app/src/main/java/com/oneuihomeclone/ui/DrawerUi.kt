@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -448,7 +449,11 @@ private fun AppsScreenControlRow(
             )
         }
         SettingsCapsule(
-            label = if (hiddenAppCount == 0) stringResource(R.string.settings_hide_apps) else stringResource(R.string.drawer_hide_apps_count, hiddenAppCount),
+            label = if (hiddenAppCount == 0) {
+                stringResource(R.string.settings_hide_apps)
+            } else {
+                pluralStringResource(R.plurals.settings_hidden_app_count, hiddenAppCount, hiddenAppCount)
+            },
             onClick = onOpenHideApps,
             accent = false,
         )

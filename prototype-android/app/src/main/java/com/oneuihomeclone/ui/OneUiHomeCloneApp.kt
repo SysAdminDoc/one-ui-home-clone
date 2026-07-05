@@ -319,7 +319,8 @@ fun OneUiHomeCloneApp(
     defaultLauncherState: DefaultLauncherState = DefaultLauncherState.Unknown,
     onOpenDefaultLauncherSettings: () -> Unit = {},
 ) {
-    val appContext = LocalContext.current.applicationContext
+    val uiContext = LocalContext.current
+    val appContext = uiContext.applicationContext
     val configuration = LocalConfiguration.current
     val layoutContract = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
         resolveLauncherLayoutContract(configuration.screenWidthDp, configuration.screenHeightDp)
@@ -414,7 +415,7 @@ fun OneUiHomeCloneApp(
         dotsValue = stringResource(R.string.settings_value_dots),
         dotsAndNumberValue = stringResource(R.string.settings_value_dots_and_number),
         appsSortUnavailable = stringResource(R.string.settings_sort_unavailable_home_only),
-        hiddenCount = { count -> appContext.getString(R.string.settings_value_hidden_count, count) },
+        hiddenCount = uiContext::hiddenAppsCountText,
     )
     val finderActionText = FinderActionText(
         homeScreenSettingsTitle = homeScreenSettingsTitle,
@@ -918,7 +919,7 @@ fun OneUiHomeCloneApp(
     val hiddenAppsValue = if (hiddenAppIds.isEmpty()) {
         stringResource(R.string.settings_value_none)
     } else {
-        stringResource(R.string.settings_value_hidden_count, hiddenAppIds.size)
+        uiContext.hiddenAppsCountText(hiddenAppIds.size)
     }
     val finderSettings = remember(
         searchQuery,
@@ -1209,17 +1210,7 @@ fun OneUiHomeCloneApp(
                 )
                 nextFolderId = backup.layout.nextFolderId.coerceAtLeast(1)
                 pageIndex = visualIndexForHomePage(defaultHomePageIndex, mediaPageEnabled)
-                showFeedback(
-                    appContext.getString(
-                        R.string.feedback_backup_restored_summary,
-                        restoreReport.changedSettingCount,
-                        restoreReport.restoredPageCount,
-                        restoreReport.restoredAppCount,
-                        restoreReport.restoredWidgetCount,
-                        restoreReport.missingAppCount,
-                        restoreReport.missingWidgetProviderCount,
-                    ),
-                )
+                showFeedback(uiContext.backupRestoreSummary(restoreReport))
             }.onFailure { cause ->
                 Log.e("OneUiHome/backup", "Backup restore failed", cause)
                 applyLauncherState(preRestoreSnapshot.settings)
@@ -1474,10 +1465,8 @@ fun OneUiHomeCloneApp(
         showFeedback(
             if (removedCount == 0) {
                 appContext.getString(R.string.feedback_widget_host_reset)
-            } else if (removedCount == 1) {
-                appContext.getString(R.string.feedback_widget_reset_one)
             } else {
-                appContext.getString(R.string.feedback_widget_reset_many, removedCount)
+                uiContext.widgetResetFeedback(removedCount)
             },
         )
     }

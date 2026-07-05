@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_close">[!! Close !!]</string>
+    <string name="action_clear">[!! Clear !!]</string>
+    <string name="action_reset">[!! Reset !!]</string>
+    <string name="action_add">[!! Add !!]</string>
+    <string name="apps">[!! Apps !!]</string>
+    <string name="settings_title_home_screen">[!! Home screen settings !!]</string>
+    <string name="settings_visible_pages">[!! Visible pages !!]</string>
+    <string name="settings_clear_finder_history">[!! Clear Finder history !!]</string>
+    <string name="settings_clear_finder_history_summary">[!! Reset local result ranking for %1$s and %2$s. Recent searches stay separate. !!]</string>
+    <string name="settings_badge_count_summary">[!! %1$s across %2$s. !!]</string>
+    <string name="drawer_title_finder">[!! Finder !!]</string>
+    <string name="drawer_search_apps_settings">[!! Search apps and settings !!]</string>
+    <string name="widgets_title">[!! Widgets !!]</string>
+    <string name="widgets_search_label">[!! Search widgets !!]</string>
+
+    <plurals name="settings_hidden_app_count">
+        <item quantity="one">[!! %1$d hidden app !!]</item>
+        <item quantity="other">[!! %1$d hidden apps !!]</item>
+    </plurals>
+    <plurals name="settings_visible_page_count">
+        <item quantity="one">[!! %1$d visible page !!]</item>
+        <item quantity="other">[!! %1$d visible pages !!]</item>
+    </plurals>
+    <plurals name="settings_reset_widgets_summary">
+        <item quantity="one">[!! Remove %1$d bound widget and clear stale provider state. !!]</item>
+        <item quantity="other">[!! Remove %1$d bound widgets and clear stale provider state. !!]</item>
+    </plurals>
+    <plurals name="settings_finder_target_count">
+        <item quantity="one">[!! %1$d target !!]</item>
+        <item quantity="other">[!! %1$d targets !!]</item>
+    </plurals>
+    <plurals name="settings_finder_launch_count">
+        <item quantity="one">[!! %1$d launch !!]</item>
+        <item quantity="other">[!! %1$d launches !!]</item>
+    </plurals>
+    <plurals name="settings_badge_active_notification_count">
+        <item quantity="one">[!! %1$d active notification !!]</item>
+        <item quantity="other">[!! %1$d active notifications !!]</item>
+    </plurals>
+    <plurals name="settings_badge_active_app_count">
+        <item quantity="one">[!! %1$d app !!]</item>
+        <item quantity="other">[!! %1$d apps !!]</item>
+    </plurals>
+</resources>

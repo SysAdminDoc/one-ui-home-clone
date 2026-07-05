@@ -1,15 +1,22 @@
 package com.oneuihomeclone.ui
 
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Environment
+import android.os.LocaleList
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
@@ -21,7 +28,9 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.oneuihomeclone.DefaultLauncherState
 import com.oneuihomeclone.PreviousCrashSummary
+import com.oneuihomeclone.R
 import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.LauncherBackup
 import com.oneuihomeclone.data.LauncherBackupFileStore
@@ -31,6 +40,7 @@ import com.oneuihomeclone.data.LauncherState
 import com.oneuihomeclone.data.PersistedLauncherLayout
 import com.oneuihomeclone.ui.theme.OneUiHomeCloneTheme
 import java.io.File
+import java.util.Locale
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -315,9 +325,237 @@ class LauncherComposeSmokeTest {
         }
     }
 
-    private fun setLauncherContent(content: @Composable () -> Unit) {
-        composeRule.setContent {
-            OneUiHomeCloneTheme(content)
+    @Test
+    fun pluralResourcesResolveForLocaleStress() {
+        val englishContext = localizedContext("en")
+        assertEquals("1 hidden app", englishContext.hiddenAppsCountText(1))
+        assertEquals("2 hidden apps", englishContext.hiddenAppsCountText(2))
+        assertEquals("Reset 2 widgets.", englishContext.widgetResetFeedback(2))
+
+        val pseudoContext = localizedContext("en-XA")
+        assertEquals(
+            "[!! 2 visible pages !!]",
+            pseudoContext.resources.getQuantityString(R.plurals.settings_visible_page_count, 2, 2),
+        )
+        assertTrue(
+            pseudoContext.getString(
+                R.string.settings_clear_finder_history_summary,
+                "[!! 1 target !!]",
+                "[!! 2 launches !!]",
+            ).startsWith("[!!"),
+        )
+
+        val arabicContext = localizedContext("ar")
+        assertEquals(android.view.View.LAYOUT_DIRECTION_RTL, arabicContext.resources.configuration.layoutDirection)
+        assertTrue(arabicContext.resources.getQuantityString(R.plurals.settings_visible_page_count, 3, 3).contains("صفحات"))
+    }
+
+    @Test
+    fun settingsOverlayRendersPseudoLocaleAndRtlPrimaryControls() {
+        setLauncherContent(localeTag = "en-XA", layoutDirection = androidx.compose.ui.unit.LayoutDirection.Rtl) {
+            SettingsOverlay(
+                layoutContract = resolveLauncherLayoutContract(widthDp = 412, heightDp = 915),
+                mediaPageEnabled = true,
+                appsButtonEnabled = true,
+                appLabelsEnabled = true,
+                widgetLabelsEnabled = true,
+                swipeDownForNotifications = true,
+                addNewAppsToHomeScreen = true,
+                notificationBadgeMode = NotificationBadgeMode.DOTS_AND_NUMBER,
+                notificationBadgePermissionGranted = true,
+                notificationBadgeActiveAppCount = 1,
+                notificationBadgeActiveCount = 2,
+                finderContactsEnabled = false,
+                finderContactsPermissionGranted = false,
+                homeLayoutMode = HomeLayoutMode.HOME_AND_APPS_SCREENS,
+                lockHomeScreenLayout = false,
+                motionPreset = MotionPresetMode.STANDARD,
+                folderGrid = FolderGridMode.GRID_3X4,
+                defaultHomePageLabel = "Home",
+                homePageCount = 3,
+                appsScreenSortTitle = "Custom order",
+                hiddenAppCount = 2,
+                boundWidgetCount = 2,
+                finderUsageTargetCount = 1,
+                finderUsageLaunchCount = 2,
+                backupFileName = "backup.json",
+                diagnosticsFileName = "diagnostics.txt",
+                defaultLauncherState = DefaultLauncherState.Unknown,
+                focusedSettingTitle = null,
+                onClose = {},
+                onMediaPageChange = {},
+                onAppsButtonChange = {},
+                onAppLabelsChange = {},
+                onWidgetLabelsChange = {},
+                onSwipeDownChange = {},
+                onAddNewAppsToHomeScreenChange = {},
+                onNotificationBadgeModeChange = {},
+                onOpenNotificationBadgeSettings = {},
+                onFinderContactsEnabledChange = {},
+                onRequestFinderContactsPermission = {},
+                onHomeLayoutModeChange = {},
+                onLockHomeScreenLayoutChange = {},
+                onMotionPresetChange = {},
+                onFolderGridChange = {},
+                onResetWidgets = {},
+                onClearFinderUsageStats = {},
+                onExportBackup = {},
+                onImportBackup = {},
+                onExportDiagnostics = {},
+                onOpenDefaultLauncherSettings = {},
+            )
         }
+
+        composeRule.onNodeWithText("[!! Home screen settings !!]").assertIsDisplayed()
+        composeRule.onNodeWithText("[!! Close !!]").assertIsDisplayed()
+        composeRule.onNodeWithText("[!! 3 visible pages !!]").assertIsDisplayed()
+        composeRule.onAllNodes(hasText("[!! 2 hidden apps !!]", substring = true)).assertCountEquals(1)
+    }
+
+    @Test
+    fun drawerFinderRendersPseudoLocaleAndRtlSearchControls() {
+        val apps = listOf(CloneApp("clock", "Clock", color = Color(0xFF4A88FF)))
+        setLauncherContent(localeTag = "en-XA", layoutDirection = androidx.compose.ui.unit.LayoutDirection.Rtl) {
+            DrawerOverlay(
+                layoutContract = resolveLauncherLayoutContract(widthDp = 412, heightDp = 915),
+                query = "settings",
+                apps = apps,
+                appsScreenApps = apps,
+                drawerPages = listOf(apps),
+                homeLayoutMode = HomeLayoutMode.HOME_AND_APPS_SCREENS,
+                drawerSortMode = DrawerSortMode.CUSTOM_ORDER,
+                drawerPageIndex = 0,
+                hiddenAppCount = 2,
+                settingResults = listOf(
+                    FinderSettingResult(
+                        type = FinderSettingType.HOME_SCREEN_LAYOUT,
+                        title = "Home screen layout",
+                        category = "Layout",
+                        value = "Home and Apps screens",
+                    ),
+                ),
+                actionResults = emptyList(),
+                shortcutResults = emptyList(),
+                contactResults = emptyList(),
+                recentSearches = emptyList(),
+                onQueryChange = {},
+                onClose = {},
+                onOpenSettings = {},
+                onSelectSortMode = {},
+                onSelectDrawerPage = {},
+                onOpenHideApps = {},
+                onSelectRecentSearch = {},
+                onOpenSettingResult = {},
+                onOpenAction = {},
+                onOpenContact = {},
+                onOpenApp = {},
+                onOpenAppActions = { _, _ -> },
+                appLabelsEnabled = true,
+            )
+        }
+
+        composeRule.onNodeWithText("[!! Finder !!]").assertIsDisplayed()
+        composeRule.onNode(hasSetTextAction()).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Home screen layout, Layout, Home and Apps screens").assertIsDisplayed()
+    }
+
+    @Test
+    fun widgetPickerRendersPseudoLocaleAndRtlPrimaryControls() {
+        setLauncherContent(localeTag = "en-XA", layoutDirection = androidx.compose.ui.unit.LayoutDirection.Rtl) {
+            WidgetPickerOverlay(
+                layoutContract = resolveLauncherLayoutContract(widthDp = 412, heightDp = 915),
+                categories = listOf("Recommended"),
+                selectedCategory = "Recommended",
+                searchQuery = "",
+                widgets = listOf(WidgetTemplateModel("Calendar", "Month view", "Recommended", "4 x 2", Color(0xFFFF8B7B))),
+                providerWarning = null,
+                targetPageLabel = "Home",
+                onSelectCategory = {},
+                onSearchQueryChange = {},
+                onAddWidget = {},
+                onClose = {},
+            )
+        }
+
+        composeRule.onNodeWithText("[!! Widgets !!]").assertIsDisplayed()
+        composeRule.onNodeWithText("[!! Close !!]").assertIsDisplayed()
+        composeRule.onNodeWithText("[!! Search widgets !!]").assertIsDisplayed()
+    }
+
+    @Test
+    fun homeSurfaceRendersPseudoLocaleAndRtlPrimaryControls() {
+        val app = CloneApp("clock", "Clock", color = Color(0xFF4A88FF))
+        setLauncherContent(localeTag = "en-XA", layoutDirection = androidx.compose.ui.unit.LayoutDirection.Rtl) {
+            HomeSurface(
+                layoutContract = resolveLauncherLayoutContract(widthDp = 412, heightDp = 915),
+                currentHomePage = HomePageModel(
+                    id = 1,
+                    label = "Home",
+                    eyebrow = "Now",
+                    value = "Ready",
+                    status = "Online",
+                    note = "Locale smoke",
+                    widgets = emptyList(),
+                    items = listOf(AppItemModel(app)),
+                ),
+                isMediaPage = false,
+                dockApps = listOf(app),
+                pageIndex = 0,
+                pageCount = 1,
+                timeText = "6:00",
+                dateText = "Sunday",
+                homeLayoutMode = HomeLayoutMode.HOME_AND_APPS_SCREENS,
+                lockHomeScreenLayout = false,
+                swipeDownForNotifications = true,
+                appLabelsEnabled = true,
+                widgetLabelsEnabled = true,
+                appsButtonEnabled = true,
+                isHomeItemDragActive = false,
+                onOpenDrawer = {},
+                onOpenNotifications = {},
+                onOpenEditMode = {},
+                onReorderHomeItem = { _, _ -> },
+                onCreateFolder = { _, _ -> },
+                onAddAppToFolder = { _, _ -> },
+                onHomeItemDragStateChange = {},
+                onOpenApp = {},
+                onOpenAppActions = { _, _ -> },
+                onOpenFolder = {},
+                onMoveWidget = { _, _, _ -> },
+                onResizeWidget = { _, _, _ -> },
+                onRemoveWidget = {},
+                onOpenWidgetActions = {},
+                onPageChange = {},
+            )
+        }
+
+        composeRule.onNodeWithText("[!! Finder !!]").assertIsDisplayed()
+        composeRule.onNodeWithText("[!! Apps !!]").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Clock").assertIsDisplayed()
+    }
+
+    private fun setLauncherContent(
+        localeTag: String = "en",
+        layoutDirection: androidx.compose.ui.unit.LayoutDirection = androidx.compose.ui.unit.LayoutDirection.Ltr,
+        content: @Composable () -> Unit,
+    ) {
+        val localizedContext = localizedContext(localeTag)
+        composeRule.setContent {
+            CompositionLocalProvider(
+                LocalContext provides localizedContext,
+                LocalLayoutDirection provides layoutDirection,
+            ) {
+                OneUiHomeCloneTheme(content)
+            }
+        }
+    }
+
+    private fun localizedContext(localeTag: String): Context {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val locale = Locale.forLanguageTag(localeTag)
+        val config = Configuration(context.resources.configuration)
+        config.setLocales(LocaleList(locale))
+        config.setLayoutDirection(locale)
+        return context.createConfigurationContext(config)
     }
 }

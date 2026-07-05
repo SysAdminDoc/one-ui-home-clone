@@ -124,6 +124,8 @@ android {
         disable += setOf("ObsoleteSdkInt")
         // Lint's own bundled custom checks fall out of sync with Compose compiler updates
         disable += setOf("ObsoleteLintCustomCheck")
+        // en-XA/ar resources are partial locale-stress fixtures, not shipping translations.
+        disable += setOf("MissingTranslation")
     }
 }
 

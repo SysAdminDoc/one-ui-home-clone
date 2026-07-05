@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_close">إغلاق</string>
+    <string name="action_clear">مسح</string>
+    <string name="action_reset">إعادة ضبط</string>
+    <string name="action_add">إضافة</string>
+    <string name="apps">التطبيقات</string>
+    <string name="settings_title_home_screen">إعدادات الشاشة الرئيسية</string>
+    <string name="settings_visible_pages">الصفحات المرئية</string>
+    <string name="settings_clear_finder_history">مسح سجل Finder</string>
+    <string name="settings_clear_finder_history_summary">إعادة ضبط ترتيب النتائج لـ %1$s و%2$s. تبقى عمليات البحث الأخيرة منفصلة.</string>
+    <string name="settings_badge_count_summary">%1$s عبر %2$s.</string>
+    <string name="drawer_title_finder">Finder</string>
+    <string name="drawer_search_apps_settings">البحث في التطبيقات والإعدادات</string>
+    <string name="widgets_title">الأدوات</string>
+    <string name="widgets_search_label">البحث عن أدوات</string>
+
+    <plurals name="settings_hidden_app_count">
+        <item quantity="zero">%1$d تطبيقات مخفية</item>
+        <item quantity="one">تطبيق مخفي واحد</item>
+        <item quantity="two">تطبيقان مخفيان</item>
+        <item quantity="few">%1$d تطبيقات مخفية</item>
+        <item quantity="many">%1$d تطبيقا مخفيا</item>
+        <item quantity="other">%1$d تطبيق مخفي</item>
+    </plurals>
+    <plurals name="settings_visible_page_count">
+        <item quantity="zero">%1$d صفحات مرئية</item>
+        <item quantity="one">صفحة مرئية واحدة</item>
+        <item quantity="two">صفحتان مرئيتان</item>
+        <item quantity="few">%1$d صفحات مرئية</item>
+        <item quantity="many">%1$d صفحة مرئية</item>
+        <item quantity="other">%1$d صفحة مرئية</item>
+    </plurals>
+    <plurals name="settings_reset_widgets_summary">
+        <item quantity="zero">إزالة %1$d أدوات مرتبطة ومسح حالة الموفر القديمة.</item>
+        <item quantity="one">إزالة أداة مرتبطة واحدة ومسح حالة الموفر القديمة.</item>
+        <item quantity="two">إزالة أداتين مرتبطتين ومسح حالة الموفر القديمة.</item>
+        <item quantity="few">إزالة %1$d أدوات مرتبطة ومسح حالة الموفر القديمة.</item>
+        <item quantity="many">إزالة %1$d أداة مرتبطة ومسح حالة الموفر القديمة.</item>
+        <item quantity="other">إزالة %1$d أداة مرتبطة ومسح حالة الموفر القديمة.</item>
+    </plurals>
+    <plurals name="settings_finder_target_count">
+        <item quantity="zero">%1$d أهداف</item>
+        <item quantity="one">هدف واحد</item>
+        <item quantity="two">هدفان</item>
+        <item quantity="few">%1$d أهداف</item>
+        <item quantity="many">%1$d هدفا</item>
+        <item quantity="other">%1$d هدف</item>
+    </plurals>
+    <plurals name="settings_finder_launch_count">
+        <item quantity="zero">%1$d عمليات تشغيل</item>
+        <item quantity="one">عملية تشغيل واحدة</item>
+        <item quantity="two">عمليتا تشغيل</item>
+        <item quantity="few">%1$d عمليات تشغيل</item>
+        <item quantity="many">%1$d عملية تشغيل</item>
+        <item quantity="other">%1$d عملية تشغيل</item>
+    </plurals>
+    <plurals name="settings_badge_active_notification_count">
+        <item quantity="zero">%1$d إشعارات نشطة</item>
+        <item quantity="one">إشعار نشط واحد</item>
+        <item quantity="two">إشعاران نشطان</item>
+        <item quantity="few">%1$d إشعارات نشطة</item>
+        <item quantity="many">%1$d إشعارا نشطا</item>
+        <item quantity="other">%1$d إشعار نشط</item>
+    </plurals>
+    <plurals name="settings_badge_active_app_count">
+        <item quantity="zero">%1$d تطبيقات</item>
+        <item quantity="one">تطبيق واحد</item>
+        <item quantity="two">تطبيقان</item>
+        <item quantity="few">%1$d تطبيقات</item>
+        <item quantity="many">%1$d تطبيقا</item>
+        <item quantity="other">%1$d تطبيق</item>
+    </plurals>
+</resources>
