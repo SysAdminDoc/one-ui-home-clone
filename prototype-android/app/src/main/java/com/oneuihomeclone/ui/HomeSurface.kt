@@ -1,6 +1,7 @@
 ﻿package com.oneuihomeclone.ui
 
 import android.annotation.SuppressLint
+import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetProviderInfo
 import android.app.WallpaperManager
 import android.content.Context
@@ -99,6 +100,7 @@ private fun replaceBoundWidgetView(
     container: FrameLayout,
     widgetId: Int,
     providerInfo: AppWidgetProviderInfo,
+    sizeOptions: WidgetSizeOptionsDp?,
 ) {
     container.removeAllViews()
     val resolvedInfo = LauncherApp.appWidgetManager()?.getAppWidgetInfo(widgetId) ?: providerInfo
@@ -108,7 +110,27 @@ private fun replaceBoundWidgetView(
         Log.w("OneUiHome/widgets", "Bound widget view failed (${cause.javaClass.simpleName})")
         null
     } ?: return
+    applyHostViewSize(hostView, sizeOptions)
     container.addView(hostView, matchParentLayoutParams())
+}
+
+@Suppress("DEPRECATION")
+private fun applyHostViewSize(
+    hostView: AppWidgetHostView,
+    sizeOptions: WidgetSizeOptionsDp?,
+) {
+    if (sizeOptions == null) return
+    runCatching {
+        hostView.updateAppWidgetSize(
+            null,
+            sizeOptions.minWidthDp,
+            sizeOptions.minHeightDp,
+            sizeOptions.maxWidthDp,
+            sizeOptions.maxHeightDp,
+        )
+    }.onFailure { cause ->
+        Log.w("OneUiHome/widgets", "Host view size update failed (${cause.javaClass.simpleName})")
+    }
 }
 
 private fun replaceRemotePreview(
@@ -716,6 +738,7 @@ private fun WidgetGridTile(
                         .fillMaxWidth()
                         .weight(1f),
                     compact = false,
+                    layoutContract = layoutContract,
                 )
             }
         }
@@ -968,6 +991,7 @@ internal fun WidgetPreviewPane(
     widget: WidgetTemplateModel,
     modifier: Modifier,
     compact: Boolean,
+    layoutContract: LauncherLayoutContract? = null,
 ) {
     val context = LocalContext.current.applicationContext
     val hostWidgetId = widget.hostWidgetId
@@ -985,9 +1009,11 @@ internal fun WidgetPreviewPane(
     }
     when {
         hostWidgetId != null && providerInfo != null -> BoundWidgetPreview(
+            widget = widget,
             widgetId = hostWidgetId,
             providerInfo = providerInfo,
             modifier = modifier,
+            layoutContract = layoutContract,
         )
         resolvedPreview is PreviewSource.RemoteLayout -> RemoteLayoutPreview(
             preview = resolvedPreview as PreviewSource.RemoteLayout,
@@ -1013,24 +1039,31 @@ internal fun WidgetPreviewPane(
 
 @Composable
 private fun BoundWidgetPreview(
+    widget: WidgetTemplateModel,
     widgetId: Int,
     providerInfo: AppWidgetProviderInfo,
     modifier: Modifier,
+    layoutContract: LauncherLayoutContract?,
 ) {
+    val sizeOptions = layoutContract?.let { widgetSizeOptionsDp(widget, it) }
     AndroidView(
         modifier = modifier
             .clip(OneUiPanelShape)
             .background(Color.White.copy(alpha = 0.82f)),
         factory = { context ->
             FrameLayout(context).apply {
-                replaceBoundWidgetView(this, widgetId, providerInfo)
+                replaceBoundWidgetView(this, widgetId, providerInfo, sizeOptions)
             }
         },
         update = { container ->
-            val tag = "bound:$widgetId:${providerInfo.provider.flattenToShortString()}"
+            val tag = "bound:$widgetId:${providerInfo.provider.flattenToShortString()}:$sizeOptions"
             if (container.tag != tag) {
                 container.tag = tag
-                replaceBoundWidgetView(container, widgetId, providerInfo)
+                replaceBoundWidgetView(container, widgetId, providerInfo, sizeOptions)
+            } else {
+                (container.getChildAt(0) as? AppWidgetHostView)?.let { hostView ->
+                    applyHostViewSize(hostView, sizeOptions)
+                }
             }
         },
     )

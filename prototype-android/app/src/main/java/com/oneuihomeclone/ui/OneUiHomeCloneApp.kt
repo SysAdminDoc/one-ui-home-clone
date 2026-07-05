@@ -602,6 +602,14 @@ fun OneUiHomeCloneApp(
         }
     }
 
+    LaunchedEffect(homePages, layoutContract) {
+        homePages
+            .asSequence()
+            .flatMap { page -> page.widgets.asSequence() }
+            .filter { widget -> widget.hostWidgetId != null && widget.providerInfo != null }
+            .forEach { widget -> updateBoundWidgetSizeOptions(widget, layoutContract) }
+    }
+
     // Persist user-facing toggles only after the DataStore snapshot initializes Compose
     // state. The first non-null emission is that loaded snapshot, so skip it.
     LaunchedEffect(launcherDataStore) {
@@ -1119,7 +1127,7 @@ fun OneUiHomeCloneApp(
                         showFeedback(message)
                     }
 
-                    val options = widgetBindOptions(widget)
+                    val options = widgetBindOptions(widget, layoutContract)
                     val commitBoundWidget: (Int) -> Unit = { boundId ->
                         clearPendingIds(allocatedId, boundId)
                         val boundModel = widget.copy(hostWidgetId = boundId)

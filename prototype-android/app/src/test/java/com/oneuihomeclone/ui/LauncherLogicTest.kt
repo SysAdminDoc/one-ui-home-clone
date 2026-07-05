@@ -733,6 +733,25 @@ class LauncherLogicTest {
     }
 
     @Test
+    fun widgetSizeOptionsDp_usesActiveLayoutContract() {
+        val phone = widgetSizeOptionsDp(
+            widget("Calendar", spanX = 2, spanY = 2),
+            resolveLauncherLayoutContract(widthDp = 412, heightDp = 915),
+        )
+        val landscape = widgetSizeOptionsDp(
+            widget("Calendar", spanX = 3, spanY = 1),
+            resolveLauncherLayoutContract(widthDp = 915, heightDp = 412),
+        )
+
+        assertEquals(215, phone.minWidthDp)
+        assertEquals(186, phone.minHeightDp)
+        assertEquals(phone.minWidthDp, phone.maxWidthDp)
+        assertEquals(phone.minHeightDp, phone.maxHeightDp)
+        assertEquals(512, landscape.minWidthDp)
+        assertEquals(72, landscape.minHeightDp)
+    }
+
+    @Test
     fun moveWidgetInPage_updatesCellWithinGrid() {
         val result = moveWidgetInPage(
             widgets = listOf(widget("Calendar", hostWidgetId = 42, cellX = 1, cellY = 1, spanX = 2, spanY = 2)),

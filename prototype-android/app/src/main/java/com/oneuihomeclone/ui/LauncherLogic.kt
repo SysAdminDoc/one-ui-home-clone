@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.appwidget.AppWidgetProviderInfo
+import android.util.SizeF
 import android.util.Log
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -17,6 +18,7 @@ import com.oneuihomeclone.data.PersistedHomePage
 import com.oneuihomeclone.data.PersistedLauncherLayout
 import com.oneuihomeclone.widgets.PreviewSource
 import java.util.Locale
+import kotlin.math.roundToInt
 
 internal fun totalPageCount(homePageCount: Int, mediaPageEnabled: Boolean): Int {
     return homePageCount + if (mediaPageEnabled) 1 else 0
@@ -586,15 +588,77 @@ internal fun WidgetTemplateModel.stableWidgetKey(): String {
     return "template:$title"
 }
 
-internal fun widgetBindOptions(widget: WidgetTemplateModel): Bundle =
+internal data class WidgetSizeOptionsDp(
+    val minWidthDp: Int,
+    val minHeightDp: Int,
+    val maxWidthDp: Int,
+    val maxHeightDp: Int,
+)
+
+internal fun widgetSizeOptionsDp(
+    widget: WidgetTemplateModel,
+    layoutContract: LauncherLayoutContract,
+): WidgetSizeOptionsDp {
+    val spanX = widget.spanX.coerceIn(1, layoutContract.widgetGridColumns)
+    val spanY = widget.spanY.coerceIn(1, layoutContract.widgetGridMaxRows)
+    val width = widgetSpanWidthDp(spanX, layoutContract)
+    val height = widgetSpanHeightDp(spanY, layoutContract)
+    return WidgetSizeOptionsDp(
+        minWidthDp = width,
+        minHeightDp = height,
+        maxWidthDp = width,
+        maxHeightDp = height,
+    )
+}
+
+internal fun widgetBindOptions(
+    widget: WidgetTemplateModel,
+    layoutContract: LauncherLayoutContract,
+): Bundle =
+    widgetSizeOptionsBundle(widgetSizeOptionsDp(widget, layoutContract))
+
+internal fun widgetSizeOptionsBundle(options: WidgetSizeOptionsDp): Bundle =
     Bundle().apply {
-        val minWidth = widget.spanX.coerceAtLeast(1) * 72
-        val minHeight = widget.spanY.coerceAtLeast(1) * 72
-        putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, minWidth)
-        putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, minHeight)
-        putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidth * 2)
-        putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight * 2)
+        putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, options.minWidthDp)
+        putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, options.minHeightDp)
+        putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, options.maxWidthDp)
+        putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, options.maxHeightDp)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            putParcelableArrayList(
+                AppWidgetManager.OPTION_APPWIDGET_SIZES,
+                arrayListOf(SizeF(options.minWidthDp.toFloat(), options.minHeightDp.toFloat())),
+            )
+        }
     }
+
+internal fun updateBoundWidgetSizeOptions(
+    widget: WidgetTemplateModel,
+    layoutContract: LauncherLayoutContract,
+) {
+    val hostWidgetId = widget.hostWidgetId ?: return
+    val options = widgetBindOptions(widget, layoutContract)
+    runCatching { LauncherApp.appWidgetManager()?.updateAppWidgetOptions(hostWidgetId, options) }
+        .onFailure { Log.w("OneUiHome/widgets", "Widget id $hostWidgetId size option update failed (${it.javaClass.simpleName})") }
+}
+
+private fun widgetSpanWidthDp(spanX: Int, layoutContract: LauncherLayoutContract): Int {
+    val columns = layoutContract.widgetGridColumns.coerceAtLeast(1)
+    val totalSpacing = (columns - 1) * WIDGET_GRID_SPACING_DP
+    val cellWidth = ((layoutContract.homeMaxWidth.value - totalSpacing) / columns)
+        .coerceAtLeast(WIDGET_GRID_MIN_CELL_WIDTH_DP)
+    return (cellWidth * spanX.coerceAtLeast(1) + WIDGET_GRID_SPACING_DP * (spanX - 1).coerceAtLeast(0))
+        .roundToInt()
+}
+
+private fun widgetSpanHeightDp(spanY: Int, layoutContract: LauncherLayoutContract): Int {
+    val cellHeight = layoutContract.widgetGridCellHeight.value.coerceAtLeast(WIDGET_GRID_MIN_CELL_HEIGHT_DP)
+    return (cellHeight * spanY.coerceAtLeast(1) + WIDGET_GRID_SPACING_DP * (spanY - 1).coerceAtLeast(0))
+        .roundToInt()
+}
+
+private const val WIDGET_GRID_SPACING_DP = 10f
+private const val WIDGET_GRID_MIN_CELL_WIDTH_DP = 48f
+private const val WIDGET_GRID_MIN_CELL_HEIGHT_DP = 48f
 
 internal fun widgetConfigureIntent(widget: WidgetTemplateModel): Intent? {
     val widgetId = widget.hostWidgetId ?: return null
