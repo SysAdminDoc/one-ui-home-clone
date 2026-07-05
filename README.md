@@ -72,6 +72,7 @@ v0.2.3 adds local data-safety, widget, Finder, layout, packaging, and gate harde
 - Home screen settings can export `one-ui-home-clone-diagnostics.txt` with sanitized version, SDK, launcher-role, crash-summary, app-inventory, layout, and widget counts without app names or search history
 - Home screen settings persist "Add new apps to Home screen" and privacy-gated notification badge modes; badges stay local, default off, and require Android notification-listener access before dots or counts appear on Home, dock, drawer, and folders
 - Responsive layout contracts now select explicit phone portrait, phone landscape, foldable-width, and tablet grids; Home/Apps pagination, widget placement, Settings, folders, Widget Picker, edit tray, and default-launcher prompt are bounded per form factor
+- Connected Compose UI smoke tests cover settings toggle persistence, Finder action results, widget picker search and health states, backup file export/import, default-launcher prompt dismissal, and safe-recovery reset actions
 
 v0.2.0 landed the widgets + persistence + motion primitives:
 
@@ -135,6 +136,16 @@ tap timing, HOME/back retention, drawer swipe-down close, Finder IME back
 behavior, landscape Finder visibility, edge-to-edge system-bar contrast, and
 pass/fail status against the roadmap thresholds. Use `deviceGatesEnforced` on
 Pixel-class hardware when threshold misses should fail.
+
+Connected Compose UI smoke:
+
+```powershell
+cd prototype-android
+.\gradlew.bat :app:connectedDebugAndroidTest
+```
+
+This installs the debug build on a connected device and runs the focused
+Settings/Finder/Widget Picker/backup/default-prompt/recovery smoke suite.
 
 Generate the release Baseline Profile after changing startup, drawer, Finder, or
 app-launch behavior:
