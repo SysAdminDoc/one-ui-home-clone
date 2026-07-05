@@ -297,6 +297,7 @@ internal class LauncherAppInventory(
         return CloneApp(
             id = componentId,
             name = displayLabel,
+            packageName = component.packageName,
             launchIntent = Intent.makeMainActivity(component)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED),
             launchTarget = LauncherAppLaunchTarget(

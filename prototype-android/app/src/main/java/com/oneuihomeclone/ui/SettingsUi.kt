@@ -49,6 +49,10 @@ internal fun SettingsOverlay(
     widgetLabelsEnabled: Boolean,
     swipeDownForNotifications: Boolean,
     addNewAppsToHomeScreen: Boolean,
+    notificationBadgeMode: NotificationBadgeMode,
+    notificationBadgePermissionGranted: Boolean,
+    notificationBadgeActiveAppCount: Int,
+    notificationBadgeActiveCount: Int,
     homeLayoutMode: HomeLayoutMode,
     lockHomeScreenLayout: Boolean,
     motionPreset: MotionPresetMode,
@@ -69,6 +73,8 @@ internal fun SettingsOverlay(
     onWidgetLabelsChange: (Boolean) -> Unit,
     onSwipeDownChange: (Boolean) -> Unit,
     onAddNewAppsToHomeScreenChange: (Boolean) -> Unit,
+    onNotificationBadgeModeChange: (NotificationBadgeMode) -> Unit,
+    onOpenNotificationBadgeSettings: () -> Unit,
     onHomeLayoutModeChange: (HomeLayoutMode) -> Unit,
     onLockHomeScreenLayoutChange: (Boolean) -> Unit,
     onMotionPresetChange: (MotionPresetMode) -> Unit,
@@ -93,6 +99,7 @@ internal fun SettingsOverlay(
     val folderGridLabel = stringResource(R.string.settings_folder_grid)
     val homeLayoutModeTitle = homeLayoutMode.localizedTitle()
     val folderGridTitle = folderGrid.localizedTitle()
+    val notificationBadgeModeTitle = notificationBadgeMode.localizedTitle()
     val homeGridLabel = layoutContract.homeGridLabel
     val appsGridLabel = layoutContract.appsGridLabel
     val defaultHomePageLabelText = stringResource(R.string.settings_default_home_page)
@@ -107,12 +114,24 @@ internal fun SettingsOverlay(
     } else {
         stringResource(R.string.settings_default_launcher_not_current)
     }
+    val notificationBadgeAccessDescription = when {
+        notificationBadgeMode == NotificationBadgeMode.OFF -> stringResource(R.string.settings_badge_access_off_summary)
+        notificationBadgePermissionGranted -> {
+            val base = stringResource(R.string.settings_badge_access_granted_summary)
+            if (notificationBadgeActiveCount > 0) {
+                "$base\n${stringResource(R.string.settings_badge_count_summary, notificationBadgeActiveCount, notificationBadgeActiveAppCount)}"
+            } else {
+                base
+            }
+        }
+        else -> stringResource(R.string.settings_badge_access_denied_summary)
+    }
     val behaviorRows = listOf(
         SettingRowState(
             stringResource(R.string.settings_add_new_apps),
             stringResource(if (addNewAppsToHomeScreen) R.string.settings_value_on else R.string.state_off),
         ),
-        SettingRowState(stringResource(R.string.settings_badge_notifications), stringResource(R.string.settings_value_dots_and_number)),
+        SettingRowState(stringResource(R.string.settings_badge_notifications), notificationBadgeModeTitle),
         SettingRowState(stringResource(R.string.settings_about_home_screen), stringResource(R.string.settings_about_version)),
     )
     val privacyPoints = listOf(
@@ -270,6 +289,24 @@ internal fun SettingsOverlay(
                         addNewAppsToHomeScreen,
                         onAddNewAppsToHomeScreenChange,
                         stringResource(R.string.settings_add_new_apps_summary),
+                    )
+                }
+                item {
+                    SettingsSelectorCard(
+                        title = stringResource(R.string.settings_badge_notifications),
+                        description = stringResource(R.string.settings_badge_notifications_description),
+                        entries = NotificationBadgeMode.entries,
+                        selectedEntry = notificationBadgeMode,
+                        labelOf = { it.localizedTitle() },
+                        onSelect = onNotificationBadgeModeChange,
+                    )
+                }
+                item {
+                    SettingsActionCard(
+                        title = stringResource(R.string.settings_badge_access),
+                        description = notificationBadgeAccessDescription,
+                        actionLabel = stringResource(R.string.action_open_settings),
+                        onClick = onOpenNotificationBadgeSettings,
                     )
                 }
                 item {

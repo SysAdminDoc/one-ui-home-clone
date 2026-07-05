@@ -90,6 +90,39 @@ internal fun applyHiddenAppsToPages(
     }
 }
 
+internal fun applyNotificationBadges(
+    apps: List<CloneApp>,
+    countsByPackage: Map<String, Int>,
+    mode: NotificationBadgeMode,
+    accessGranted: Boolean,
+): List<CloneApp> {
+    if (apps.isEmpty()) return apps
+    if (!accessGranted || mode == NotificationBadgeMode.OFF || countsByPackage.isEmpty()) {
+        return apps.map { app ->
+            if (app.notificationBadge == NotificationBadgeState.None) app else app.copy(notificationBadge = NotificationBadgeState.None)
+        }
+    }
+
+    val showNumber = mode == NotificationBadgeMode.DOTS_AND_NUMBER
+    return apps.map { app ->
+        val count = app.notificationPackageName()
+            ?.let { packageName -> countsByPackage[packageName] }
+            ?.coerceAtLeast(0)
+            ?: 0
+        val nextBadge = if (count > 0) {
+            NotificationBadgeState(count = count, showNumber = showNumber)
+        } else {
+            NotificationBadgeState.None
+        }
+        if (app.notificationBadge == nextBadge) app else app.copy(notificationBadge = nextBadge)
+    }
+}
+
+private fun CloneApp.notificationPackageName(): String? =
+    packageName
+        ?: launchTarget?.componentName?.packageName
+        ?: launchIntent?.component?.packageName
+
 internal fun homeGridContainsApp(items: List<HomeGridItemModel>, appId: String): Boolean =
     items.any { item ->
         when (item) {
@@ -1010,6 +1043,7 @@ internal data class FinderSettingText(
     val onValue: String = "On",
     val offValue: String = "Off",
     val noneValue: String = "None",
+    val dotsValue: String = "Dots",
     val dotsAndNumberValue: String = "Dots and number",
     val appsSortUnavailable: String = "Unavailable in Home screen only mode",
     val hiddenCount: (Int) -> String = { count -> "$count hidden" },
@@ -1058,6 +1092,7 @@ internal fun buildFinderSettingResults(
     homeScreenGridValue: String = "4x6",
     appsScreenGridValue: String = "4x6",
     folderGridValue: String = "3x4",
+    notificationBadgeModeValue: String = text.offValue,
 ): List<FinderSettingResult> {
     val settings = listOf(
         FinderSettingResult(FinderSettingType.HOME_SCREEN_LAYOUT, text.homeScreenLayout, text.layoutCategory, homeLayoutModeTitle),
@@ -1079,7 +1114,7 @@ internal fun buildFinderSettingResults(
         FinderSettingResult(FinderSettingType.HIDE_APPS, text.hideApps, text.appsScreenCategory, hiddenAppsValue),
         FinderSettingResult(FinderSettingType.LOCK_LAYOUT, text.lockLayout, text.behaviorCategory, if (lockHomeScreenLayout) text.onValue else text.offValue),
         FinderSettingResult(FinderSettingType.ADD_NEW_APPS, text.addNewApps, text.behaviorCategory, if (addNewAppsToHomeScreen) text.onValue else text.offValue),
-        FinderSettingResult(FinderSettingType.BADGE_NOTIFICATIONS, text.badgeNotifications, text.behaviorCategory, text.dotsAndNumberValue),
+        FinderSettingResult(FinderSettingType.BADGE_NOTIFICATIONS, text.badgeNotifications, text.behaviorCategory, notificationBadgeModeValue),
     )
     val normalizedQuery = query.trim().lowercase()
     return if (normalizedQuery.isBlank()) {

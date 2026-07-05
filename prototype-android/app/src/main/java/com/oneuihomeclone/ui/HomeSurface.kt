@@ -1329,47 +1329,64 @@ private fun FolderBubble(
     onOpenFolder: (FolderModel) -> Unit,
 ) {
     val openFolderDescription = stringResource(R.string.a11y_open_folder, folder.title)
+    val folderBadge = remember(folder.apps) {
+        val badgedApps = folder.apps.filter { it.notificationBadge.isVisible }
+        if (badgedApps.isEmpty()) {
+            NotificationBadgeState.None
+        } else {
+            NotificationBadgeState(
+                count = badgedApps.sumOf { it.notificationBadge.count },
+                showNumber = badgedApps.any { it.notificationBadge.showNumber },
+            )
+        }
+    }
     Surface(
         modifier = Modifier.size(62.dp),
         shape = OneUiIconShape,
         color = OneUiCard.copy(alpha = 0.94f),
         shadowElevation = 1.dp,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .semantics { contentDescription = openFolderDescription }
-                .clickable(role = Role.Button) { onOpenFolder(folder) }
-                .padding(9.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            folder.apps.chunked(2).forEach { rowApps ->
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    rowApps.forEach { app ->
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (app.icon != null) {
-                                Image(
-                                    bitmap = app.icon,
-                                    contentDescription = app.accessibilityLabel(),
-                                    modifier = Modifier.size(18.dp),
-                                    contentScale = ContentScale.Fit,
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(18.dp)
-                                        .clip(OneUiMicroShape)
-                                        .background(app.color),
-                                )
+        Box {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .semantics { contentDescription = openFolderDescription }
+                    .clickable(role = Role.Button) { onOpenFolder(folder) }
+                    .padding(9.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                folder.apps.chunked(2).forEach { rowApps ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        rowApps.forEach { app ->
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (app.icon != null) {
+                                    Image(
+                                        bitmap = app.icon,
+                                        contentDescription = app.accessibilityLabel(),
+                                        modifier = Modifier.size(18.dp),
+                                        contentScale = ContentScale.Fit,
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(18.dp)
+                                            .clip(OneUiMicroShape)
+                                            .background(app.color),
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
+            NotificationBadge(
+                badge = folderBadge,
+                modifier = Modifier.align(Alignment.TopStart),
+            )
         }
     }
 }

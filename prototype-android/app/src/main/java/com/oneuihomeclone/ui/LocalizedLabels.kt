@@ -36,3 +36,12 @@ internal fun FolderGridMode.localizedTitle(): String = stringResource(
         FolderGridMode.GRID_5X5 -> R.string.folder_grid_5x5
     },
 )
+
+@Composable
+internal fun NotificationBadgeMode.localizedTitle(): String = stringResource(
+    when (this) {
+        NotificationBadgeMode.OFF -> R.string.state_off
+        NotificationBadgeMode.DOTS -> R.string.settings_value_dots
+        NotificationBadgeMode.DOTS_AND_NUMBER -> R.string.settings_value_dots_and_number
+    },
+)

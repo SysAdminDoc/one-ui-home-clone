@@ -11,11 +11,13 @@ import com.oneuihomeclone.data.FolderGridKey
 import com.oneuihomeclone.data.HomeLayoutKey
 import com.oneuihomeclone.data.LauncherState
 import com.oneuihomeclone.data.MotionPresetKey
+import com.oneuihomeclone.data.NotificationBadgeModeKey
 import com.oneuihomeclone.widgets.PreviewSource
 
 internal data class CloneApp(
     val id: String,
     val name: String,
+    val packageName: String? = null,
     val launchIntent: Intent? = null,
     val launchTarget: LauncherAppLaunchTarget? = null,
     val icon: ImageBitmap? = null,
@@ -23,9 +25,21 @@ internal data class CloneApp(
     val profileBadge: String? = null,
     val statusLabel: String? = null,
     val installProgressPercent: Int? = null,
+    val notificationBadge: NotificationBadgeState = NotificationBadgeState.None,
     val isLaunchable: Boolean = true,
     val isRestoredPlaceholder: Boolean = false,
 )
+
+internal data class NotificationBadgeState(
+    val count: Int,
+    val showNumber: Boolean,
+) {
+    val isVisible: Boolean = count > 0
+
+    companion object {
+        val None = NotificationBadgeState(count = 0, showNumber = false)
+    }
+}
 
 internal fun CloneApp.statusText(): String? =
     installProgressPercent?.let { progress ->
@@ -235,6 +249,12 @@ internal enum class FolderGridMode(val title: String, val columns: Int, val rows
     GRID_5X5("5x5", 5, 5),
 }
 
+internal enum class NotificationBadgeMode(val title: String) {
+    OFF("Off"),
+    DOTS("Dots"),
+    DOTS_AND_NUMBER("Dots and number"),
+}
+
 internal enum class OverlayPanel {
     DRAWER,
     NOTIFICATIONS,
@@ -252,6 +272,7 @@ internal data class PersistedToggles(
     val widgetLabelsEnabled: Boolean,
     val swipeDownForNotifications: Boolean,
     val addNewAppsToHomeScreen: Boolean,
+    val notificationBadgeMode: NotificationBadgeMode,
     val lockHomeScreenLayout: Boolean,
     val homeLayoutMode: HomeLayoutMode,
     val drawerSortMode: DrawerSortMode,
@@ -266,6 +287,11 @@ internal fun LauncherState.toPersistedToggles(): PersistedToggles = PersistedTog
     widgetLabelsEnabled = widgetLabelsEnabled,
     swipeDownForNotifications = swipeDownForNotifications,
     addNewAppsToHomeScreen = addNewAppsToHomeScreen,
+    notificationBadgeMode = when (notificationBadgeMode) {
+        NotificationBadgeModeKey.OFF -> NotificationBadgeMode.OFF
+        NotificationBadgeModeKey.DOTS -> NotificationBadgeMode.DOTS
+        NotificationBadgeModeKey.DOTS_AND_NUMBER -> NotificationBadgeMode.DOTS_AND_NUMBER
+    },
     lockHomeScreenLayout = lockHomeScreenLayout,
     homeLayoutMode = when (homeLayoutMode) {
         HomeLayoutKey.HOME_AND_APPS_SCREENS -> HomeLayoutMode.HOME_AND_APPS_SCREENS
@@ -293,6 +319,11 @@ internal fun PersistedToggles.toLauncherState(): LauncherState = LauncherState(
     widgetLabelsEnabled = widgetLabelsEnabled,
     swipeDownForNotifications = swipeDownForNotifications,
     addNewAppsToHomeScreen = addNewAppsToHomeScreen,
+    notificationBadgeMode = when (notificationBadgeMode) {
+        NotificationBadgeMode.OFF -> NotificationBadgeModeKey.OFF
+        NotificationBadgeMode.DOTS -> NotificationBadgeModeKey.DOTS
+        NotificationBadgeMode.DOTS_AND_NUMBER -> NotificationBadgeModeKey.DOTS_AND_NUMBER
+    },
     lockHomeScreenLayout = lockHomeScreenLayout,
     homeLayoutMode = when (homeLayoutMode) {
         HomeLayoutMode.HOME_AND_APPS_SCREENS -> HomeLayoutKey.HOME_AND_APPS_SCREENS

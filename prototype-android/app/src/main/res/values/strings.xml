@@ -5,6 +5,7 @@
     <string name="action_done">Done</string>
     <string name="action_hide">Hide</string>
     <string name="action_open">Open</string>
+    <string name="action_open_settings">Open settings</string>
     <string name="action_later">Later</string>
     <string name="action_export">Export</string>
     <string name="action_import">Import</string>
@@ -86,8 +87,15 @@
     <string name="settings_add_new_apps">Add new apps to Home screen</string>
     <string name="settings_add_new_apps_summary">Automatically place newly installed apps in the first available Home screen spot.</string>
     <string name="settings_badge_notifications">Badge notifications</string>
+    <string name="settings_badge_notifications_description">Show app notification dots only after Android notification access is granted.</string>
+    <string name="settings_badge_access">Badge notification access</string>
+    <string name="settings_badge_access_granted_summary">Notification access is granted. Badges use only aggregate app counts; notification text is not stored or exported.</string>
+    <string name="settings_badge_access_denied_summary">Open Android settings to allow notification access. Badges stay off until permission is granted, and notification text is never stored.</string>
+    <string name="settings_badge_access_off_summary">Badge notifications are off. Turn on dots or numbers before granting Android notification access.</string>
+    <string name="settings_badge_count_summary">%1$d active notifications across %2$d apps.</string>
     <string name="settings_about_home_screen">About Home screen</string>
     <string name="settings_value_on">On</string>
+    <string name="settings_value_dots">Dots</string>
     <string name="settings_value_dots_and_number">Dots and number</string>
     <string name="settings_about_version">One UI Home Clone 0.2.3</string>
     <string name="settings_mode_description">Switch between the traditional Home and Apps screens setup and the simpler Home screen only layout.</string>
@@ -229,6 +237,8 @@
     <string name="feedback_app_hidden">%1$s hidden from Home and Apps screens.</string>
     <string name="feedback_app_restored">%1$s restored to Home and Apps screens.</string>
     <string name="feedback_shortcut_open_failed">Couldn\'t open %1$s.</string>
+    <string name="feedback_badge_access_needed">Allow notification access in Android settings to show badges.</string>
+    <string name="feedback_badge_access_revoked">Notification access was revoked; badge counts are hidden.</string>
     <string name="safe_mode_checking_title">Checking recovery state</string>
     <string name="safe_mode_checking_summary">Preparing the launcher before Home loads.</string>
     <string name="safe_mode_title">Recovery mode</string>

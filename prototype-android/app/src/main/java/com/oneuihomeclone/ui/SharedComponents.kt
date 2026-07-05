@@ -178,6 +178,12 @@ internal fun AppIconBubble(app: CloneApp, size: Dp) {
                 }
             }
         }
+        if (app.notificationBadge.isVisible) {
+            NotificationBadge(
+                badge = app.notificationBadge,
+                modifier = Modifier.align(Alignment.TopStart),
+            )
+        }
         app.profileBadge?.let { badge ->
             AppIconBadge(
                 label = badge,
@@ -196,6 +202,40 @@ internal fun AppIconBubble(app: CloneApp, size: Dp) {
                 label = "!",
                 modifier = Modifier.align(Alignment.BottomEnd),
                 color = OneUiText.copy(alpha = 0.92f),
+            )
+        }
+    }
+}
+
+@Composable
+internal fun NotificationBadge(
+    badge: NotificationBadgeState,
+    modifier: Modifier,
+) {
+    if (!badge.isVisible) return
+    if (!badge.showNumber) {
+        Surface(
+            modifier = modifier.size(12.dp),
+            shape = RoundedCornerShape(6.dp),
+            color = OneUiAccent,
+            shadowElevation = 1.dp,
+            content = {},
+        )
+    } else {
+        val label = if (badge.count > 99) "99+" else badge.count.toString()
+        Surface(
+            modifier = modifier.widthIn(min = 18.dp, max = 36.dp),
+            shape = OneUiMicroShape,
+            color = OneUiAccent,
+            shadowElevation = 1.dp,
+        ) {
+            Text(
+                text = label,
+                color = Color.White,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
             )
         }
     }

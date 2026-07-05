@@ -8,6 +8,7 @@ import com.oneuihomeclone.data.FolderGridKey
 import com.oneuihomeclone.data.HomeLayoutKey
 import com.oneuihomeclone.data.LauncherState
 import com.oneuihomeclone.data.MotionPresetKey
+import com.oneuihomeclone.data.NotificationBadgeModeKey
 import com.oneuihomeclone.data.PersistedHomeItem
 import com.oneuihomeclone.data.PersistedHomePage
 import com.oneuihomeclone.data.PersistedLauncherLayout
@@ -19,8 +20,13 @@ import org.junit.Test
 
 class LauncherLogicTest {
 
-    private fun app(id: String, name: String = id) =
-        CloneApp(id = id, name = name, color = Color.Gray)
+    private fun app(id: String, name: String = id, packageName: String? = null) =
+        CloneApp(
+            id = id,
+            name = name,
+            packageName = packageName,
+            color = Color.Gray,
+        )
 
     private fun shortcut(
         id: String,
@@ -310,6 +316,56 @@ class LauncherLogicTest {
         val pages = listOf(page(1, items))
         val result = applyHiddenAppsToPages(pages, emptySet())
         assertEquals(pages, result)
+    }
+
+    @Test
+    fun applyNotificationBadges_clearsWhenOffOrPermissionRevoked() {
+        val badgedApp = app("mail", packageName = "com.example.mail")
+            .copy(notificationBadge = NotificationBadgeState(count = 4, showNumber = true))
+
+        val offResult = applyNotificationBadges(
+            apps = listOf(badgedApp),
+            countsByPackage = mapOf("com.example.mail" to 4),
+            mode = NotificationBadgeMode.OFF,
+            accessGranted = true,
+        )
+        val revokedResult = applyNotificationBadges(
+            apps = listOf(badgedApp),
+            countsByPackage = mapOf("com.example.mail" to 4),
+            mode = NotificationBadgeMode.DOTS_AND_NUMBER,
+            accessGranted = false,
+        )
+
+        assertEquals(NotificationBadgeState.None, offResult.single().notificationBadge)
+        assertEquals(NotificationBadgeState.None, revokedResult.single().notificationBadge)
+    }
+
+    @Test
+    fun applyNotificationBadges_usesDotsWithoutCounts() {
+        val result = applyNotificationBadges(
+            apps = listOf(app("mail", packageName = "com.example.mail")),
+            countsByPackage = mapOf("com.example.mail" to 3),
+            mode = NotificationBadgeMode.DOTS,
+            accessGranted = true,
+        )
+
+        assertEquals(NotificationBadgeState(count = 3, showNumber = false), result.single().notificationBadge)
+    }
+
+    @Test
+    fun applyNotificationBadges_usesNumberModeAndIgnoresUnknownPackages() {
+        val result = applyNotificationBadges(
+            apps = listOf(
+                app("mail", packageName = "com.example.mail"),
+                app("clock", packageName = "com.example.clock"),
+            ),
+            countsByPackage = mapOf("com.example.mail" to 120, "com.unknown" to 8),
+            mode = NotificationBadgeMode.DOTS_AND_NUMBER,
+            accessGranted = true,
+        )
+
+        assertEquals(NotificationBadgeState(count = 120, showNumber = true), result[0].notificationBadge)
+        assertEquals(NotificationBadgeState.None, result[1].notificationBadge)
     }
 
     @Test
@@ -917,6 +973,7 @@ class LauncherLogicTest {
             widgetLabelsEnabled = false,
             swipeDownForNotifications = false,
             addNewAppsToHomeScreen = false,
+            notificationBadgeMode = NotificationBadgeModeKey.DOTS_AND_NUMBER,
             lockHomeScreenLayout = true,
             homeLayoutMode = HomeLayoutKey.HOME_SCREEN_ONLY,
             drawerSortMode = DrawerSortKey.ALPHABETICAL,
@@ -930,6 +987,7 @@ class LauncherLogicTest {
         assertEquals(DrawerSortMode.ALPHABETICAL, toggles.drawerSortMode)
         assertEquals(MotionPresetMode.REDUCED, toggles.motionPreset)
         assertEquals(FolderGridMode.GRID_5X5, toggles.folderGrid)
+        assertEquals(NotificationBadgeMode.DOTS_AND_NUMBER, toggles.notificationBadgeMode)
         assertEquals(state, toggles.toLauncherState())
     }
 
@@ -952,5 +1010,26 @@ class LauncherLogicTest {
 
         assertEquals(FinderSettingType.ADD_NEW_APPS, results.single().type)
         assertEquals("Off", results.single().value)
+    }
+
+    @Test
+    fun buildFinderSettingResults_reflectsNotificationBadgeMode() {
+        val results = buildFinderSettingResults(
+            query = "badge",
+            homeLayoutMode = HomeLayoutMode.HOME_AND_APPS_SCREENS,
+            lockHomeScreenLayout = false,
+            mediaPageEnabled = true,
+            appsButtonEnabled = true,
+            appLabelsEnabled = true,
+            widgetLabelsEnabled = true,
+            swipeDownForNotifications = true,
+            homePageCount = 2,
+            defaultHomePageLabel = "Home 1",
+            hiddenAppCount = 0,
+            notificationBadgeModeValue = "Dots",
+        )
+
+        assertEquals(FinderSettingType.BADGE_NOTIFICATIONS, results.single().type)
+        assertEquals("Dots", results.single().value)
     }
 }

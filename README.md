@@ -68,6 +68,7 @@ v0.2.3 adds local data-safety, widget, Finder, layout, packaging, and gate harde
 - Finder surfaces local Android app shortcuts in a dedicated App shortcuts group when this launcher is the Home role holder
 - Home screen settings can export/import `one-ui-home-clone-backup.json` for settings, pages, folders, hidden apps, recent searches, and bound-widget metadata; unavailable restored apps/widgets stay visible as repairable placeholders
 - Home screen settings can export `one-ui-home-clone-diagnostics.txt` with sanitized version, SDK, launcher-role, crash-summary, app-inventory, layout, and widget counts without app names or search history
+- Home screen settings persist "Add new apps to Home screen" and privacy-gated notification badge modes; badges stay local, default off, and require Android notification-listener access before dots or counts appear on Home, dock, drawer, and folders
 - Responsive layout contracts now select explicit phone portrait, phone landscape, foldable-width, and tablet grids; Home/Apps pagination, widget placement, Settings, folders, Widget Picker, edit tray, and default-launcher prompt are bounded per form factor
 
 v0.2.0 landed the widgets + persistence + motion primitives:
@@ -163,6 +164,7 @@ One UI Home Clone is local-only in the current prototype:
 - Network: the manifest declares no `INTERNET` permission, so the app cannot upload launcher data through its own process.
 - Installed apps: Android `LauncherApps` and package-visibility queries are used locally to render Home, Apps screen, Finder, folders, hide-apps state, labels, icons, profile badges, and launch targets.
 - Searches and layout: recent Finder searches, hidden apps, Home pages, folders, settings, backup metadata, and widget IDs are stored in app-private DataStore/files. `android:allowBackup="false"` keeps this data out of Android backup.
+- Notification badges: badge mode is off by default. If enabled, Android notification access is required and the launcher uses aggregate per-app counts only; notification titles and text are not stored or exported.
 - Widgets and wallpaper: `EXPAND_STATUS_BAR`, `SET_WALLPAPER`, `VIBRATE`, `AppWidgetHost`, and wallpaper APIs are used for launcher behavior only.
 - Exports: `one-ui-home-clone-backup.json` intentionally contains launcher layout/search/widget data for restore; `one-ui-home-clone-diagnostics.txt` contains only version, SDK, default-launcher state, sanitized crash fields, and aggregate app/layout/widget counts.
 
@@ -170,9 +172,7 @@ Store listing copy: no data is collected, shared, or transmitted by the app; lau
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md). The active roadmap is currently drained after
-the v0.2.3 pass; add net-new incomplete items there before starting the next
-implementation loop.
+See [ROADMAP.md](ROADMAP.md) for the active implementation queue.
 
 ## Legal
 

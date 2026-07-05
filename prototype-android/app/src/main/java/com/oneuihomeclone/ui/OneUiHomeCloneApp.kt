@@ -61,6 +61,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -72,7 +73,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -117,7 +121,11 @@ import com.oneuihomeclone.data.LauncherDiagnosticsSnapshot
 import com.oneuihomeclone.data.LauncherLayoutStore
 import com.oneuihomeclone.data.LauncherState
 import com.oneuihomeclone.data.MotionPresetKey
+import com.oneuihomeclone.data.NotificationBadgeModeKey
 import com.oneuihomeclone.data.WidgetPersistence
+import com.oneuihomeclone.notifications.NotificationBadgeRepository
+import com.oneuihomeclone.notifications.isNotificationBadgeAccessGranted
+import com.oneuihomeclone.notifications.notificationBadgeSettingsIntent
 import com.oneuihomeclone.ui.motion.ProvideMotionScheme
 import com.oneuihomeclone.ui.theme.OneUiAccent
 import com.oneuihomeclone.ui.theme.OneUiAccentSoft
@@ -262,17 +270,37 @@ fun OneUiHomeCloneApp(
     val layoutStore = remember(appContext) { LauncherLayoutStore(appContext) }
     val backupStore = remember(appContext) { LauncherBackupFileStore(appContext) }
     val diagnosticsStore = remember(appContext) { LauncherDiagnosticsFileStore(appContext) }
+    val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
     var hasAppliedPersistedSettings by remember { mutableStateOf(false) }
     val initialPrefs = LauncherState()
     val fallbackApps = remember { sampleApps() }
     val appInventory = remember(appContext, fallbackApps) { LauncherAppInventory(appContext, fallbackApps) }
     var allApps by remember { mutableStateOf(fallbackApps) }
+    val notificationBadgeCounts by NotificationBadgeRepository.counts.collectAsStateWithLifecycle(initialValue = emptyMap())
+    var notificationBadgePermissionGranted by remember { mutableStateOf(isNotificationBadgeAccessGranted(appContext)) }
+    var notificationBadgeMode by remember {
+        mutableStateOf(
+            when (initialPrefs.notificationBadgeMode) {
+                NotificationBadgeModeKey.OFF -> NotificationBadgeMode.OFF
+                NotificationBadgeModeKey.DOTS -> NotificationBadgeMode.DOTS
+                NotificationBadgeModeKey.DOTS_AND_NUMBER -> NotificationBadgeMode.DOTS_AND_NUMBER
+            },
+        )
+    }
+    val badgedApps = remember(allApps, notificationBadgeCounts, notificationBadgeMode, notificationBadgePermissionGranted) {
+        applyNotificationBadges(
+            apps = allApps,
+            countsByPackage = notificationBadgeCounts,
+            mode = notificationBadgeMode,
+            accessGranted = notificationBadgePermissionGranted,
+        )
+    }
     var appInventoryLoaded by remember { mutableStateOf(false) }
     var hasSeededDeviceApps by remember { mutableStateOf(false) }
     var lastInventoryAppIds by remember { mutableStateOf<Set<String>?>(null) }
     var pendingAutoAddAppIds by remember { mutableStateOf(emptySet<String>()) }
-    val dockApps = remember(allApps) { allApps.take(4) }
+    val dockApps = remember(badgedApps) { badgedApps.take(4) }
     val fallbackWidgetTemplates = remember {
         listOf(
             WidgetTemplateModel("Calendar", "Month agenda with rounded launcher chrome", "Recommended", "4 x 2", Color(0xFFFF8B7B)),
@@ -317,6 +345,7 @@ fun OneUiHomeCloneApp(
         onValue = stringResource(R.string.settings_value_on),
         offValue = stringResource(R.string.state_off),
         noneValue = stringResource(R.string.settings_value_none),
+        dotsValue = stringResource(R.string.settings_value_dots),
         dotsAndNumberValue = stringResource(R.string.settings_value_dots_and_number),
         appsSortUnavailable = stringResource(R.string.settings_sort_unavailable_home_only),
         hiddenCount = { count -> appContext.getString(R.string.settings_value_hidden_count, count) },
@@ -367,6 +396,31 @@ fun OneUiHomeCloneApp(
 
     fun showFeedback(message: String) {
         feedbackMessage = message
+    }
+
+    fun refreshNotificationBadgeAccess(showRevokedFeedback: Boolean) {
+        val wasGranted = notificationBadgePermissionGranted
+        val isGranted = isNotificationBadgeAccessGranted(appContext)
+        if (wasGranted && !isGranted && notificationBadgeMode != NotificationBadgeMode.OFF && showRevokedFeedback) {
+            showFeedback(appContext.getString(R.string.feedback_badge_access_revoked))
+        }
+        notificationBadgePermissionGranted = isGranted
+        if (!isGranted) {
+            NotificationBadgeRepository.clear()
+        }
+    }
+
+    DisposableEffect(appContext, lifecycleOwner, notificationBadgeMode) {
+        refreshNotificationBadgeAccess(showRevokedFeedback = false)
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshNotificationBadgeAccess(showRevokedFeedback = true)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     LaunchedEffect(feedbackMessage) {
@@ -421,7 +475,7 @@ fun OneUiHomeCloneApp(
         )
     }
     var lockHomeScreenLayout by remember { mutableStateOf(initialPrefs.lockHomeScreenLayout) }
-    val drawerApps = allApps
+    val drawerApps = badgedApps
     var drawerSortMode by remember {
         mutableStateOf(
             when (initialPrefs.drawerSortMode) {
@@ -475,6 +529,7 @@ fun OneUiHomeCloneApp(
         widgetLabelsEnabled = toggles.widgetLabelsEnabled
         swipeDownForNotifications = toggles.swipeDownForNotifications
         addNewAppsToHomeScreen = toggles.addNewAppsToHomeScreen
+        notificationBadgeMode = toggles.notificationBadgeMode
         lockHomeScreenLayout = toggles.lockHomeScreenLayout
         homeLayoutMode = toggles.homeLayoutMode
         drawerSortMode = toggles.drawerSortMode
@@ -492,8 +547,8 @@ fun OneUiHomeCloneApp(
     var homePages by remember {
         mutableStateOf(
             listOf(
-                buildHomePage(1, allApps),
-                buildHomePage(2, allApps),
+                buildHomePage(1, badgedApps),
+                buildHomePage(2, badgedApps),
             ),
         )
     }
@@ -551,6 +606,7 @@ fun OneUiHomeCloneApp(
                     widgetLabelsEnabled = widgetLabelsEnabled,
                     swipeDownForNotifications = swipeDownForNotifications,
                     addNewAppsToHomeScreen = addNewAppsToHomeScreen,
+                    notificationBadgeMode = notificationBadgeMode,
                     lockHomeScreenLayout = lockHomeScreenLayout,
                     homeLayoutMode = homeLayoutMode,
                     drawerSortMode = drawerSortMode,
@@ -637,8 +693,8 @@ fun OneUiHomeCloneApp(
             ?.filterIsInstance<FolderModel>()
             ?.firstOrNull { it.id == target.folderId }
     }
-    val visibleDockApps = remember(dockApps, allApps, hiddenAppIds) {
-        buildVisibleDockApps(dockApps, allApps, hiddenAppIds)
+    val visibleDockApps = remember(dockApps, badgedApps, hiddenAppIds) {
+        buildVisibleDockApps(dockApps, badgedApps, hiddenAppIds)
     }
     val appsScreenApps = remember(drawerApps, drawerSortMode, hiddenAppIds) {
         when (drawerSortMode) {
@@ -686,6 +742,7 @@ fun OneUiHomeCloneApp(
     val localizedHomeLayoutTitle = homeLayoutMode.localizedTitle()
     val localizedDrawerSortTitle = drawerSortMode.localizedTitle()
     val localizedFolderGridTitle = folderGrid.localizedTitle()
+    val localizedNotificationBadgeModeTitle = notificationBadgeMode.localizedTitle()
     val defaultFinderHomePageLabel = homePages.getOrNull(defaultHomePageIndex)?.label ?: fallbackHomePageLabel
     val hiddenAppsValue = if (hiddenAppIds.isEmpty()) {
         stringResource(R.string.settings_value_none)
@@ -703,6 +760,8 @@ fun OneUiHomeCloneApp(
         widgetLabelsEnabled,
         swipeDownForNotifications,
         addNewAppsToHomeScreen,
+        notificationBadgeMode,
+        localizedNotificationBadgeModeTitle,
         homePages,
         defaultHomePageIndex,
         defaultFinderHomePageLabel,
@@ -731,6 +790,7 @@ fun OneUiHomeCloneApp(
             homeScreenGridValue = layoutContract.homeGridLabel,
             appsScreenGridValue = layoutContract.appsGridLabel,
             folderGridValue = localizedFolderGridTitle,
+            notificationBadgeModeValue = localizedNotificationBadgeModeTitle,
         )
     }
     val finderActions = remember(searchQuery, homeLayoutMode, lockHomeScreenLayout, mediaPageEnabled, hiddenAppIds, finderActionText) {
@@ -744,21 +804,21 @@ fun OneUiHomeCloneApp(
         )
     }
 
-    LaunchedEffect(appInventoryLoaded, allApps, layoutStore) {
-        val hasRealApps = allApps.any { it.launchIntent != null || it.launchTarget != null }
+    LaunchedEffect(appInventoryLoaded, badgedApps, layoutStore) {
+        val hasRealApps = badgedApps.any { it.launchIntent != null || it.launchTarget != null }
         if (!appInventoryLoaded || !hasRealApps) return@LaunchedEffect
 
         if (!hasSeededDeviceApps) {
             val persistedLayout = layoutStore.read()
             if (persistedLayout != null) {
-                val restoredPages = restorePersistedHomePages(persistedLayout, allApps).ifEmpty {
+                val restoredPages = restorePersistedHomePages(persistedLayout, badgedApps).ifEmpty {
                     listOf(
-                        buildHomePage(1, allApps),
-                        buildHomePage(2, allApps),
+                        buildHomePage(1, badgedApps),
+                        buildHomePage(2, badgedApps),
                     )
                 }
                 homePages = restoredPages
-                hiddenAppIds = reconcileHiddenAppIds(persistedLayout.hiddenAppIds, allApps)
+                hiddenAppIds = reconcileHiddenAppIds(persistedLayout.hiddenAppIds, badgedApps)
                 recentSearches = persistedLayout.recentSearches.ifEmpty { recentSearches }
                 defaultHomePageIndex = persistedLayout.defaultHomePageIndex.coerceIn(restoredPages.indices)
                 nextPageId = maxOf(persistedLayout.nextPageId, restoredPages.maxOf { it.id + 1 })
@@ -766,8 +826,8 @@ fun OneUiHomeCloneApp(
                 pageIndex = visualIndexForHomePage(defaultHomePageIndex, mediaPageEnabled)
             } else {
                 homePages = listOf(
-                    buildHomePage(1, allApps),
-                    buildHomePage(2, allApps),
+                    buildHomePage(1, badgedApps),
+                    buildHomePage(2, badgedApps),
                 )
                 defaultHomePageIndex = 0
                 nextPageId = 3
@@ -777,26 +837,26 @@ fun OneUiHomeCloneApp(
             pendingAutoAddAppIds = emptySet()
             hasSeededDeviceApps = true
         } else {
-            val reconciledPages = reconcileHomePagesWithApps(homePages, allApps).ifEmpty {
+            val reconciledPages = reconcileHomePagesWithApps(homePages, badgedApps).ifEmpty {
                 listOf(
-                    buildHomePage(1, allApps),
-                    buildHomePage(2, allApps),
+                    buildHomePage(1, badgedApps),
+                    buildHomePage(2, badgedApps),
                 )
             }
             val pendingAppIds = pendingAutoAddAppIds
             val placementResult = placeNewAppsOnHomePages(
                 pages = reconciledPages,
-                newApps = allApps.filter { app -> app.id in pendingAppIds },
+                newApps = badgedApps.filter { app -> app.id in pendingAppIds },
                 nextPageId = nextPageId,
                 enabled = addNewAppsToHomeScreen,
                 layoutLocked = lockHomeScreenLayout,
             )
             homePages = placementResult.pages
             nextPageId = placementResult.nextPageId
-            val currentAppIds = allApps.mapTo(mutableSetOf(), CloneApp::id)
+            val currentAppIds = badgedApps.mapTo(mutableSetOf(), CloneApp::id)
             val stalePendingAppIds = pendingAppIds - currentAppIds
             pendingAutoAddAppIds = pendingAutoAddAppIds - placementResult.handledAppIds - stalePendingAppIds
-            hiddenAppIds = reconcileHiddenAppIds(hiddenAppIds, allApps)
+            hiddenAppIds = reconcileHiddenAppIds(hiddenAppIds, badgedApps)
             defaultHomePageIndex = defaultHomePageIndex.coerceIn(placementResult.pages.indices)
             pageIndex = pageIndex.coerceIn(0, totalPageCount(placementResult.pages.size, mediaPageEnabled) - 1)
         }
@@ -833,6 +893,7 @@ fun OneUiHomeCloneApp(
             widgetLabelsEnabled = widgetLabelsEnabled,
             swipeDownForNotifications = swipeDownForNotifications,
             addNewAppsToHomeScreen = addNewAppsToHomeScreen,
+            notificationBadgeMode = notificationBadgeMode,
             lockHomeScreenLayout = lockHomeScreenLayout,
             homeLayoutMode = homeLayoutMode,
             drawerSortMode = drawerSortMode,
@@ -858,6 +919,7 @@ fun OneUiHomeCloneApp(
         widgetLabelsEnabled = toggles.widgetLabelsEnabled
         swipeDownForNotifications = toggles.swipeDownForNotifications
         addNewAppsToHomeScreen = toggles.addNewAppsToHomeScreen
+        notificationBadgeMode = toggles.notificationBadgeMode
         lockHomeScreenLayout = toggles.lockHomeScreenLayout
         homeLayoutMode = toggles.homeLayoutMode
         drawerSortMode = toggles.drawerSortMode
@@ -900,7 +962,7 @@ fun OneUiHomeCloneApp(
                 layoutStore.save(backup.layout)
                 widgetPersistence.replaceAll(backup.widgets)
             }.onSuccess {
-                val restoreApps = allApps.ifEmpty { fallbackApps }
+                val restoreApps = badgedApps.ifEmpty { fallbackApps }
                 val restoredPages = restorePersistedHomePages(backup.layout, restoreApps).ifEmpty {
                     listOf(
                         buildHomePage(1, restoreApps),
@@ -938,6 +1000,10 @@ fun OneUiHomeCloneApp(
                 sdkInt = Build.VERSION.SDK_INT,
                 targetSdk = appContext.applicationInfo.targetSdkVersion,
                 internetPermissionDeclared = appContext.hasRequestedPermission(Manifest.permission.INTERNET),
+                notificationBadgeMode = notificationBadgeMode.name.lowercase(Locale.getDefault()),
+                notificationBadgeAccessGranted = notificationBadgePermissionGranted,
+                notificationBadgePackageCount = if (notificationBadgePermissionGranted) notificationBadgeCounts.count { it.value > 0 } else 0,
+                notificationBadgeTotalCount = if (notificationBadgePermissionGranted) notificationBadgeCounts.values.sum() else 0,
                 defaultLauncherChecked = defaultLauncherState.checked,
                 isDefaultLauncher = defaultLauncherState.isDefaultLauncher,
                 canOpenDefaultLauncherSettings = defaultLauncherState.canOpenSettings,
@@ -1578,6 +1644,10 @@ fun OneUiHomeCloneApp(
                 widgetLabelsEnabled = widgetLabelsEnabled,
                 swipeDownForNotifications = swipeDownForNotifications,
                 addNewAppsToHomeScreen = addNewAppsToHomeScreen,
+                notificationBadgeMode = notificationBadgeMode,
+                notificationBadgePermissionGranted = notificationBadgePermissionGranted,
+                notificationBadgeActiveAppCount = if (notificationBadgePermissionGranted) notificationBadgeCounts.count { it.value > 0 } else 0,
+                notificationBadgeActiveCount = if (notificationBadgePermissionGranted) notificationBadgeCounts.values.sum() else 0,
                 homeLayoutMode = homeLayoutMode,
                 lockHomeScreenLayout = lockHomeScreenLayout,
                 motionPreset = motionPreset,
@@ -1601,6 +1671,19 @@ fun OneUiHomeCloneApp(
                 onWidgetLabelsChange = { widgetLabelsEnabled = it },
                 onSwipeDownChange = { swipeDownForNotifications = it },
                 onAddNewAppsToHomeScreenChange = { addNewAppsToHomeScreen = it },
+                onNotificationBadgeModeChange = { mode ->
+                    notificationBadgeMode = mode
+                    if (mode != NotificationBadgeMode.OFF && !notificationBadgePermissionGranted) {
+                        showFeedback(appContext.getString(R.string.feedback_badge_access_needed))
+                    }
+                },
+                onOpenNotificationBadgeSettings = {
+                    runCatching {
+                        appContext.startActivity(notificationBadgeSettingsIntent())
+                    }.onFailure {
+                        showFeedback(appContext.getString(R.string.feedback_badge_access_needed))
+                    }
+                },
                 onHomeLayoutModeChange = { homeLayoutMode = it },
                 onLockHomeScreenLayoutChange = { lockHomeScreenLayout = it },
                 onMotionPresetChange = { motionPreset = it },
@@ -1627,7 +1710,7 @@ fun OneUiHomeCloneApp(
                 onSelectPage = { pageIndex = it },
                 onToggleMediaPage = { updateMediaPageEnabled(!mediaPageEnabled) },
                 onAddPage = {
-                    val newPage = buildHomePage(nextPageId, allApps)
+                    val newPage = buildHomePage(nextPageId, badgedApps)
                     homePages = homePages + newPage
                     pageIndex = visualIndexForHomePage(homePages.size, mediaPageEnabled)
                     nextPageId += 1
@@ -1702,7 +1785,7 @@ fun OneUiHomeCloneApp(
             exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(220)) + fadeOut(tween(140)),
         ) {
             HideAppsOverlay(
-                apps = allApps,
+                apps = badgedApps,
                 hiddenAppIds = hiddenAppIds,
                 onToggleHidden = { app ->
                     setAppHidden(app, hidden = app.id !in hiddenAppIds)

@@ -22,6 +22,10 @@ class LauncherDiagnosticsTest {
                 sdkInt = 35,
                 targetSdk = 35,
                 internetPermissionDeclared = false,
+                notificationBadgeMode = "dots_and_number",
+                notificationBadgeAccessGranted = true,
+                notificationBadgePackageCount = 3,
+                notificationBadgeTotalCount = 8,
                 defaultLauncherChecked = true,
                 isDefaultLauncher = false,
                 canOpenDefaultLauncherSettings = true,
@@ -52,10 +56,14 @@ class LauncherDiagnosticsTest {
 
         assertTrue(diagnostics.contains("apps.total=42"))
         assertTrue(diagnostics.contains("widgets.persisted=2"))
+        assertTrue(diagnostics.contains("badges.notificationAccessGranted=true"))
+        assertTrue(diagnostics.contains("badges.packageCount=3"))
+        assertTrue(diagnostics.contains("badges.totalCount=8"))
         assertTrue(diagnostics.contains("defaultLauncher.isDefault=false"))
         assertTrue(diagnostics.contains("previousCrash.exception=java.lang.IllegalStateException"))
         assertTrue(diagnostics.contains("privacy.rawAppNames=false"))
         assertTrue(diagnostics.contains("privacy.rawSearchHistory=false"))
+        assertTrue(diagnostics.contains("privacy.rawNotificationText=false"))
         assertFalse(diagnostics.contains("raw second line"))
         assertFalse(diagnostics.contains("Gmail"))
         assertFalse(diagnostics.contains("recent search"))
@@ -73,6 +81,10 @@ class LauncherDiagnosticsTest {
                 sdkInt = 35,
                 targetSdk = 35,
                 internetPermissionDeclared = false,
+                notificationBadgeMode = "off",
+                notificationBadgeAccessGranted = false,
+                notificationBadgePackageCount = 0,
+                notificationBadgeTotalCount = 0,
                 defaultLauncherChecked = true,
                 isDefaultLauncher = true,
                 canOpenDefaultLauncherSettings = true,
@@ -99,9 +111,11 @@ class LauncherDiagnosticsTest {
 
         assertTrue(file.name == "one-ui-home-clone-diagnostics.txt")
         assertTrue(content.contains("defaultLauncher.isDefault=true"))
+        assertTrue(content.contains("badges.mode=off"))
         assertTrue(content.contains("apps.total=9"))
         assertTrue(content.contains("widgets.realProviders=2"))
         assertTrue(content.contains("privacy.rawAppNames=false"))
+        assertTrue(content.contains("privacy.rawNotificationText=false"))
         assertFalse(content.contains("Calendar"))
         assertFalse(content.contains("query="))
     }

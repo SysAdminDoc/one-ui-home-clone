@@ -8,6 +8,7 @@ data class LauncherState(
     val widgetLabelsEnabled: Boolean = true,
     val swipeDownForNotifications: Boolean = true,
     val addNewAppsToHomeScreen: Boolean = true,
+    val notificationBadgeMode: NotificationBadgeModeKey = NotificationBadgeModeKey.OFF,
     val lockHomeScreenLayout: Boolean = false,
     val homeLayoutMode: HomeLayoutKey = HomeLayoutKey.HOME_AND_APPS_SCREENS,
     val drawerSortMode: DrawerSortKey = DrawerSortKey.CUSTOM_ORDER,
@@ -47,5 +48,16 @@ enum class FolderGridKey(val raw: String) {
     companion object {
         fun fromRaw(raw: String?): FolderGridKey =
             entries.firstOrNull { it.raw == raw } ?: GRID_3X4
+    }
+}
+
+enum class NotificationBadgeModeKey(val raw: String) {
+    OFF("off"),
+    DOTS("dots"),
+    DOTS_AND_NUMBER("dots_and_number");
+
+    companion object {
+        fun fromRaw(raw: String?): NotificationBadgeModeKey =
+            entries.firstOrNull { it.raw == raw } ?: OFF
     }
 }

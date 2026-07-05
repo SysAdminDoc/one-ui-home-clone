@@ -14,6 +14,10 @@ data class LauncherDiagnosticsSnapshot(
     val sdkInt: Int,
     val targetSdk: Int,
     val internetPermissionDeclared: Boolean,
+    val notificationBadgeMode: String,
+    val notificationBadgeAccessGranted: Boolean,
+    val notificationBadgePackageCount: Int,
+    val notificationBadgeTotalCount: Int,
     val defaultLauncherChecked: Boolean,
     val isDefaultLauncher: Boolean,
     val canOpenDefaultLauncherSettings: Boolean,
@@ -65,6 +69,10 @@ internal fun buildLauncherDiagnostics(snapshot: LauncherDiagnosticsSnapshot): St
     appendLine("sdk=${snapshot.sdkInt}")
     appendLine("targetSdk=${snapshot.targetSdk}")
     appendLine("permissions.internetDeclared=${snapshot.internetPermissionDeclared}")
+    appendLine("badges.mode=${snapshot.notificationBadgeMode.diagnosticValue()}")
+    appendLine("badges.notificationAccessGranted=${snapshot.notificationBadgeAccessGranted}")
+    appendLine("badges.packageCount=${snapshot.notificationBadgePackageCount}")
+    appendLine("badges.totalCount=${snapshot.notificationBadgeTotalCount}")
     appendLine("defaultLauncher.checked=${snapshot.defaultLauncherChecked}")
     appendLine("defaultLauncher.isDefault=${snapshot.isDefaultLauncher}")
     appendLine("defaultLauncher.canOpenSettings=${snapshot.canOpenDefaultLauncherSettings}")
@@ -91,6 +99,7 @@ internal fun buildLauncherDiagnostics(snapshot: LauncherDiagnosticsSnapshot): St
     appendLine("widgets.realProviders=${snapshot.realWidgetProviderCount}")
     appendLine("privacy.rawAppNames=false")
     appendLine("privacy.rawSearchHistory=false")
+    appendLine("privacy.rawNotificationText=false")
 }
 
 private fun String?.diagnosticValue(): String =
