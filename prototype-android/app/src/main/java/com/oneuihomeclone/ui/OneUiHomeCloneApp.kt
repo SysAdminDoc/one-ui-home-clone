@@ -6,10 +6,14 @@ import android.appwidget.AppWidgetProviderInfo
 import android.app.WallpaperManager
 import android.Manifest
 import android.content.Context
+import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.os.Build
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
+import android.os.Process
+import android.os.UserHandle
+import android.os.UserManager
 import android.util.Log
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -193,6 +197,15 @@ private sealed interface LauncherContextTarget {
 private data class WidgetProviderCatalog(
     val widgets: List<WidgetTemplateModel>,
     val providerQueryFailed: Boolean,
+    val profileCount: Int,
+    val unavailableProfileCount: Int,
+)
+
+private data class WidgetProviderSource(
+    val providerInfo: AppWidgetProviderInfo,
+    val user: UserHandle,
+    val userSerial: Long,
+    val profileBadge: String?,
 )
 
 private suspend fun loadWidgetProviderCatalog(
@@ -200,30 +213,61 @@ private suspend fun loadWidgetProviderCatalog(
     fallbackWidgets: List<WidgetTemplateModel>,
 ): WidgetProviderCatalog = withContext(Dispatchers.IO) {
     val packageManager = context.packageManager
+    val appWidgetManager = AppWidgetManager.getInstance(context)
+    val launcherApps = context.getSystemService(LauncherApps::class.java)
+    val userManager = context.getSystemService(UserManager::class.java)
+    val currentUser = Process.myUserHandle()
+    fun userSerial(user: UserHandle): Long =
+        runCatching { userManager?.getSerialNumberForUser(user) ?: user.hashCode().toLong() }
+            .getOrDefault(user.hashCode().toLong())
+    val currentUserSerial = userSerial(currentUser)
     var providerQueryFailed = false
-    val providers = runCatching {
-        AppWidgetManager.getInstance(context).getInstalledProviders()
-    }.getOrElse { cause ->
-        Log.w("OneUiHome/widgets", "Widget provider query failed (${cause.javaClass.simpleName})")
-        providerQueryFailed = true
-        emptyList()
+    var unavailableProfileCount = 0
+    val profiles = launcherApps?.profiles?.ifEmpty { listOf(currentUser) } ?: listOf(currentUser)
+    val sources = profiles.flatMap { user ->
+        val userSerial = userSerial(user)
+        val profileBadge = launcherProfileBadgeFor(
+            context = context,
+            launcherApps = launcherApps,
+            user = user,
+            userSerial = userSerial,
+            currentUserSerial = currentUserSerial,
+        )
+        runCatching {
+            appWidgetManager.getInstalledProvidersForProfile(user).orEmpty()
+                .filter { info -> info.provider != null }
+                .map { info ->
+                    WidgetProviderSource(
+                        providerInfo = info,
+                        user = user,
+                        userSerial = userSerial,
+                        profileBadge = profileBadge,
+                    )
+                }
+        }.getOrElse { cause ->
+            Log.w("OneUiHome/widgets", "Widget provider profile query failed (${cause.javaClass.simpleName})")
+            providerQueryFailed = true
+            unavailableProfileCount += 1
+            emptyList()
+        }
     }
     val widgetsFallbackLabel = context.getString(R.string.widgets_title)
 
-    val widgets = providers
+    val widgets = sources
         .asSequence()
-        .filter { info -> info.provider != null }
-        .distinctBy { info -> info.provider.flattenToShortString() }
+        .distinctBy { source -> "${source.userSerial}:${source.providerInfo.provider.flattenToShortString()}" }
         .sortedWith(
-            compareBy<AppWidgetProviderInfo> { info ->
-                widgetProviderAppLabel(packageManager, info, widgetsFallbackLabel).lowercase(Locale.getDefault())
-            }.thenBy { info ->
-                widgetProviderLabel(packageManager, info).lowercase(Locale.getDefault())
-            },
+            compareBy<WidgetProviderSource> { source ->
+                widgetProviderAppLabel(packageManager, source.providerInfo, widgetsFallbackLabel).lowercase(Locale.getDefault())
+            }.thenBy { source ->
+                widgetProviderLabel(packageManager, source.providerInfo).lowercase(Locale.getDefault())
+            }.thenBy { source -> source.userSerial },
         )
         .take(MAX_WIDGET_PROVIDERS_LOADED)
-        .map { info ->
+        .map { source ->
+            val info = source.providerInfo
             val appLabel = widgetProviderAppLabel(packageManager, info, widgetsFallbackLabel)
+            val badgedAppLabel = packageManager.getUserBadgedLabel(appLabel, source.user).toString()
             val label = widgetProviderLabel(packageManager, info)
             val spanX = widgetSpanX(info)
             val spanY = widgetSpanY(info)
@@ -231,11 +275,13 @@ private suspend fun loadWidgetProviderCatalog(
             val canResizeVertical = widgetCanResizeVertical(info)
             WidgetTemplateModel(
                 title = label,
-                summary = context.getString(R.string.widgets_provider_summary, appLabel),
-                category = appLabel,
+                summary = context.getString(R.string.widgets_provider_summary, badgedAppLabel),
+                category = badgedAppLabel,
                 span = "$spanX x $spanY",
-                accent = fallbackColorFor(info.provider.flattenToShortString()),
+                accent = fallbackColorFor("${source.userSerial}:${info.provider.flattenToShortString()}"),
                 providerInfo = info,
+                profileBadge = source.profileBadge,
+                profileUserSerial = source.userSerial,
                 spanX = spanX,
                 spanY = spanY,
                 minSpanX = widgetMinResizeSpanX(info, spanX),
@@ -251,6 +297,8 @@ private suspend fun loadWidgetProviderCatalog(
     WidgetProviderCatalog(
         widgets = widgets.ifEmpty { fallbackWidgets },
         providerQueryFailed = providerQueryFailed,
+        profileCount = profiles.size,
+        unavailableProfileCount = unavailableProfileCount,
     )
 }
 
@@ -551,6 +599,8 @@ fun OneUiHomeCloneApp(
     var selectedWidgetCategory by remember { mutableStateOf("Recommended") }
     var widgetSearchQuery by remember { mutableStateOf("") }
     var widgetProviderWarning by remember { mutableStateOf<String?>(null) }
+    var widgetProviderProfileCount by remember { mutableIntStateOf(1) }
+    var widgetProviderUnavailableProfileCount by remember { mutableIntStateOf(0) }
     var nextPageId by remember { mutableIntStateOf(3) }
     var nextFolderId by remember { mutableIntStateOf(3) }
     var isHomeItemDragActive by remember { mutableStateOf(false) }
@@ -585,6 +635,8 @@ fun OneUiHomeCloneApp(
     LaunchedEffect(appContext, fallbackWidgetTemplates) {
         val catalog = loadWidgetProviderCatalog(appContext, fallbackWidgetTemplates)
         widgetTemplates = catalog.widgets
+        widgetProviderProfileCount = catalog.profileCount
+        widgetProviderUnavailableProfileCount = catalog.unavailableProfileCount
         widgetProviderWarning = if (catalog.providerQueryFailed) {
             appContext.getString(R.string.widgets_provider_scan_failed)
         } else {
@@ -1041,6 +1093,8 @@ fun OneUiHomeCloneApp(
                 persistedWidgetCount = persistedWidgets.size,
                 widgetTemplateCount = widgetTemplates.size,
                 realWidgetProviderCount = widgetTemplates.count { it.providerInfo != null },
+                widgetProviderProfileCount = widgetProviderProfileCount,
+                widgetProviderUnavailableProfileCount = widgetProviderUnavailableProfileCount,
             )
             runCatching { diagnosticsStore.export(snapshot) }
                 .onSuccess { file ->

@@ -496,6 +496,7 @@ private fun WidgetTemplateModel.widgetSearchText(): String =
         title,
         summary,
         category,
+        profileBadge,
         span,
         providerInfo?.provider?.packageName,
         providerInfo?.provider?.className,

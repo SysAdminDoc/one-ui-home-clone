@@ -176,6 +176,10 @@ internal fun WidgetTemplateCard(
                     Text(healthSummary, color = OneUiTextSecondary, fontSize = 12.sp, lineHeight = 18.sp)
                 }
                 Column(horizontalAlignment = Alignment.End) {
+                    widget.profileBadge?.let { badge ->
+                        SettingsCapsule(label = badge, accent = true, enabled = false)
+                        Spacer(Modifier.height(8.dp))
+                    }
                     SettingsCapsule(label = widget.span, accent = false, enabled = false)
                     Spacer(Modifier.height(8.dp))
                     SettingsCapsule(label = healthLabel, accent = false, enabled = false)

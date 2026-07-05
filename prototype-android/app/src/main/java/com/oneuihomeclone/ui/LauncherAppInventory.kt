@@ -47,6 +47,27 @@ internal fun LauncherAppRecord.displayLabel(): String {
     }
 }
 
+internal fun launcherProfileBadgeFor(
+    context: Context,
+    launcherApps: LauncherApps?,
+    user: UserHandle,
+    userSerial: Long,
+    currentUserSerial: Long,
+): String? {
+    if (userSerial == currentUserSerial) return null
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+        val userType = runCatching { launcherApps?.getLauncherUserInfo(user)?.userType }.getOrNull()
+        val labelRes = when (userType) {
+            UserManager.USER_TYPE_PROFILE_MANAGED -> R.string.profile_badge_work
+            UserManager.USER_TYPE_PROFILE_PRIVATE -> R.string.profile_badge_private
+            UserManager.USER_TYPE_PROFILE_CLONE -> R.string.profile_badge_clone
+            else -> R.string.profile_badge_profile
+        }
+        return context.getString(labelRes)
+    }
+    return context.getString(R.string.profile_badge_profile)
+}
+
 internal fun normalizedLauncherAppRecords(
     records: List<LauncherAppRecord>,
     hostPackageName: String,
@@ -292,7 +313,13 @@ internal class LauncherAppInventory(
             !isPackageEnabled || !isActivityEnabled || isSuspended -> appContext.getString(R.string.app_status_unavailable)
             else -> null
         }
-        val profileBadge = profileBadgeFor(user, record.userSerial)
+        val profileBadge = launcherProfileBadgeFor(
+            context = appContext,
+            launcherApps = launcherApps,
+            user = user,
+            userSerial = record.userSerial,
+            currentUserSerial = currentUserSerial,
+        )
         val displayLabel = packageManager.getUserBadgedLabel(record.displayLabel(), user).toString()
         return CloneApp(
             id = componentId,
@@ -318,21 +345,6 @@ internal class LauncherAppInventory(
         val activityInfo: LauncherActivityInfo,
         val user: UserHandle,
     )
-
-    private fun profileBadgeFor(user: UserHandle, userSerial: Long): String? {
-        if (userSerial == currentUserSerial) return null
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-            val userType = runCatching { launcherApps?.getLauncherUserInfo(user)?.userType }.getOrNull()
-            val labelRes = when (userType) {
-                UserManager.USER_TYPE_PROFILE_MANAGED -> R.string.profile_badge_work
-                UserManager.USER_TYPE_PROFILE_PRIVATE -> R.string.profile_badge_private
-                UserManager.USER_TYPE_PROFILE_CLONE -> R.string.profile_badge_clone
-                else -> R.string.profile_badge_profile
-            }
-            return appContext.getString(labelRes)
-        }
-        return appContext.getString(R.string.profile_badge_profile)
-    }
 
     private companion object {
         private const val TAG = "OneUiHome/apps"

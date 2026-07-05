@@ -37,6 +37,8 @@ data class LauncherDiagnosticsSnapshot(
     val persistedWidgetCount: Int,
     val widgetTemplateCount: Int,
     val realWidgetProviderCount: Int,
+    val widgetProviderProfileCount: Int,
+    val widgetProviderUnavailableProfileCount: Int,
 )
 
 class LauncherDiagnosticsFileStore(context: Context) {
@@ -97,6 +99,8 @@ internal fun buildLauncherDiagnostics(snapshot: LauncherDiagnosticsSnapshot): St
     appendLine("widgets.persisted=${snapshot.persistedWidgetCount}")
     appendLine("widgets.templates=${snapshot.widgetTemplateCount}")
     appendLine("widgets.realProviders=${snapshot.realWidgetProviderCount}")
+    appendLine("widgets.providerProfiles=${snapshot.widgetProviderProfileCount}")
+    appendLine("widgets.providerProfilesUnavailable=${snapshot.widgetProviderUnavailableProfileCount}")
     appendLine("privacy.rawAppNames=false")
     appendLine("privacy.rawSearchHistory=false")
     appendLine("privacy.rawNotificationText=false")

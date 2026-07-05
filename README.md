@@ -65,6 +65,7 @@ v0.2.3 adds local data-safety, widget, Finder, layout, packaging, and gate harde
 - Long-press app and widget action sheets expose App info, Home add/remove, hide/restore, widget settings/remove, and Android app shortcuts where available
 - Launcher icons and widget previews load lazily through bounded caches, and release builds consume a generated Baseline Profile for the core launcher journey
 - Widget picker supports local provider/title search, explicit empty search results, health labels, setup-required provider configuration, and add/bind cleanup for ready/template/missing-provider/preview-unavailable widgets
+- Widget picker enumerates Android widget providers across launcher-visible profiles, shows Work/Private/Clone-style profile badges when available, and keeps profile/provider diagnostics aggregate-only
 - Bound widgets receive active-grid size options on bind, restore, move, and resize so providers redraw against the current phone/landscape/foldable/tablet layout contract
 - Finder surfaces local Android app shortcuts in a dedicated App shortcuts group when this launcher is the Home role holder
 - Home screen settings can export/import `one-ui-home-clone-backup.json` for settings, pages, folders, hidden apps, recent searches, and bound-widget metadata; unavailable restored apps/widgets stay visible as repairable placeholders

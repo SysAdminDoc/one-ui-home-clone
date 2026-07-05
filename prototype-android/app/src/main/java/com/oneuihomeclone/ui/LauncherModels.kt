@@ -177,6 +177,8 @@ internal data class WidgetTemplateModel(
     val span: String,
     val accent: Color,
     val providerInfo: AppWidgetProviderInfo? = null,
+    val profileBadge: String? = null,
+    val profileUserSerial: Long? = null,
     val previewSource: PreviewSource = PreviewSource.Empty,
     val hostWidgetId: Int? = null,
     val cellX: Int = 0,

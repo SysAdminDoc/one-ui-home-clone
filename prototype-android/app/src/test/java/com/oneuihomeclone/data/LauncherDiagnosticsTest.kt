@@ -51,11 +51,15 @@ class LauncherDiagnosticsTest {
                 persistedWidgetCount = 2,
                 widgetTemplateCount = 12,
                 realWidgetProviderCount = 5,
+                widgetProviderProfileCount = 3,
+                widgetProviderUnavailableProfileCount = 1,
             ),
         )
 
         assertTrue(diagnostics.contains("apps.total=42"))
         assertTrue(diagnostics.contains("widgets.persisted=2"))
+        assertTrue(diagnostics.contains("widgets.providerProfiles=3"))
+        assertTrue(diagnostics.contains("widgets.providerProfilesUnavailable=1"))
         assertTrue(diagnostics.contains("badges.notificationAccessGranted=true"))
         assertTrue(diagnostics.contains("badges.packageCount=3"))
         assertTrue(diagnostics.contains("badges.totalCount=8"))
@@ -104,6 +108,8 @@ class LauncherDiagnosticsTest {
                 persistedWidgetCount = 1,
                 widgetTemplateCount = 4,
                 realWidgetProviderCount = 2,
+                widgetProviderProfileCount = 1,
+                widgetProviderUnavailableProfileCount = 0,
             ),
         )
 
@@ -114,6 +120,7 @@ class LauncherDiagnosticsTest {
         assertTrue(content.contains("badges.mode=off"))
         assertTrue(content.contains("apps.total=9"))
         assertTrue(content.contains("widgets.realProviders=2"))
+        assertTrue(content.contains("widgets.providerProfiles=1"))
         assertTrue(content.contains("privacy.rawAppNames=false"))
         assertTrue(content.contains("privacy.rawNotificationText=false"))
         assertFalse(content.contains("Calendar"))

@@ -653,6 +653,16 @@ class LauncherLogicTest {
     }
 
     @Test
+    fun filterWidgetsForPicker_matchesProfileBadge() {
+        val workWidget = widget("Calendar").copy(profileBadge = "Work")
+
+        assertEquals(
+            listOf(workWidget),
+            filterWidgetsForPicker(listOf(workWidget), selectedCategory = "All", query = "work"),
+        )
+    }
+
+    @Test
     fun boundWidgetCount_countsOnlyHostBackedWidgets() {
         val pages = listOf(
             page(1, widgets = listOf(widget("Calendar"), widget("Clock", hostWidgetId = 42))),
