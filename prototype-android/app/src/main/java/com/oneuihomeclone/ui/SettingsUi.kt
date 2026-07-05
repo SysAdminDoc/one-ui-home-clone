@@ -48,6 +48,7 @@ internal fun SettingsOverlay(
     appLabelsEnabled: Boolean,
     widgetLabelsEnabled: Boolean,
     swipeDownForNotifications: Boolean,
+    addNewAppsToHomeScreen: Boolean,
     homeLayoutMode: HomeLayoutMode,
     lockHomeScreenLayout: Boolean,
     motionPreset: MotionPresetMode,
@@ -67,6 +68,7 @@ internal fun SettingsOverlay(
     onAppLabelsChange: (Boolean) -> Unit,
     onWidgetLabelsChange: (Boolean) -> Unit,
     onSwipeDownChange: (Boolean) -> Unit,
+    onAddNewAppsToHomeScreenChange: (Boolean) -> Unit,
     onHomeLayoutModeChange: (HomeLayoutMode) -> Unit,
     onLockHomeScreenLayoutChange: (Boolean) -> Unit,
     onMotionPresetChange: (MotionPresetMode) -> Unit,
@@ -106,7 +108,10 @@ internal fun SettingsOverlay(
         stringResource(R.string.settings_default_launcher_not_current)
     }
     val behaviorRows = listOf(
-        SettingRowState(stringResource(R.string.settings_add_new_apps), stringResource(R.string.settings_value_on)),
+        SettingRowState(
+            stringResource(R.string.settings_add_new_apps),
+            stringResource(if (addNewAppsToHomeScreen) R.string.settings_value_on else R.string.state_off),
+        ),
         SettingRowState(stringResource(R.string.settings_badge_notifications), stringResource(R.string.settings_value_dots_and_number)),
         SettingRowState(stringResource(R.string.settings_about_home_screen), stringResource(R.string.settings_about_version)),
     )
@@ -257,6 +262,14 @@ internal fun SettingsOverlay(
                         swipeDownForNotifications,
                         onSwipeDownChange,
                         stringResource(R.string.settings_swipe_notifications_summary),
+                    )
+                }
+                item {
+                    SettingsToggleCard(
+                        stringResource(R.string.settings_add_new_apps),
+                        addNewAppsToHomeScreen,
+                        onAddNewAppsToHomeScreenChange,
+                        stringResource(R.string.settings_add_new_apps_summary),
                     )
                 }
                 item {

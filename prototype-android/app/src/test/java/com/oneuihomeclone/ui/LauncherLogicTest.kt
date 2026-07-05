@@ -322,6 +322,99 @@ class LauncherLogicTest {
     }
 
     @Test
+    fun placeNewAppsOnHomePages_usesFirstPageWithRoom() {
+        val pages = listOf(
+            page(1, List(MAX_HOME_GRID_ITEMS) { index -> appItem("full-$index") }),
+            page(2, listOf(appItem("existing"))),
+        )
+
+        val result = placeNewAppsOnHomePages(
+            pages = pages,
+            newApps = listOf(app("new", "New app")),
+            nextPageId = 3,
+            enabled = true,
+            layoutLocked = false,
+        )
+
+        assertEquals(2, result.pages.size)
+        assertEquals(List(MAX_HOME_GRID_ITEMS) { "full-$it" }, result.pages[0].items.map(HomeGridItemModel::id))
+        assertEquals(listOf("existing", "new"), result.pages[1].items.map(HomeGridItemModel::id))
+        assertEquals(3, result.nextPageId)
+        assertEquals(setOf("new"), result.handledAppIds)
+        assertEquals(setOf("new"), result.placedAppIds)
+    }
+
+    @Test
+    fun placeNewAppsOnHomePages_createsPageOnlyWhenEveryPageIsFull() {
+        val fullPage = page(1, List(MAX_HOME_GRID_ITEMS) { index -> appItem("full-$index") })
+
+        val result = placeNewAppsOnHomePages(
+            pages = listOf(fullPage),
+            newApps = listOf(app("new", "New app")),
+            nextPageId = 2,
+            enabled = true,
+            layoutLocked = false,
+        )
+
+        assertEquals(2, result.pages.size)
+        assertEquals("Home 2", result.pages[1].label)
+        assertEquals(listOf("new"), result.pages[1].items.map(HomeGridItemModel::id))
+        assertEquals(3, result.nextPageId)
+    }
+
+    @Test
+    fun placeNewAppsOnHomePages_skipsAppsAlreadyOnHomeOrInFolders() {
+        val pages = listOf(page(1, listOf(appItem("direct"), folder("folder", "nested"))))
+
+        val result = placeNewAppsOnHomePages(
+            pages = pages,
+            newApps = listOf(app("direct"), app("nested"), app("new")),
+            nextPageId = 2,
+            enabled = true,
+            layoutLocked = false,
+        )
+
+        assertEquals(listOf("direct", "folder", "new"), result.pages.single().items.map(HomeGridItemModel::id))
+        assertEquals(setOf("new"), result.placedAppIds)
+        assertEquals(setOf("direct", "nested", "new"), result.handledAppIds)
+    }
+
+    @Test
+    fun placeNewAppsOnHomePages_settingOffHandlesWithoutPlacement() {
+        val pages = listOf(page(1))
+
+        val result = placeNewAppsOnHomePages(
+            pages = pages,
+            newApps = listOf(app("new")),
+            nextPageId = 2,
+            enabled = false,
+            layoutLocked = false,
+        )
+
+        assertEquals(pages, result.pages)
+        assertEquals(2, result.nextPageId)
+        assertEquals(setOf("new"), result.handledAppIds)
+        assertTrue(result.placedAppIds.isEmpty())
+    }
+
+    @Test
+    fun placeNewAppsOnHomePages_keepsInstallingAppsPending() {
+        val installing = app("installing").copy(statusLabel = "Installing", installProgressPercent = 42, isLaunchable = false)
+
+        val result = placeNewAppsOnHomePages(
+            pages = listOf(page(1)),
+            newApps = listOf(installing),
+            nextPageId = 2,
+            enabled = true,
+            layoutLocked = false,
+        )
+
+        assertTrue(result.pages.single().items.isEmpty())
+        assertTrue(result.handledAppIds.isEmpty())
+        assertTrue(result.placedAppIds.isEmpty())
+    }
+
+    @Test
     fun removeAppFromHomePageItems_removesDirectShortcutOnly() {
         val items: List<HomeGridItemModel> = listOf(appItem("a"), folder("folder", "b"))
         val result = removeAppFromHomePageItems(items, "a")
@@ -823,6 +916,7 @@ class LauncherLogicTest {
             appLabelsEnabled = false,
             widgetLabelsEnabled = false,
             swipeDownForNotifications = false,
+            addNewAppsToHomeScreen = false,
             lockHomeScreenLayout = true,
             homeLayoutMode = HomeLayoutKey.HOME_SCREEN_ONLY,
             drawerSortMode = DrawerSortKey.ALPHABETICAL,
@@ -837,5 +931,26 @@ class LauncherLogicTest {
         assertEquals(MotionPresetMode.REDUCED, toggles.motionPreset)
         assertEquals(FolderGridMode.GRID_5X5, toggles.folderGrid)
         assertEquals(state, toggles.toLauncherState())
+    }
+
+    @Test
+    fun buildFinderSettingResults_reflectsAddNewAppsState() {
+        val results = buildFinderSettingResults(
+            query = "add new",
+            homeLayoutMode = HomeLayoutMode.HOME_AND_APPS_SCREENS,
+            lockHomeScreenLayout = false,
+            mediaPageEnabled = true,
+            appsButtonEnabled = true,
+            appLabelsEnabled = true,
+            widgetLabelsEnabled = true,
+            swipeDownForNotifications = true,
+            addNewAppsToHomeScreen = false,
+            homePageCount = 2,
+            defaultHomePageLabel = "Home 1",
+            hiddenAppCount = 0,
+        )
+
+        assertEquals(FinderSettingType.ADD_NEW_APPS, results.single().type)
+        assertEquals("Off", results.single().value)
     }
 }

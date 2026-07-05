@@ -251,6 +251,7 @@ internal data class PersistedToggles(
     val appLabelsEnabled: Boolean,
     val widgetLabelsEnabled: Boolean,
     val swipeDownForNotifications: Boolean,
+    val addNewAppsToHomeScreen: Boolean,
     val lockHomeScreenLayout: Boolean,
     val homeLayoutMode: HomeLayoutMode,
     val drawerSortMode: DrawerSortMode,
@@ -264,6 +265,7 @@ internal fun LauncherState.toPersistedToggles(): PersistedToggles = PersistedTog
     appLabelsEnabled = appLabelsEnabled,
     widgetLabelsEnabled = widgetLabelsEnabled,
     swipeDownForNotifications = swipeDownForNotifications,
+    addNewAppsToHomeScreen = addNewAppsToHomeScreen,
     lockHomeScreenLayout = lockHomeScreenLayout,
     homeLayoutMode = when (homeLayoutMode) {
         HomeLayoutKey.HOME_AND_APPS_SCREENS -> HomeLayoutMode.HOME_AND_APPS_SCREENS
@@ -290,6 +292,7 @@ internal fun PersistedToggles.toLauncherState(): LauncherState = LauncherState(
     appLabelsEnabled = appLabelsEnabled,
     widgetLabelsEnabled = widgetLabelsEnabled,
     swipeDownForNotifications = swipeDownForNotifications,
+    addNewAppsToHomeScreen = addNewAppsToHomeScreen,
     lockHomeScreenLayout = lockHomeScreenLayout,
     homeLayoutMode = when (homeLayoutMode) {
         HomeLayoutMode.HOME_AND_APPS_SCREENS -> HomeLayoutKey.HOME_AND_APPS_SCREENS

@@ -18,6 +18,7 @@ class LauncherBackupCodecTest {
                 appLabelsEnabled = false,
                 widgetLabelsEnabled = false,
                 swipeDownForNotifications = false,
+                addNewAppsToHomeScreen = false,
                 lockHomeScreenLayout = true,
                 homeLayoutMode = HomeLayoutKey.HOME_SCREEN_ONLY,
                 drawerSortMode = DrawerSortKey.ALPHABETICAL,

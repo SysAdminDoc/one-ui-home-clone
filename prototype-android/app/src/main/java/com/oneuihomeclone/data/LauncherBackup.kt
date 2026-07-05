@@ -86,6 +86,7 @@ object LauncherBackupCodec {
             .put("appLabelsEnabled", state.appLabelsEnabled)
             .put("widgetLabelsEnabled", state.widgetLabelsEnabled)
             .put("swipeDownForNotifications", state.swipeDownForNotifications)
+            .put("addNewAppsToHomeScreen", state.addNewAppsToHomeScreen)
             .put("lockHomeScreenLayout", state.lockHomeScreenLayout)
             .put("homeLayoutMode", state.homeLayoutMode.raw)
             .put("drawerSortMode", state.drawerSortMode.raw)
@@ -99,6 +100,7 @@ object LauncherBackupCodec {
             appLabelsEnabled = obj?.optBoolean("appLabelsEnabled", true) ?: true,
             widgetLabelsEnabled = obj?.optBoolean("widgetLabelsEnabled", true) ?: true,
             swipeDownForNotifications = obj?.optBoolean("swipeDownForNotifications", true) ?: true,
+            addNewAppsToHomeScreen = obj?.optBoolean("addNewAppsToHomeScreen", true) ?: true,
             lockHomeScreenLayout = obj?.optBoolean("lockHomeScreenLayout", false) ?: false,
             homeLayoutMode = HomeLayoutKey.fromRaw(obj?.optString("homeLayoutMode")),
             drawerSortMode = DrawerSortKey.fromRaw(obj?.optString("drawerSortMode")),

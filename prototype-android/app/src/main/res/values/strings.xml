@@ -84,6 +84,7 @@
     <string name="settings_section_behavior">Behavior</string>
     <string name="settings_summary_behavior">Expected launcher defaults</string>
     <string name="settings_add_new_apps">Add new apps to Home screen</string>
+    <string name="settings_add_new_apps_summary">Automatically place newly installed apps in the first available Home screen spot.</string>
     <string name="settings_badge_notifications">Badge notifications</string>
     <string name="settings_about_home_screen">About Home screen</string>
     <string name="settings_value_on">On</string>

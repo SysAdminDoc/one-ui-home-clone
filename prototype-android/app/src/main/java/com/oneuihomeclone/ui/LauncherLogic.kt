@@ -122,6 +122,72 @@ internal fun addAppToHomePageItems(
     return items + AppItemModel(app)
 }
 
+internal data class AutoAddNewAppsResult(
+    val pages: List<HomePageModel>,
+    val nextPageId: Int,
+    val handledAppIds: Set<String>,
+    val placedAppIds: Set<String>,
+)
+
+internal fun placeNewAppsOnHomePages(
+    pages: List<HomePageModel>,
+    newApps: List<CloneApp>,
+    nextPageId: Int,
+    enabled: Boolean,
+    layoutLocked: Boolean,
+): AutoAddNewAppsResult {
+    val distinctNewApps = newApps.distinctBy(CloneApp::id)
+    if (distinctNewApps.isEmpty()) {
+        return AutoAddNewAppsResult(
+            pages = pages,
+            nextPageId = nextPageId,
+            handledAppIds = emptySet(),
+            placedAppIds = emptySet(),
+        )
+    }
+    if (!enabled || layoutLocked) {
+        return AutoAddNewAppsResult(
+            pages = pages,
+            nextPageId = nextPageId,
+            handledAppIds = distinctNewApps.mapTo(mutableSetOf(), CloneApp::id),
+            placedAppIds = emptySet(),
+        )
+    }
+
+    val mutablePages = pages.toMutableList()
+    var nextAvailablePageId = maxOf(nextPageId, (pages.maxOfOrNull(HomePageModel::id) ?: 0) + 1)
+    val handledAppIds = mutableSetOf<String>()
+    val placedAppIds = mutableSetOf<String>()
+
+    distinctNewApps
+        .filter { app -> app.isLaunchable && !app.isRestoredPlaceholder }
+        .forEach { app ->
+            handledAppIds += app.id
+            if (homePagesContainApp(mutablePages, app.id)) {
+                return@forEach
+            }
+            var targetPageIndex = mutablePages.indexOfFirst { page -> page.items.size < MAX_HOME_GRID_ITEMS }
+            if (targetPageIndex == -1) {
+                mutablePages += buildAutoAddedHomePage(nextAvailablePageId)
+                nextAvailablePageId += 1
+                targetPageIndex = mutablePages.lastIndex
+            }
+            val targetPage = mutablePages[targetPageIndex]
+            val nextItems = addAppToHomePageItems(targetPage.items, app)
+            if (nextItems.size > targetPage.items.size) {
+                placedAppIds += app.id
+            }
+            mutablePages[targetPageIndex] = targetPage.copy(items = nextItems)
+        }
+
+    return AutoAddNewAppsResult(
+        pages = mutablePages,
+        nextPageId = nextAvailablePageId,
+        handledAppIds = handledAppIds,
+        placedAppIds = placedAppIds,
+    )
+}
+
 internal fun removeAppFromHomePageItems(
     items: List<HomeGridItemModel>,
     appId: String,
@@ -909,6 +975,18 @@ internal fun buildHomePage(id: Int, allApps: List<CloneApp>): HomePageModel {
     )
 }
 
+internal fun buildAutoAddedHomePage(id: Int): HomePageModel =
+    HomePageModel(
+        id = id,
+        label = "Home $id",
+        eyebrow = "New",
+        value = "Apps",
+        status = "Added automatically",
+        note = "Newly installed apps land here when existing Home pages are full.",
+        widgets = emptyList(),
+        items = emptyList(),
+    )
+
 internal data class FinderSettingText(
     val homeScreenLayout: String = "Home screen layout",
     val homeScreenGrid: String = "Home screen grid",
@@ -970,6 +1048,7 @@ internal fun buildFinderSettingResults(
     appLabelsEnabled: Boolean,
     widgetLabelsEnabled: Boolean,
     swipeDownForNotifications: Boolean,
+    addNewAppsToHomeScreen: Boolean = true,
     homePageCount: Int,
     defaultHomePageLabel: String,
     hiddenAppCount: Int,
@@ -999,7 +1078,7 @@ internal fun buildFinderSettingResults(
         FinderSettingResult(FinderSettingType.SWIPE_DOWN_NOTIFICATIONS, text.swipeDownNotifications, text.gesturesCategory, if (swipeDownForNotifications) text.onValue else text.offValue),
         FinderSettingResult(FinderSettingType.HIDE_APPS, text.hideApps, text.appsScreenCategory, hiddenAppsValue),
         FinderSettingResult(FinderSettingType.LOCK_LAYOUT, text.lockLayout, text.behaviorCategory, if (lockHomeScreenLayout) text.onValue else text.offValue),
-        FinderSettingResult(FinderSettingType.ADD_NEW_APPS, text.addNewApps, text.behaviorCategory, text.onValue),
+        FinderSettingResult(FinderSettingType.ADD_NEW_APPS, text.addNewApps, text.behaviorCategory, if (addNewAppsToHomeScreen) text.onValue else text.offValue),
         FinderSettingResult(FinderSettingType.BADGE_NOTIFICATIONS, text.badgeNotifications, text.behaviorCategory, text.dotsAndNumberValue),
     )
     val normalizedQuery = query.trim().lowercase()

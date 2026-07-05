@@ -7,6 +7,7 @@ data class LauncherState(
     val appLabelsEnabled: Boolean = true,
     val widgetLabelsEnabled: Boolean = true,
     val swipeDownForNotifications: Boolean = true,
+    val addNewAppsToHomeScreen: Boolean = true,
     val lockHomeScreenLayout: Boolean = false,
     val homeLayoutMode: HomeLayoutKey = HomeLayoutKey.HOME_AND_APPS_SCREENS,
     val drawerSortMode: DrawerSortKey = DrawerSortKey.CUSTOM_ORDER,

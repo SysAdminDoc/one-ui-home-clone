@@ -270,6 +270,8 @@ fun OneUiHomeCloneApp(
     var allApps by remember { mutableStateOf(fallbackApps) }
     var appInventoryLoaded by remember { mutableStateOf(false) }
     var hasSeededDeviceApps by remember { mutableStateOf(false) }
+    var lastInventoryAppIds by remember { mutableStateOf<Set<String>?>(null) }
+    var pendingAutoAddAppIds by remember { mutableStateOf(emptySet<String>()) }
     val dockApps = remember(allApps) { allApps.take(4) }
     val fallbackWidgetTemplates = remember {
         listOf(
@@ -445,6 +447,7 @@ fun OneUiHomeCloneApp(
     var appLabelsEnabled by remember { mutableStateOf(initialPrefs.appLabelsEnabled) }
     var widgetLabelsEnabled by remember { mutableStateOf(initialPrefs.widgetLabelsEnabled) }
     var swipeDownForNotifications by remember { mutableStateOf(initialPrefs.swipeDownForNotifications) }
+    var addNewAppsToHomeScreen by remember { mutableStateOf(initialPrefs.addNewAppsToHomeScreen) }
     var motionPreset by remember {
         mutableStateOf(
             when (initialPrefs.motionPreset) {
@@ -471,6 +474,7 @@ fun OneUiHomeCloneApp(
         appLabelsEnabled = toggles.appLabelsEnabled
         widgetLabelsEnabled = toggles.widgetLabelsEnabled
         swipeDownForNotifications = toggles.swipeDownForNotifications
+        addNewAppsToHomeScreen = toggles.addNewAppsToHomeScreen
         lockHomeScreenLayout = toggles.lockHomeScreenLayout
         homeLayoutMode = toggles.homeLayoutMode
         drawerSortMode = toggles.drawerSortMode
@@ -499,6 +503,15 @@ fun OneUiHomeCloneApp(
 
     LaunchedEffect(appInventory) {
         appInventory.apps().collect { loadedApps ->
+            val loadedIds = loadedApps.mapTo(mutableSetOf(), CloneApp::id)
+            val previousIds = lastInventoryAppIds
+            if (appInventoryLoaded && previousIds != null) {
+                val newAppIds = loadedIds - previousIds
+                if (newAppIds.isNotEmpty()) {
+                    pendingAutoAddAppIds = pendingAutoAddAppIds + newAppIds
+                }
+            }
+            lastInventoryAppIds = loadedIds
             allApps = loadedApps
             appInventoryLoaded = true
         }
@@ -537,6 +550,7 @@ fun OneUiHomeCloneApp(
                     appLabelsEnabled = appLabelsEnabled,
                     widgetLabelsEnabled = widgetLabelsEnabled,
                     swipeDownForNotifications = swipeDownForNotifications,
+                    addNewAppsToHomeScreen = addNewAppsToHomeScreen,
                     lockHomeScreenLayout = lockHomeScreenLayout,
                     homeLayoutMode = homeLayoutMode,
                     drawerSortMode = drawerSortMode,
@@ -688,6 +702,7 @@ fun OneUiHomeCloneApp(
         appLabelsEnabled,
         widgetLabelsEnabled,
         swipeDownForNotifications,
+        addNewAppsToHomeScreen,
         homePages,
         defaultHomePageIndex,
         defaultFinderHomePageLabel,
@@ -706,6 +721,7 @@ fun OneUiHomeCloneApp(
             appLabelsEnabled = appLabelsEnabled,
             widgetLabelsEnabled = widgetLabelsEnabled,
             swipeDownForNotifications = swipeDownForNotifications,
+            addNewAppsToHomeScreen = addNewAppsToHomeScreen,
             homePageCount = homePages.size,
             defaultHomePageLabel = defaultFinderHomePageLabel,
             hiddenAppCount = hiddenAppIds.size,
@@ -758,6 +774,7 @@ fun OneUiHomeCloneApp(
                 nextFolderId = 3
                 pageIndex = if (mediaPageEnabled) 1 else 0
             }
+            pendingAutoAddAppIds = emptySet()
             hasSeededDeviceApps = true
         } else {
             val reconciledPages = reconcileHomePagesWithApps(homePages, allApps).ifEmpty {
@@ -766,10 +783,22 @@ fun OneUiHomeCloneApp(
                     buildHomePage(2, allApps),
                 )
             }
-            homePages = reconciledPages
+            val pendingAppIds = pendingAutoAddAppIds
+            val placementResult = placeNewAppsOnHomePages(
+                pages = reconciledPages,
+                newApps = allApps.filter { app -> app.id in pendingAppIds },
+                nextPageId = nextPageId,
+                enabled = addNewAppsToHomeScreen,
+                layoutLocked = lockHomeScreenLayout,
+            )
+            homePages = placementResult.pages
+            nextPageId = placementResult.nextPageId
+            val currentAppIds = allApps.mapTo(mutableSetOf(), CloneApp::id)
+            val stalePendingAppIds = pendingAppIds - currentAppIds
+            pendingAutoAddAppIds = pendingAutoAddAppIds - placementResult.handledAppIds - stalePendingAppIds
             hiddenAppIds = reconcileHiddenAppIds(hiddenAppIds, allApps)
-            defaultHomePageIndex = defaultHomePageIndex.coerceIn(reconciledPages.indices)
-            pageIndex = pageIndex.coerceIn(0, totalPageCount(reconciledPages.size, mediaPageEnabled) - 1)
+            defaultHomePageIndex = defaultHomePageIndex.coerceIn(placementResult.pages.indices)
+            pageIndex = pageIndex.coerceIn(0, totalPageCount(placementResult.pages.size, mediaPageEnabled) - 1)
         }
     }
 
@@ -803,6 +832,7 @@ fun OneUiHomeCloneApp(
             appLabelsEnabled = appLabelsEnabled,
             widgetLabelsEnabled = widgetLabelsEnabled,
             swipeDownForNotifications = swipeDownForNotifications,
+            addNewAppsToHomeScreen = addNewAppsToHomeScreen,
             lockHomeScreenLayout = lockHomeScreenLayout,
             homeLayoutMode = homeLayoutMode,
             drawerSortMode = drawerSortMode,
@@ -827,6 +857,7 @@ fun OneUiHomeCloneApp(
         appLabelsEnabled = toggles.appLabelsEnabled
         widgetLabelsEnabled = toggles.widgetLabelsEnabled
         swipeDownForNotifications = toggles.swipeDownForNotifications
+        addNewAppsToHomeScreen = toggles.addNewAppsToHomeScreen
         lockHomeScreenLayout = toggles.lockHomeScreenLayout
         homeLayoutMode = toggles.homeLayoutMode
         drawerSortMode = toggles.drawerSortMode
@@ -1546,6 +1577,7 @@ fun OneUiHomeCloneApp(
                 appLabelsEnabled = appLabelsEnabled,
                 widgetLabelsEnabled = widgetLabelsEnabled,
                 swipeDownForNotifications = swipeDownForNotifications,
+                addNewAppsToHomeScreen = addNewAppsToHomeScreen,
                 homeLayoutMode = homeLayoutMode,
                 lockHomeScreenLayout = lockHomeScreenLayout,
                 motionPreset = motionPreset,
@@ -1568,6 +1600,7 @@ fun OneUiHomeCloneApp(
                 onAppLabelsChange = { appLabelsEnabled = it },
                 onWidgetLabelsChange = { widgetLabelsEnabled = it },
                 onSwipeDownChange = { swipeDownForNotifications = it },
+                onAddNewAppsToHomeScreenChange = { addNewAppsToHomeScreen = it },
                 onHomeLayoutModeChange = { homeLayoutMode = it },
                 onLockHomeScreenLayoutChange = { lockHomeScreenLayout = it },
                 onMotionPresetChange = { motionPreset = it },
