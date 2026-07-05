@@ -248,6 +248,47 @@ class LauncherLogicTest {
     }
 
     @Test
+    fun reconcileDrawerCustomOrder_keepsUserOrderDropsMissingAndAppendsNewApps() {
+        val apps = listOf(
+            app("a", "Alpha"),
+            app("b", "Beta"),
+            app("c", "Camera"),
+            app("d", "Drive"),
+        )
+
+        val result = reconcileDrawerCustomOrder(
+            apps = apps,
+            customAppIds = listOf("c", "missing", "a", "c"),
+        )
+
+        assertEquals(listOf("c", "a", "b", "d"), result.map(CloneApp::id))
+    }
+
+    @Test
+    fun reorderDrawerCustomOrder_movesSourceAfterTargetInReconciledOrder() {
+        val result = reorderDrawerCustomOrder(
+            currentOrder = listOf("c", "a"),
+            sourceAppId = "a",
+            targetAppId = "b",
+            allAppIds = listOf("a", "b", "c", "d"),
+        )
+
+        assertEquals(listOf("c", "b", "a", "d"), result)
+    }
+
+    @Test
+    fun reorderDrawerCustomOrder_ignoresUnknownSourceAndTarget() {
+        val result = reorderDrawerCustomOrder(
+            currentOrder = listOf("b", "a"),
+            sourceAppId = "missing",
+            targetAppId = "also-missing",
+            allAppIds = listOf("a", "b", "c"),
+        )
+
+        assertEquals(listOf("b", "a", "c"), result)
+    }
+
+    @Test
     fun alphabeticalAppSections_groupsByFirstLetter() {
         val apps = listOf(app("a1", "Alpha"), app("b1", "Beta"), app("a2", "Apex"))
         val sections = alphabeticalAppSections(apps)
@@ -820,6 +861,7 @@ class LauncherLogicTest {
             recentSearches = listOf("Widgets"),
             nextPageId = 8,
             nextFolderId = 3,
+            drawerCustomAppIds = listOf("b", "a"),
         )
 
         assertEquals(7, layout.pages.single().id)
@@ -827,6 +869,7 @@ class LauncherLogicTest {
         assertEquals(PersistedHomeItem.Folder("tools", "Folder tools", listOf("b", "c")), layout.pages.single().items[1])
         assertEquals(setOf("c"), layout.hiddenAppIds)
         assertEquals(listOf("Widgets"), layout.recentSearches)
+        assertEquals(listOf("b", "a"), layout.drawerCustomAppIds)
     }
 
     @Test

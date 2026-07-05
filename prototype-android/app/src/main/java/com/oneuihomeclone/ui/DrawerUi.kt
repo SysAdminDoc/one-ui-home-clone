@@ -43,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -88,6 +89,10 @@ internal fun DrawerOverlay(
     onOpenAction: (FinderActionItem) -> Unit,
     onOpenApp: (CloneApp) -> Unit,
     onOpenAppActions: (CloneApp, AppContextSource) -> Unit,
+    drawerReorderSourceAppId: String? = null,
+    onStartDrawerReorder: (CloneApp) -> Unit = {},
+    onReorderDrawerApp: (String, String) -> Unit = { _, _ -> },
+    onCancelDrawerReorder: () -> Unit = {},
     appLabelsEnabled: Boolean,
 ) {
     val trimmedQuery = query.trim()
@@ -185,11 +190,22 @@ internal fun DrawerOverlay(
                         FinderSectionHeader(stringResource(R.string.drawer_section_apps_screen))
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            stringResource(R.string.drawer_custom_order_summary),
+                            drawerReorderSourceAppId
+                                ?.let { sourceId -> appsScreenApps.firstOrNull { it.id == sourceId }?.name }
+                                ?.let { appName -> stringResource(R.string.drawer_reorder_active_summary, appName) }
+                                ?: stringResource(R.string.drawer_custom_order_summary),
                             color = OneUiTextSecondary,
                             fontSize = 12.sp,
                             lineHeight = 18.sp,
                         )
+                        if (drawerReorderSourceAppId != null) {
+                            Spacer(Modifier.height(8.dp))
+                            SettingsCapsule(
+                                label = stringResource(R.string.action_done),
+                                onClick = onCancelDrawerReorder,
+                                accent = true,
+                            )
+                        }
                         Spacer(Modifier.height(14.dp))
                         FinderAppGrid(
                             columns = layoutContract.appsGridColumns,
@@ -197,6 +213,10 @@ internal fun DrawerOverlay(
                             showLabels = appLabelsEnabled,
                             onOpenApp = onOpenApp,
                             onOpenAppActions = onOpenAppActions,
+                            drawerReorderSourceAppId = drawerReorderSourceAppId,
+                            reorderEnabled = trimmedQuery.isBlank() && drawerSortMode == DrawerSortMode.CUSTOM_ORDER,
+                            onStartReorder = onStartDrawerReorder,
+                            onReorderApp = onReorderDrawerApp,
                         )
                         if (drawerPages.size > 1) {
                             Spacer(Modifier.height(16.dp))
@@ -536,19 +556,44 @@ private fun FinderAppGrid(
     showLabels: Boolean,
     onOpenApp: (CloneApp) -> Unit,
     onOpenAppActions: (CloneApp, AppContextSource) -> Unit,
+    drawerReorderSourceAppId: String? = null,
+    reorderEnabled: Boolean = false,
+    onStartReorder: (CloneApp) -> Unit = {},
+    onReorderApp: (String, String) -> Unit = { _, _ -> },
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         apps.chunked(columns).forEach { rowApps ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowApps.forEach { app ->
+                    val isReorderSource = drawerReorderSourceAppId == app.id
+                    val appDescription = if (isReorderSource) {
+                        stringResource(R.string.a11y_drawer_reorder_source, app.accessibilityLabel())
+                    } else {
+                        app.accessibilityLabel()
+                    }
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .semantics { contentDescription = app.accessibilityLabel() }
+                            .clip(OneUiIconShape)
+                            .background(if (isReorderSource) OneUiAccentSoft.copy(alpha = 0.7f) else Color.Transparent)
+                            .semantics { contentDescription = appDescription }
                             .combinedClickable(
                                 role = Role.Button,
-                                onClick = { onOpenApp(app) },
-                                onLongClick = { onOpenAppActions(app, AppContextSource.DRAWER) },
+                                onClick = {
+                                    val sourceId = drawerReorderSourceAppId
+                                    when {
+                                        reorderEnabled && sourceId != null && sourceId != app.id -> onReorderApp(sourceId, app.id)
+                                        reorderEnabled && sourceId == app.id -> Unit
+                                        else -> onOpenApp(app)
+                                    }
+                                },
+                                onLongClick = {
+                                    if (reorderEnabled) {
+                                        onStartReorder(app)
+                                    } else {
+                                        onOpenAppActions(app, AppContextSource.DRAWER)
+                                    }
+                                },
                             )
                             .padding(horizontal = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,

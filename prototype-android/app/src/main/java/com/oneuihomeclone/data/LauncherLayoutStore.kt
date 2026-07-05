@@ -30,6 +30,7 @@ data class PersistedLauncherLayout(
     val recentSearches: List<String>,
     val nextPageId: Int,
     val nextFolderId: Int,
+    val drawerCustomAppIds: List<String> = emptyList(),
 )
 
 data class PersistedHomePage(
@@ -86,6 +87,7 @@ class LauncherLayoutStore(context: Context) {
         private const val MAX_PAGES = 32
         private const val MAX_ITEMS_PER_PAGE = 128
         private const val MAX_RECENTS = 12
+        private const val MAX_DRAWER_ORDER = 2048
 
         internal fun encode(layout: PersistedLauncherLayout): String =
             JSONObject()
@@ -97,6 +99,7 @@ class LauncherLayoutStore(context: Context) {
                 .put("recentSearches", JSONArray(layout.recentSearches.take(MAX_RECENTS)))
                 .put("nextPageId", layout.nextPageId)
                 .put("nextFolderId", layout.nextFolderId)
+                .put("drawerCustomAppIds", JSONArray(layout.drawerCustomAppIds.distinct().take(MAX_DRAWER_ORDER)))
                 .toString()
 
         internal fun decode(schema: Int?, json: String?): PersistedLauncherLayout? {
@@ -154,6 +157,7 @@ class LauncherLayoutStore(context: Context) {
                 recentSearches = root.optJSONArray("recentSearches").toStringList(MAX_RECENTS),
                 nextPageId = root.optInt("nextPageId", pages.maxOfOrNull { it.id + 1 } ?: 1),
                 nextFolderId = root.optInt("nextFolderId", 1),
+                drawerCustomAppIds = root.optJSONArray("drawerCustomAppIds").toStringList(MAX_DRAWER_ORDER).distinct(),
             )
         }.getOrElse { cause ->
             Log.w(TAG, "Discarding malformed layout JSON (${cause.javaClass.simpleName})")

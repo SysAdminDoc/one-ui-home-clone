@@ -49,6 +49,7 @@ class LauncherBackupCodecTest {
                 recentSearches = listOf("Clock", "Weather"),
                 nextPageId = 9,
                 nextFolderId = 4,
+                drawerCustomAppIds = listOf("app-two", "app-one"),
             ),
             widgets = listOf(
                 BoundWidget(

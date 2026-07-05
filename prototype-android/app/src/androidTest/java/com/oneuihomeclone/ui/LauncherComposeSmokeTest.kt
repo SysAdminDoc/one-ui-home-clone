@@ -11,12 +11,14 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.oneuihomeclone.PreviousCrashSummary
@@ -31,6 +33,7 @@ import com.oneuihomeclone.ui.theme.OneUiHomeCloneTheme
 import java.io.File
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -108,6 +111,70 @@ class LauncherComposeSmokeTest {
             .assertIsDisplayed()
             .performClick()
         composeRule.runOnIdle { assertTrue(openedSettingsAction) }
+    }
+
+    @Test
+    fun drawerCustomOrderLongPressSelectsAndTapReordersApp() {
+        val apps = listOf(
+            CloneApp("alpha", "Alpha", color = Color(0xFF4A88FF)),
+            CloneApp("beta", "Beta", color = Color(0xFFFF8B7B)),
+        )
+        var startedWith: String? = null
+        var movedPair: Pair<String, String>? = null
+        var openedApp: String? = null
+        setLauncherContent {
+            var reorderSource by remember { mutableStateOf<String?>(null) }
+            DrawerOverlay(
+                layoutContract = resolveLauncherLayoutContract(widthDp = 412, heightDp = 915),
+                query = "",
+                apps = apps,
+                appsScreenApps = apps,
+                drawerPages = listOf(apps),
+                homeLayoutMode = HomeLayoutMode.HOME_AND_APPS_SCREENS,
+                drawerSortMode = DrawerSortMode.CUSTOM_ORDER,
+                drawerPageIndex = 0,
+                hiddenAppCount = 0,
+                settingResults = emptyList(),
+                actionResults = emptyList(),
+                shortcutResults = emptyList(),
+                recentSearches = emptyList(),
+                onQueryChange = {},
+                onClose = {},
+                onOpenSettings = {},
+                onSelectSortMode = {},
+                onSelectDrawerPage = {},
+                onOpenHideApps = {},
+                onSelectRecentSearch = {},
+                onOpenSettingResult = {},
+                onOpenAction = {},
+                onOpenApp = { openedApp = it.id },
+                onOpenAppActions = { _, _ -> },
+                drawerReorderSourceAppId = reorderSource,
+                onStartDrawerReorder = {
+                    startedWith = it.id
+                    reorderSource = it.id
+                },
+                onReorderDrawerApp = { sourceId, targetId ->
+                    movedPair = sourceId to targetId
+                    reorderSource = null
+                },
+                onCancelDrawerReorder = { reorderSource = null },
+                appLabelsEnabled = true,
+            )
+        }
+
+        composeRule.onNodeWithContentDescription("Alpha")
+            .assertIsDisplayed()
+            .performTouchInput { longClick() }
+        composeRule.onNodeWithText("Done").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Alpha, selected for Apps screen reorder")
+            .assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Beta").performClick()
+        composeRule.runOnIdle {
+            assertEquals("alpha", startedWith)
+            assertEquals("alpha" to "beta", movedPair)
+            assertEquals(null, openedApp)
+        }
     }
 
     @Test

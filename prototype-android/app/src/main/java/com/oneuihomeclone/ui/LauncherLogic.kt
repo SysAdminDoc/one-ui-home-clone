@@ -770,6 +770,7 @@ internal fun buildPersistedLauncherLayout(
     recentSearches: List<String>,
     nextPageId: Int,
     nextFolderId: Int,
+    drawerCustomAppIds: List<String> = emptyList(),
 ): PersistedLauncherLayout =
     PersistedLauncherLayout(
         pages = pages.map { page ->
@@ -797,6 +798,7 @@ internal fun buildPersistedLauncherLayout(
         recentSearches = recentSearches,
         nextPageId = nextPageId,
         nextFolderId = nextFolderId,
+        drawerCustomAppIds = drawerCustomAppIds,
     )
 
 internal fun restorePersistedHomePages(
@@ -948,6 +950,51 @@ internal fun reorderHomeGridItems(
         return items
     }
     return moveListItem(items, sourceIndex, targetIndex)
+}
+
+internal fun reconcileDrawerCustomOrder(
+    apps: List<CloneApp>,
+    customAppIds: List<String>,
+): List<CloneApp> {
+    if (apps.isEmpty()) return emptyList()
+    val appsById = apps.associateBy(CloneApp::id)
+    val orderedIds = reconciledDrawerOrderIds(
+        allAppIds = apps.map(CloneApp::id),
+        customAppIds = customAppIds,
+    )
+    return orderedIds.mapNotNull(appsById::get)
+}
+
+internal fun reorderDrawerCustomOrder(
+    currentOrder: List<String>,
+    sourceAppId: String,
+    targetAppId: String,
+    allAppIds: List<String>,
+): List<String> {
+    if (sourceAppId == targetAppId) return reconciledDrawerOrderIds(allAppIds, currentOrder)
+    val mutable = reconciledDrawerOrderIds(allAppIds, currentOrder).toMutableList()
+    val fromIndex = mutable.indexOf(sourceAppId)
+    if (fromIndex == -1 || targetAppId !in mutable) return mutable
+    val moved = mutable.removeAt(fromIndex)
+    val targetIndexAfterRemoval = mutable.indexOf(targetAppId)
+    if (targetIndexAfterRemoval == -1) return reconciledDrawerOrderIds(allAppIds, currentOrder)
+    mutable.add((targetIndexAfterRemoval + 1).coerceAtMost(mutable.size), moved)
+    return mutable
+}
+
+private fun reconciledDrawerOrderIds(
+    allAppIds: List<String>,
+    customAppIds: List<String>,
+): List<String> {
+    val allIds = allAppIds.distinct()
+    val installedIds = allIds.toSet()
+    val ordered = customAppIds
+        .asSequence()
+        .filter { it in installedIds }
+        .distinct()
+        .toList()
+    val orderedSet = ordered.toSet()
+    return ordered + allIds.filterNot { it in orderedSet }
 }
 
 internal fun Rect.centerOffset(): Offset = Offset((left + right) / 2f, (top + bottom) / 2f)

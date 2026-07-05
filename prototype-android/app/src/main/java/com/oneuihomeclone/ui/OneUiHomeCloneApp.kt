@@ -548,6 +548,8 @@ fun OneUiHomeCloneApp(
         )
     }
     var drawerPageIndex by remember { mutableIntStateOf(0) }
+    var drawerCustomAppIds by remember { mutableStateOf(emptyList<String>()) }
+    var drawerReorderSourceAppId by remember { mutableStateOf<String?>(null) }
     var hiddenAppIds by remember { mutableStateOf(setOf<String>()) }
     var searchQuery by remember { mutableStateOf("") }
     val initialRecentSearches = listOf(
@@ -711,6 +713,7 @@ fun OneUiHomeCloneApp(
                     recentSearches = recentSearches,
                     nextPageId = nextPageId,
                     nextFolderId = nextFolderId,
+                    drawerCustomAppIds = drawerCustomAppIds,
                 )
             }
         }
@@ -771,14 +774,24 @@ fun OneUiHomeCloneApp(
     val visibleDockApps = remember(dockApps, badgedApps, hiddenAppIds) {
         buildVisibleDockApps(dockApps, badgedApps, hiddenAppIds)
     }
-    val appsScreenApps = remember(drawerApps, drawerSortMode, hiddenAppIds) {
+    val drawerCustomOrderedApps = remember(drawerApps, drawerCustomAppIds) {
+        reconcileDrawerCustomOrder(drawerApps, drawerCustomAppIds)
+    }
+    LaunchedEffect(appInventoryLoaded, drawerApps, drawerCustomAppIds) {
+        if (!appInventoryLoaded || drawerApps.isEmpty()) return@LaunchedEffect
+        val reconciledIds = reconcileDrawerCustomOrder(drawerApps, drawerCustomAppIds).map(CloneApp::id)
+        if (reconciledIds != drawerCustomAppIds) {
+            drawerCustomAppIds = reconciledIds
+        }
+    }
+    val appsScreenApps = remember(drawerCustomOrderedApps, drawerApps, drawerSortMode, hiddenAppIds) {
         when (drawerSortMode) {
-            DrawerSortMode.CUSTOM_ORDER -> drawerApps.filterNot { it.id in hiddenAppIds }
+            DrawerSortMode.CUSTOM_ORDER -> drawerCustomOrderedApps.filterNot { it.id in hiddenAppIds }
             DrawerSortMode.ALPHABETICAL -> drawerApps.filterNot { it.id in hiddenAppIds }.sortedBy { it.name.lowercase(Locale.getDefault()) }
         }
     }
-    val drawerPages = remember(drawerApps, hiddenAppIds, layoutContract.appsPageSize) {
-        drawerApps.filterNot { it.id in hiddenAppIds }.chunked(layoutContract.appsPageSize)
+    val drawerPages = remember(appsScreenApps, layoutContract.appsPageSize) {
+        appsScreenApps.chunked(layoutContract.appsPageSize)
     }
     LaunchedEffect(appInventoryLoaded, appsScreenApps) {
         if (!appInventoryLoaded) {
@@ -894,6 +907,7 @@ fun OneUiHomeCloneApp(
                 }
                 homePages = restoredPages
                 hiddenAppIds = reconcileHiddenAppIds(persistedLayout.hiddenAppIds, badgedApps)
+                drawerCustomAppIds = reconcileDrawerCustomOrder(badgedApps, persistedLayout.drawerCustomAppIds).map(CloneApp::id)
                 recentSearches = persistedLayout.recentSearches.ifEmpty { recentSearches }
                 defaultHomePageIndex = persistedLayout.defaultHomePageIndex.coerceIn(restoredPages.indices)
                 nextPageId = maxOf(persistedLayout.nextPageId, restoredPages.maxOf { it.id + 1 })
@@ -905,6 +919,7 @@ fun OneUiHomeCloneApp(
                     buildHomePage(2, badgedApps),
                 )
                 defaultHomePageIndex = 0
+                drawerCustomAppIds = badgedApps.map(CloneApp::id)
                 nextPageId = 3
                 nextFolderId = 3
                 pageIndex = if (mediaPageEnabled) 1 else 0
@@ -932,6 +947,7 @@ fun OneUiHomeCloneApp(
             val stalePendingAppIds = pendingAppIds - currentAppIds
             pendingAutoAddAppIds = pendingAutoAddAppIds - placementResult.handledAppIds - stalePendingAppIds
             hiddenAppIds = reconcileHiddenAppIds(hiddenAppIds, badgedApps)
+            drawerCustomAppIds = reconcileDrawerCustomOrder(badgedApps, drawerCustomAppIds).map(CloneApp::id)
             defaultHomePageIndex = defaultHomePageIndex.coerceIn(placementResult.pages.indices)
             pageIndex = pageIndex.coerceIn(0, totalPageCount(placementResult.pages.size, mediaPageEnabled) - 1)
         }
@@ -945,6 +961,14 @@ fun OneUiHomeCloneApp(
     }
     LaunchedEffect(drawerSortMode) {
         drawerPageIndex = 0
+        drawerReorderSourceAppId = null
+    }
+    LaunchedEffect(searchQuery, drawerSortMode, appsScreenApps) {
+        if (searchQuery.isNotBlank() || drawerSortMode != DrawerSortMode.CUSTOM_ORDER) {
+            drawerReorderSourceAppId = null
+        } else if (drawerReorderSourceAppId != null && appsScreenApps.none { it.id == drawerReorderSourceAppId }) {
+            drawerReorderSourceAppId = null
+        }
     }
 
     val updateMediaPageEnabled: (Boolean) -> Unit = { enabled ->
@@ -984,6 +1008,7 @@ fun OneUiHomeCloneApp(
             recentSearches = recentSearches,
             nextPageId = nextPageId,
             nextFolderId = nextFolderId,
+            drawerCustomAppIds = drawerCustomAppIds,
         )
 
     fun applyLauncherState(state: LauncherState) {
@@ -1085,6 +1110,7 @@ fun OneUiHomeCloneApp(
                 applyLauncherState(backup.settings)
                 homePages = pagesWithWidgets
                 hiddenAppIds = backup.layout.hiddenAppIds
+                drawerCustomAppIds = reconcileDrawerCustomOrder(restoreApps, backup.layout.drawerCustomAppIds).map(CloneApp::id)
                 recentSearches = backup.layout.recentSearches.ifEmpty { recentSearches }
                 defaultHomePageIndex = backup.layout.defaultHomePageIndex.coerceIn(pagesWithWidgets.indices)
                 nextPageId = maxOf(
@@ -1115,6 +1141,7 @@ fun OneUiHomeCloneApp(
                 }
                 homePages = mergeBoundWidgetsIntoPages(restoredPages, preRestoreSnapshot.widgets, widgetTemplates)
                 hiddenAppIds = preRestoreSnapshot.layout.hiddenAppIds
+                drawerCustomAppIds = reconcileDrawerCustomOrder(restoreApps, preRestoreSnapshot.layout.drawerCustomAppIds).map(CloneApp::id)
                 recentSearches = preRestoreSnapshot.layout.recentSearches.ifEmpty { recentSearches }
                 defaultHomePageIndex = preRestoreSnapshot.layout.defaultHomePageIndex.coerceIn(homePages.indices)
                 nextPageId = maxOf(
@@ -1807,6 +1834,45 @@ fun OneUiHomeCloneApp(
                     launchSelectedApp(app)
                 },
                 onOpenAppActions = openAppActions,
+                drawerReorderSourceAppId = if (drawerSortMode == DrawerSortMode.CUSTOM_ORDER && searchQuery.isBlank()) {
+                    drawerReorderSourceAppId
+                } else {
+                    null
+                },
+                onStartDrawerReorder = { app ->
+                    drawerReorderSourceAppId = app.id
+                    showFeedback(appContext.getString(R.string.feedback_drawer_reorder_started, app.name))
+                },
+                onReorderDrawerApp = { sourceAppId, targetAppId ->
+                    val sourceApp = drawerApps.firstOrNull { it.id == sourceAppId }
+                    val targetApp = drawerApps.firstOrNull { it.id == targetAppId }
+                    val reorderedIds = reorderDrawerCustomOrder(
+                        currentOrder = drawerCustomAppIds,
+                        sourceAppId = sourceAppId,
+                        targetAppId = targetAppId,
+                        allAppIds = drawerApps.map(CloneApp::id),
+                    )
+                    drawerCustomAppIds = reorderedIds
+                    drawerReorderSourceAppId = null
+
+                    val reorderedVisibleApps = reconcileDrawerCustomOrder(drawerApps, reorderedIds)
+                        .filterNot { it.id in hiddenAppIds }
+                    val movedIndex = reorderedVisibleApps.indexOfFirst { it.id == sourceAppId }
+                    if (movedIndex >= 0 && reorderedVisibleApps.isNotEmpty()) {
+                        val lastPage = (reorderedVisibleApps.size - 1) / layoutContract.appsPageSize
+                        drawerPageIndex = (movedIndex / layoutContract.appsPageSize).coerceIn(0, lastPage)
+                    }
+                    if (sourceApp != null && targetApp != null) {
+                        showFeedback(
+                            appContext.getString(
+                                R.string.feedback_drawer_reordered,
+                                sourceApp.name,
+                                targetApp.name,
+                            ),
+                        )
+                    }
+                },
+                onCancelDrawerReorder = { drawerReorderSourceAppId = null },
                 appLabelsEnabled = appLabelsEnabled,
             )
         }
