@@ -1,5 +1,6 @@
 package com.oneuihomeclone
 
+import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -22,6 +23,10 @@ import com.oneuihomeclone.ui.theme.OneUiHomeCloneTheme
 import com.oneuihomeclone.widgets.WidgetBindContract
 import com.oneuihomeclone.widgets.WidgetBindRequest
 import com.oneuihomeclone.widgets.WidgetBindResult
+import com.oneuihomeclone.widgets.WidgetConfigureContract
+import com.oneuihomeclone.widgets.WidgetConfigureRequest
+import com.oneuihomeclone.widgets.deallocateWidgetId
+import com.oneuihomeclone.widgets.withFallbackWidgetId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,6 +50,7 @@ class MainActivity : ComponentActivity() {
      * the result without a ViewModel plumbing pass.
      */
     private lateinit var widgetBindLauncher: ActivityResultLauncher<WidgetBindRequest>
+    private lateinit var widgetConfigureLauncher: ActivityResultLauncher<WidgetConfigureRequest>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +66,21 @@ class MainActivity : ComponentActivity() {
             }
         }
         LauncherApp.registerWidgetBindLauncher(widgetBindLauncher)
+
+        widgetConfigureLauncher = registerForActivityResult(WidgetConfigureContract()) { result ->
+            val pending = LauncherApp.consumePendingWidgetConfigureRequest()
+            val delivered = pending?.let { result.withFallbackWidgetId(it.widgetId) } ?: result
+            if (pending != null) {
+                runCatching { pending.callback(delivered) }
+                    .onFailure { Log.e(TAG, "Widget configure callback threw", it) }
+            } else {
+                Log.w(TAG, "Widget configure result had no pending callback: $result")
+                if (delivered.widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                    deallocateWidgetId(delivered.widgetId, reason = "configure result without pending callback")
+                }
+            }
+        }
+        LauncherApp.registerWidgetConfigureLauncher(widgetConfigureLauncher)
 
         // Keep disk IO off the main thread, but do not mount the full launcher tree
         // until the previous crash log check opens recovery mode or releases Home.
@@ -130,7 +151,9 @@ class MainActivity : ComponentActivity() {
         // closure pins Compose state on an Activity that is finishing, which would leak
         // the composition tree across a rotation that happens while the bind dialog is up.
         LauncherApp.clearWidgetBindLauncher(widgetBindLauncher)
+        LauncherApp.clearWidgetConfigureLauncher(widgetConfigureLauncher)
         LauncherApp.cancelPendingWidgetBind()
+        LauncherApp.cancelPendingWidgetConfigure()
         super.onDestroy()
     }
 

@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">One UI Home Clone</string>
     <string name="action_add">Add</string>
+    <string name="action_set_up">Set up</string>
     <string name="action_close">Close</string>
     <string name="action_done">Done</string>
     <string name="action_hide">Hide</string>
@@ -170,7 +171,7 @@
     <string name="widgets_health_template">Template</string>
     <string name="widgets_health_template_summary">Built-in launcher template for parity testing.</string>
     <string name="widgets_health_setup_required">Setup required</string>
-    <string name="widgets_health_setup_required_summary">This provider requires configuration before binding; setup support is not wired yet.</string>
+    <string name="widgets_health_setup_required_summary">Android opens this provider\'s setup screen before adding it to Home.</string>
     <string name="widgets_health_preview_unavailable">Preview unavailable</string>
     <string name="widgets_health_preview_unavailable_summary">Provider loaded, but Android did not return a preview image or layout.</string>
     <string name="widgets_health_unavailable">Unavailable</string>
@@ -270,6 +271,8 @@
     <string name="feedback_widget_allocate_failed">Couldn\'t allocate a widget slot.</string>
     <string name="feedback_widget_declined">Widget was not added.</string>
     <string name="feedback_widget_bind_unavailable">Widget binding is not available on this device.</string>
+    <string name="feedback_widget_setup_canceled">Widget setup was canceled.</string>
+    <string name="feedback_widget_setup_unavailable">%1$s setup could not be opened.</string>
     <string name="feedback_widget_host_reset">Widget host state reset.</string>
     <string name="feedback_widget_reset_one">Reset 1 widget.</string>
     <string name="feedback_widget_reset_many">Reset %1$d widgets.</string>

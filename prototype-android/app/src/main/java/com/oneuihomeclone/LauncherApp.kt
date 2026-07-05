@@ -9,6 +9,8 @@ import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import com.oneuihomeclone.widgets.WidgetBindRequest
 import com.oneuihomeclone.widgets.WidgetBindResult
+import com.oneuihomeclone.widgets.WidgetConfigureRequest
+import com.oneuihomeclone.widgets.WidgetConfigureResult
 import com.oneuihomeclone.widgets.withResolvedSystemBindActivity
 import kotlin.system.exitProcess
 import java.io.File
@@ -207,6 +209,9 @@ class LauncherApp : Application() {
         @Volatile
         private var widgetBindLauncher: ActivityResultLauncher<WidgetBindRequest>? = null
 
+        @Volatile
+        private var widgetConfigureLauncher: ActivityResultLauncher<WidgetConfigureRequest>? = null
+
         /**
          * Callback that should fire when the current bind flow completes. AtomicReference
          * so two near-simultaneous requests can't read stale data — the second caller
@@ -214,6 +219,9 @@ class LauncherApp : Application() {
          * stealing the first caller's result.
          */
         private val pendingWidgetBindRequest: AtomicReference<PendingWidgetBindRequest?> =
+            AtomicReference(null)
+
+        private val pendingWidgetConfigureRequest: AtomicReference<PendingWidgetConfigureRequest?> =
             AtomicReference(null)
 
         fun appWidgetHost(): AppWidgetHost? = widgetHost
@@ -245,6 +253,14 @@ class LauncherApp : Application() {
          */
         internal fun clearWidgetBindLauncher(launcher: ActivityResultLauncher<WidgetBindRequest>) {
             if (widgetBindLauncher === launcher) widgetBindLauncher = null
+        }
+
+        internal fun registerWidgetConfigureLauncher(launcher: ActivityResultLauncher<WidgetConfigureRequest>) {
+            widgetConfigureLauncher = launcher
+        }
+
+        internal fun clearWidgetConfigureLauncher(launcher: ActivityResultLauncher<WidgetConfigureRequest>) {
+            if (widgetConfigureLauncher === launcher) widgetConfigureLauncher = null
         }
 
         /**
@@ -284,6 +300,33 @@ class LauncherApp : Application() {
         internal fun consumePendingWidgetBindCallback(): ((WidgetBindResult) -> Unit)? =
             pendingWidgetBindRequest.getAndSet(null)?.callback
 
+        fun requestWidgetConfigure(
+            request: WidgetConfigureRequest,
+            callback: (WidgetConfigureResult) -> Unit,
+        ): Boolean {
+            val launcher = widgetConfigureLauncher ?: return false
+            pendingWidgetConfigureRequest.getAndSet(
+                PendingWidgetConfigureRequest(
+                    widgetId = request.widgetId,
+                    callback = callback,
+                ),
+            )?.let { stale ->
+                runCatching { stale.callback(WidgetConfigureResult.Declined(stale.widgetId)) }
+                    .onFailure { Log.w(TAG, "Stale configure callback threw during superseding request", it) }
+            }
+            return runCatching { launcher.launch(request) }.fold(
+                onSuccess = { true },
+                onFailure = { cause ->
+                    Log.e(TAG, "Widget configure launcher.launch() failed", cause)
+                    pendingWidgetConfigureRequest.set(null)
+                    false
+                },
+            )
+        }
+
+        internal fun consumePendingWidgetConfigureRequest(): PendingWidgetConfigureRequest? =
+            pendingWidgetConfigureRequest.getAndSet(null)
+
         /**
          * Called from `Activity.onDestroy` to prevent a callback left by a dying Activity
          * from firing on a dead Compose tree — the callback's closure would pin the old
@@ -297,9 +340,20 @@ class LauncherApp : Application() {
                 .onFailure { Log.w(TAG, "Pending widget bind callback threw during cancel", it) }
         }
 
+        internal fun cancelPendingWidgetConfigure() {
+            val pending = pendingWidgetConfigureRequest.getAndSet(null) ?: return
+            runCatching { pending.callback(WidgetConfigureResult.Declined(pending.widgetId)) }
+                .onFailure { Log.w(TAG, "Pending widget configure callback threw during cancel", it) }
+        }
+
         private data class PendingWidgetBindRequest(
             val allocatedWidgetId: Int,
             val callback: (WidgetBindResult) -> Unit,
+        )
+
+        internal data class PendingWidgetConfigureRequest(
+            val widgetId: Int,
+            val callback: (WidgetConfigureResult) -> Unit,
         )
     }
 }

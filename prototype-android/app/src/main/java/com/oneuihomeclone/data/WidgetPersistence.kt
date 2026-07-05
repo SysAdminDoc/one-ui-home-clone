@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -90,6 +91,39 @@ class WidgetPersistence(context: Context) {
         }
     }
 
+    suspend fun markPending(hostWidgetId: Int) {
+        if (hostWidgetId <= 0) return
+        dataStore.edit { prefs ->
+            val current = decodePendingIds(prefs[Keys.PENDING_WIDGET_IDS]).toMutableSet()
+            current += hostWidgetId
+            prefs[Keys.PENDING_WIDGET_IDS] = encodePendingIds(current)
+        }
+    }
+
+    suspend fun clearPending(hostWidgetId: Int) {
+        if (hostWidgetId <= 0) return
+        dataStore.edit { prefs ->
+            val current = decodePendingIds(prefs[Keys.PENDING_WIDGET_IDS]).toMutableSet()
+            val removed = current.remove(hostWidgetId)
+            if (removed) {
+                if (current.isEmpty()) {
+                    prefs.remove(Keys.PENDING_WIDGET_IDS)
+                } else {
+                    prefs[Keys.PENDING_WIDGET_IDS] = encodePendingIds(current)
+                }
+            }
+        }
+    }
+
+    suspend fun consumePendingWidgetIds(): Set<Int> {
+        var pending = emptySet<Int>()
+        dataStore.edit { prefs ->
+            pending = decodePendingIds(prefs[Keys.PENDING_WIDGET_IDS])
+            prefs.remove(Keys.PENDING_WIDGET_IDS)
+        }
+        return pending
+    }
+
     suspend fun clear() {
         // Wipe everything including the schema stamp — a truly empty store needs no
         // version. Next `add()` will stamp the current SCHEMA_VERSION.
@@ -99,6 +133,7 @@ class WidgetPersistence(context: Context) {
     private object Keys {
         val SCHEMA = intPreferencesKey("schema_version")
         val WIDGETS_JSON = stringPreferencesKey("bound_widgets_json")
+        val PENDING_WIDGET_IDS = stringSetPreferencesKey("pending_widget_ids")
     }
 
     companion object {
@@ -127,6 +162,17 @@ class WidgetPersistence(context: Context) {
             }
             return arr.toString()
         }
+
+        internal fun encodePendingIds(ids: Set<Int>): Set<String> =
+            ids.filter { it > 0 }
+                .sorted()
+                .map(Int::toString)
+                .toSet()
+
+        internal fun decodePendingIds(raw: Set<String>?): Set<Int> =
+            raw.orEmpty()
+                .mapNotNull { value -> value.toIntOrNull()?.takeIf { it > 0 } }
+                .toSet()
 
         internal fun decode(schema: Int?, json: String?): List<BoundWidget> {
             if (json.isNullOrBlank()) return emptyList()

@@ -155,10 +155,10 @@ internal fun WidgetTemplateCard(
         widget.providerInfo != null -> stringResource(R.string.widgets_health_ready_summary)
         else -> stringResource(R.string.widgets_health_template_summary)
     }
-    val addEnabled = !providerUnavailable && !requiresSetup
+    val addEnabled = !providerUnavailable
     val actionLabel = when {
         providerUnavailable -> stringResource(R.string.widgets_health_unavailable)
-        requiresSetup -> stringResource(R.string.widgets_health_setup_required)
+        requiresSetup -> stringResource(R.string.action_set_up)
         else -> stringResource(R.string.action_add)
     }
     Surface(

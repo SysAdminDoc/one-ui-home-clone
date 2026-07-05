@@ -150,6 +150,8 @@ import kotlin.math.absoluteValue
 import com.oneuihomeclone.widgets.PreviewSource
 import com.oneuihomeclone.widgets.WidgetBindRequest
 import com.oneuihomeclone.widgets.WidgetBindResult
+import com.oneuihomeclone.widgets.WidgetConfigureRequest
+import com.oneuihomeclone.widgets.WidgetConfigureResult
 import com.oneuihomeclone.shouldShowDefaultLauncherPrompt
 
 private fun sampleApps(): List<CloneApp> {
@@ -396,6 +398,14 @@ fun OneUiHomeCloneApp(
 
     fun showFeedback(message: String) {
         feedbackMessage = message
+    }
+
+    LaunchedEffect(widgetPersistence) {
+        val pendingWidgetIds = widgetPersistence.consumePendingWidgetIds()
+        if (pendingWidgetIds.isNotEmpty()) {
+            pendingWidgetIds.forEach(::deleteWidgetId)
+            Log.w("OneUiHome/widgets", "Cleaned ${pendingWidgetIds.size} pending widget id(s)")
+        }
     }
 
     fun refreshNotificationBadgeAccess(showRevokedFeedback: Boolean) {
@@ -1078,8 +1088,6 @@ fun OneUiHomeCloneApp(
         if (providerInfo == null) {
             addWidgetToTargetPage(widget, targetPageId, targetHomePageIndex)
             showFeedback(appContext.getString(R.string.feedback_widget_added, widget.title, targetPageLabel))
-        } else if (providerInfo.configure != null) {
-            showFeedback(appContext.getString(R.string.feedback_widget_needs_setup, widget.title))
         } else {
             val host = LauncherApp.appWidgetHost()
             val manager = LauncherApp.appWidgetManager()
@@ -1093,8 +1101,27 @@ fun OneUiHomeCloneApp(
                 if (allocatedId == AppWidgetManager.INVALID_APPWIDGET_ID) {
                     showFeedback(appContext.getString(R.string.feedback_widget_allocate_failed))
                 } else {
+                    fun clearPendingIds(vararg widgetIds: Int) {
+                        val ids = widgetIds
+                            .filter { it != AppWidgetManager.INVALID_APPWIDGET_ID && it > 0 }
+                            .distinct()
+                        if (ids.isNotEmpty()) {
+                            coroutineScope.launch {
+                                ids.forEach { widgetPersistence.clearPending(it) }
+                            }
+                        }
+                    }
+
+                    fun cleanupAllocatedWidget(widgetId: Int, message: String) {
+                        val safeWidgetId = if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) widgetId else allocatedId
+                        clearPendingIds(allocatedId, safeWidgetId)
+                        deleteWidgetId(safeWidgetId)
+                        showFeedback(message)
+                    }
+
                     val options = widgetBindOptions(widget)
                     val commitBoundWidget: (Int) -> Unit = { boundId ->
+                        clearPendingIds(allocatedId, boundId)
                         val boundModel = widget.copy(hostWidgetId = boundId)
                         val placedWidget = addWidgetToTargetPage(boundModel, targetPageId, targetHomePageIndex)
                         placedWidget?.toBoundWidget(boundId, targetHomePageIndex)?.let { persisted ->
@@ -1102,40 +1129,73 @@ fun OneUiHomeCloneApp(
                         }
                         showFeedback(appContext.getString(R.string.feedback_widget_added, widget.title, targetPageLabel))
                     }
-                    val alreadyAllowed = runCatching {
-                        if (providerInfo.profile != null) {
-                            manager.bindAppWidgetIdIfAllowed(
-                                allocatedId,
-                                providerInfo.profile,
-                                providerInfo.provider,
-                                options,
-                            )
+                    val configureOrCommit: (Int) -> Unit = { boundId ->
+                        val configureActivity = providerInfo.configure
+                        if (configureActivity == null) {
+                            commitBoundWidget(boundId)
                         } else {
-                            manager.bindAppWidgetIdIfAllowed(allocatedId, providerInfo.provider)
-                        }
-                    }.getOrDefault(false)
-
-                    if (alreadyAllowed) {
-                        commitBoundWidget(allocatedId)
-                    } else {
-                        val launched = LauncherApp.requestWidgetBind(
-                            WidgetBindRequest(
-                                allocatedWidgetId = allocatedId,
-                                providerInfo = providerInfo,
-                                options = options,
-                            ),
-                        ) { result ->
-                            when (result) {
-                                is WidgetBindResult.Bound -> commitBoundWidget(result.widgetId)
-                                is WidgetBindResult.Declined -> {
-                                    deleteWidgetId(result.requestedId)
-                                    showFeedback(appContext.getString(R.string.feedback_widget_declined))
+                            val launched = LauncherApp.requestWidgetConfigure(
+                                WidgetConfigureRequest(
+                                    widgetId = boundId,
+                                    configureActivity = configureActivity,
+                                ),
+                            ) { result ->
+                                when (result) {
+                                    is WidgetConfigureResult.Configured -> commitBoundWidget(result.widgetId)
+                                    is WidgetConfigureResult.Declined -> cleanupAllocatedWidget(
+                                        result.widgetId,
+                                        appContext.getString(R.string.feedback_widget_setup_canceled),
+                                    )
                                 }
                             }
+                            if (!launched) {
+                                cleanupAllocatedWidget(
+                                    boundId,
+                                    appContext.getString(R.string.feedback_widget_setup_unavailable, widget.title),
+                                )
+                            }
                         }
-                        if (!launched) {
-                            deleteWidgetId(allocatedId)
-                            showFeedback(appContext.getString(R.string.feedback_widget_bind_unavailable))
+                    }
+
+                    coroutineScope.launch {
+                        widgetPersistence.markPending(allocatedId)
+                        val alreadyAllowed = runCatching {
+                            if (providerInfo.profile != null) {
+                                manager.bindAppWidgetIdIfAllowed(
+                                    allocatedId,
+                                    providerInfo.profile,
+                                    providerInfo.provider,
+                                    options,
+                                )
+                            } else {
+                                manager.bindAppWidgetIdIfAllowed(allocatedId, providerInfo.provider)
+                            }
+                        }.getOrDefault(false)
+
+                        if (alreadyAllowed) {
+                            configureOrCommit(allocatedId)
+                        } else {
+                            val launched = LauncherApp.requestWidgetBind(
+                                WidgetBindRequest(
+                                    allocatedWidgetId = allocatedId,
+                                    providerInfo = providerInfo,
+                                    options = options,
+                                ),
+                            ) { result ->
+                                when (result) {
+                                    is WidgetBindResult.Bound -> configureOrCommit(result.widgetId)
+                                    is WidgetBindResult.Declined -> cleanupAllocatedWidget(
+                                        result.requestedId,
+                                        appContext.getString(R.string.feedback_widget_declined),
+                                    )
+                                }
+                            }
+                            if (!launched) {
+                                cleanupAllocatedWidget(
+                                    allocatedId,
+                                    appContext.getString(R.string.feedback_widget_bind_unavailable),
+                                )
+                            }
                         }
                     }
                 }
