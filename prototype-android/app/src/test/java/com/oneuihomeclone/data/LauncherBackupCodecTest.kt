@@ -23,6 +23,7 @@ class LauncherBackupCodecTest {
                 swipeDownForNotifications = false,
                 addNewAppsToHomeScreen = false,
                 notificationBadgeMode = NotificationBadgeModeKey.DOTS,
+                finderContactsEnabled = true,
                 lockHomeScreenLayout = true,
                 homeLayoutMode = HomeLayoutKey.HOME_SCREEN_ONLY,
                 drawerSortMode = DrawerSortKey.ALPHABETICAL,

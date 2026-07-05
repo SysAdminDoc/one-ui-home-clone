@@ -1150,6 +1150,7 @@ internal data class FinderSettingText(
     val lockLayout: String = "Lock Home screen layout",
     val addNewApps: String = "Add new apps to Home screen",
     val badgeNotifications: String = "Badge notifications",
+    val finderContacts: String = "Contacts in Finder",
     val layoutCategory: String = "Layout",
     val behaviorCategory: String = "Behavior",
     val gesturesCategory: String = "Gestures",
@@ -1220,6 +1221,7 @@ internal fun buildFinderSettingResults(
     widgetLabelsEnabled: Boolean,
     swipeDownForNotifications: Boolean,
     addNewAppsToHomeScreen: Boolean = true,
+    finderContactsEnabled: Boolean = false,
     homePageCount: Int,
     defaultHomePageLabel: String,
     hiddenAppCount: Int,
@@ -1253,6 +1255,7 @@ internal fun buildFinderSettingResults(
         FinderSettingResult(FinderSettingType.LOCK_LAYOUT, text.lockLayout, text.behaviorCategory, if (lockHomeScreenLayout) text.onValue else text.offValue),
         FinderSettingResult(FinderSettingType.ADD_NEW_APPS, text.addNewApps, text.behaviorCategory, if (addNewAppsToHomeScreen) text.onValue else text.offValue),
         FinderSettingResult(FinderSettingType.BADGE_NOTIFICATIONS, text.badgeNotifications, text.behaviorCategory, notificationBadgeModeValue),
+        FinderSettingResult(FinderSettingType.FINDER_CONTACTS, text.finderContacts, text.behaviorCategory, if (finderContactsEnabled) text.onValue else text.offValue),
     )
     val normalizedQuery = query.trim().lowercase()
     return if (normalizedQuery.isBlank()) {
@@ -1354,6 +1357,23 @@ internal fun buildFinderShortcutResults(
                 usageKey = shortcut.finderUsageKey(app.id),
             )
         }
+}
+
+internal fun buildFinderContactResults(
+    query: String,
+    contacts: List<FinderContactResult>,
+    enabled: Boolean,
+    permissionGranted: Boolean,
+): List<FinderContactResult> {
+    if (!enabled || !permissionGranted) return emptyList()
+    return rankFinderMatches(
+        query = query,
+        items = contacts,
+        usageStats = FinderUsageStats(),
+        usageKey = { "" },
+        searchableText = { contact -> listOfNotNull(contact.displayName, contact.subtitle).joinToString(" ") },
+        limit = MAX_FINDER_CONTACT_RESULTS,
+    )
 }
 
 internal fun rememberRecentSearch(

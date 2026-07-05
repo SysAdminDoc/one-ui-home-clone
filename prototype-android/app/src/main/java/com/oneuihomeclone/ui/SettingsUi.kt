@@ -53,6 +53,8 @@ internal fun SettingsOverlay(
     notificationBadgePermissionGranted: Boolean,
     notificationBadgeActiveAppCount: Int,
     notificationBadgeActiveCount: Int,
+    finderContactsEnabled: Boolean,
+    finderContactsPermissionGranted: Boolean,
     homeLayoutMode: HomeLayoutMode,
     lockHomeScreenLayout: Boolean,
     motionPreset: MotionPresetMode,
@@ -77,6 +79,8 @@ internal fun SettingsOverlay(
     onAddNewAppsToHomeScreenChange: (Boolean) -> Unit,
     onNotificationBadgeModeChange: (NotificationBadgeMode) -> Unit,
     onOpenNotificationBadgeSettings: () -> Unit,
+    onFinderContactsEnabledChange: (Boolean) -> Unit,
+    onRequestFinderContactsPermission: () -> Unit,
     onHomeLayoutModeChange: (HomeLayoutMode) -> Unit,
     onLockHomeScreenLayoutChange: (Boolean) -> Unit,
     onMotionPresetChange: (MotionPresetMode) -> Unit,
@@ -129,17 +133,27 @@ internal fun SettingsOverlay(
         }
         else -> stringResource(R.string.settings_badge_access_denied_summary)
     }
+    val finderContactsDescription = when {
+        !finderContactsEnabled -> stringResource(R.string.settings_finder_contacts_off_summary)
+        finderContactsPermissionGranted -> stringResource(R.string.settings_finder_contacts_granted_summary)
+        else -> stringResource(R.string.settings_finder_contacts_denied_summary)
+    }
     val behaviorRows = listOf(
         SettingRowState(
             stringResource(R.string.settings_add_new_apps),
             stringResource(if (addNewAppsToHomeScreen) R.string.settings_value_on else R.string.state_off),
         ),
         SettingRowState(stringResource(R.string.settings_badge_notifications), notificationBadgeModeTitle),
+        SettingRowState(
+            stringResource(R.string.settings_finder_contacts),
+            stringResource(if (finderContactsEnabled) R.string.settings_value_on else R.string.state_off),
+        ),
         SettingRowState(stringResource(R.string.settings_about_home_screen), stringResource(R.string.settings_about_version)),
     )
     val privacyPoints = listOf(
         stringResource(R.string.settings_privacy_network),
         stringResource(R.string.settings_privacy_apps),
+        stringResource(R.string.settings_privacy_contacts),
         stringResource(R.string.settings_privacy_search_layout),
         stringResource(R.string.settings_privacy_widgets_wallpaper),
         stringResource(R.string.settings_privacy_exports),
@@ -311,6 +325,24 @@ internal fun SettingsOverlay(
                         actionLabel = stringResource(R.string.action_open_settings),
                         onClick = onOpenNotificationBadgeSettings,
                     )
+                }
+                item {
+                    SettingsToggleCard(
+                        stringResource(R.string.settings_finder_contacts),
+                        finderContactsEnabled,
+                        onFinderContactsEnabledChange,
+                        finderContactsDescription,
+                    )
+                }
+                if (finderContactsEnabled && !finderContactsPermissionGranted) {
+                    item {
+                        SettingsActionCard(
+                            title = stringResource(R.string.settings_finder_contacts_permission),
+                            description = stringResource(R.string.settings_finder_contacts_permission_summary),
+                            actionLabel = stringResource(R.string.action_allow),
+                            onClick = onRequestFinderContactsPermission,
+                        )
+                    }
                 }
                 item {
                     SettingsToggleCard(

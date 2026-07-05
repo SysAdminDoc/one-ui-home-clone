@@ -29,6 +29,9 @@ data class LauncherDiagnosticsSnapshot(
     val restoredPlaceholderAppCount: Int,
     val finderIndexedAppCount: Int,
     val finderIndexedShortcutCount: Int,
+    val finderContactsEnabled: Boolean,
+    val finderContactsPermissionGranted: Boolean,
+    val finderIndexedContactCount: Int,
     val finderRecentSearchCount: Int,
     val finderUsageTargetCount: Int,
     val finderUsageLaunchCount: Int,
@@ -96,6 +99,9 @@ internal fun buildLauncherDiagnostics(snapshot: LauncherDiagnosticsSnapshot): St
     appendLine("apps.restoredPlaceholders=${snapshot.restoredPlaceholderAppCount}")
     appendLine("finder.indexedApps=${snapshot.finderIndexedAppCount}")
     appendLine("finder.indexedShortcuts=${snapshot.finderIndexedShortcutCount}")
+    appendLine("finder.contactsEnabled=${snapshot.finderContactsEnabled}")
+    appendLine("finder.contactsPermissionGranted=${snapshot.finderContactsPermissionGranted}")
+    appendLine("finder.indexedContacts=${snapshot.finderIndexedContactCount}")
     appendLine("finder.recentSearches=${snapshot.finderRecentSearchCount}")
     appendLine("finder.usageTargets=${snapshot.finderUsageTargetCount}")
     appendLine("finder.usageLaunches=${snapshot.finderUsageLaunchCount}")
@@ -114,6 +120,7 @@ internal fun buildLauncherDiagnostics(snapshot: LauncherDiagnosticsSnapshot): St
     appendLine("privacy.rawAppNames=false")
     appendLine("privacy.rawSearchHistory=false")
     appendLine("privacy.rawNotificationText=false")
+    appendLine("privacy.rawContactNames=false")
 }
 
 private fun String?.diagnosticValue(): String =

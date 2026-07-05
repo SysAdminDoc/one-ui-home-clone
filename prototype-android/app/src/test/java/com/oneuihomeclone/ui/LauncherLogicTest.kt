@@ -1123,6 +1123,7 @@ class LauncherLogicTest {
             swipeDownForNotifications = false,
             addNewAppsToHomeScreen = false,
             notificationBadgeMode = NotificationBadgeModeKey.DOTS_AND_NUMBER,
+            finderContactsEnabled = true,
             lockHomeScreenLayout = true,
             homeLayoutMode = HomeLayoutKey.HOME_SCREEN_ONLY,
             drawerSortMode = DrawerSortKey.ALPHABETICAL,
@@ -1137,6 +1138,7 @@ class LauncherLogicTest {
         assertEquals(MotionPresetMode.REDUCED, toggles.motionPreset)
         assertEquals(FolderGridMode.GRID_5X5, toggles.folderGrid)
         assertEquals(NotificationBadgeMode.DOTS_AND_NUMBER, toggles.notificationBadgeMode)
+        assertTrue(toggles.finderContactsEnabled)
         assertEquals(state, toggles.toLauncherState())
     }
 
@@ -1180,5 +1182,26 @@ class LauncherLogicTest {
 
         assertEquals(FinderSettingType.BADGE_NOTIFICATIONS, results.single().type)
         assertEquals("Dots", results.single().value)
+    }
+
+    @Test
+    fun buildFinderSettingResults_reflectsFinderContactsState() {
+        val results = buildFinderSettingResults(
+            query = "contacts",
+            homeLayoutMode = HomeLayoutMode.HOME_AND_APPS_SCREENS,
+            lockHomeScreenLayout = false,
+            mediaPageEnabled = true,
+            appsButtonEnabled = true,
+            appLabelsEnabled = true,
+            widgetLabelsEnabled = true,
+            swipeDownForNotifications = true,
+            finderContactsEnabled = true,
+            homePageCount = 2,
+            defaultHomePageLabel = "Home 1",
+            hiddenAppCount = 0,
+        )
+
+        assertEquals(FinderSettingType.FINDER_CONTACTS, results.single().type)
+        assertEquals("On", results.single().value)
     }
 }

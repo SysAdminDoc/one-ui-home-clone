@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Widgets
@@ -77,6 +78,7 @@ internal fun DrawerOverlay(
     settingResults: List<FinderSettingResult>,
     actionResults: List<FinderActionItem>,
     shortcutResults: List<FinderActionItem>,
+    contactResults: List<FinderContactResult>,
     recentSearches: List<String>,
     onQueryChange: (String) -> Unit,
     onClose: () -> Unit,
@@ -87,6 +89,7 @@ internal fun DrawerOverlay(
     onSelectRecentSearch: (String) -> Unit,
     onOpenSettingResult: (FinderSettingResult) -> Unit,
     onOpenAction: (FinderActionItem) -> Unit,
+    onOpenContact: (FinderContactResult) -> Unit,
     onOpenApp: (CloneApp) -> Unit,
     onOpenAppActions: (CloneApp, AppContextSource) -> Unit,
     drawerReorderSourceAppId: String? = null,
@@ -315,6 +318,16 @@ internal fun DrawerOverlay(
                                 )
                             }
                         }
+                        if (contactResults.isNotEmpty()) {
+                            item {
+                                FinderSectionHeader(stringResource(R.string.drawer_section_contacts))
+                                Spacer(Modifier.height(10.dp))
+                                FinderContactList(
+                                    contacts = contactResults,
+                                    onOpenContact = onOpenContact,
+                                )
+                            }
+                        }
                         if (actionResults.isNotEmpty()) {
                             item {
                                 FinderSectionHeader(stringResource(R.string.drawer_suggested_actions))
@@ -348,7 +361,12 @@ internal fun DrawerOverlay(
                                 )
                             }
                         }
-                        if (apps.isEmpty() && settingResults.isEmpty() && actionResults.isEmpty() && shortcutResults.isEmpty()) {
+                        if (apps.isEmpty() &&
+                            settingResults.isEmpty() &&
+                            actionResults.isEmpty() &&
+                            shortcutResults.isEmpty() &&
+                            contactResults.isEmpty()
+                        ) {
                             item {
                                 FinderEmptyState()
                             }
@@ -448,6 +466,59 @@ private fun FinderRecentSearches(
     ) {
         searches.forEach { search ->
             SettingsCapsule(label = search, onClick = { onSelectSearch(search) }, accent = false)
+        }
+    }
+}
+
+@Composable
+private fun FinderContactList(
+    contacts: List<FinderContactResult>,
+    onOpenContact: (FinderContactResult) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        contacts.forEach { contact ->
+            val summary = contact.subtitle ?: stringResource(R.string.finder_contact_summary)
+            val contactDescription = stringResource(R.string.a11y_finder_contact_result, contact.displayName, summary)
+            Surface(
+                shape = OneUiPanelShape,
+                color = OneUiSurface,
+                shadowElevation = 1.dp,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 72.dp)
+                        .semantics { contentDescription = contactDescription }
+                        .clickable(role = Role.Button) { onOpenContact(contact) }
+                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(OneUiIconShape)
+                            .background(OneUiAccentSoft),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = OneUiAccent,
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(contact.displayName, color = OneUiText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(2.dp))
+                        Text(summary, color = OneUiTextSecondary, fontSize = 12.sp)
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = stringResource(R.string.action_open),
+                        tint = OneUiTextSecondary,
+                    )
+                }
+            }
         }
     }
 }

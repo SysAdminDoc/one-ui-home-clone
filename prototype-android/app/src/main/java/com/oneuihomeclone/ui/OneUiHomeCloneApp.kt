@@ -19,6 +19,8 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.RemoteViews
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -113,6 +115,8 @@ import com.oneuihomeclone.DefaultLauncherState
 import com.oneuihomeclone.LauncherApp
 import com.oneuihomeclone.R
 import com.oneuihomeclone.BuildConfig
+import com.oneuihomeclone.contacts.FinderContactSearchState
+import com.oneuihomeclone.contacts.FinderContactsRepository
 import com.oneuihomeclone.data.BoundWidget
 import com.oneuihomeclone.data.DrawerSortKey
 import com.oneuihomeclone.data.FinderUsageStats
@@ -327,6 +331,7 @@ fun OneUiHomeCloneApp(
     val layoutStore = remember(appContext) { LauncherLayoutStore(appContext) }
     val backupStore = remember(appContext) { LauncherBackupFileStore(appContext) }
     val diagnosticsStore = remember(appContext) { LauncherDiagnosticsFileStore(appContext) }
+    val finderContactsRepository = remember(appContext) { FinderContactsRepository(appContext) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
     var hasAppliedPersistedSettings by remember { mutableStateOf(false) }
@@ -336,6 +341,9 @@ fun OneUiHomeCloneApp(
     var allApps by remember { mutableStateOf(fallbackApps) }
     val notificationBadgeCounts by NotificationBadgeRepository.counts.collectAsStateWithLifecycle(initialValue = emptyMap())
     var notificationBadgePermissionGranted by remember { mutableStateOf(isNotificationBadgeAccessGranted(appContext)) }
+    var finderContactsPermissionGranted by remember { mutableStateOf(finderContactsRepository.hasContactsPermission()) }
+    var finderContactsEnabled by remember { mutableStateOf(initialPrefs.finderContactsEnabled) }
+    var finderContactSearchState by remember { mutableStateOf(FinderContactSearchState()) }
     var notificationBadgeMode by remember {
         mutableStateOf(
             when (initialPrefs.notificationBadgeMode) {
@@ -395,6 +403,7 @@ fun OneUiHomeCloneApp(
         lockLayout = lockLayoutTitle,
         addNewApps = stringResource(R.string.settings_add_new_apps),
         badgeNotifications = stringResource(R.string.settings_badge_notifications),
+        finderContacts = stringResource(R.string.settings_finder_contacts),
         layoutCategory = stringResource(R.string.settings_section_layout),
         behaviorCategory = stringResource(R.string.settings_section_behavior),
         gesturesCategory = stringResource(R.string.settings_category_gestures),
@@ -455,6 +464,15 @@ fun OneUiHomeCloneApp(
         feedbackMessage = message
     }
 
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        finderContactsPermissionGranted = granted
+        if (!granted && finderContactsEnabled) {
+            showFeedback(appContext.getString(R.string.feedback_contacts_permission_needed))
+        }
+    }
+
     fun recordFinderUsage(targetKey: String) {
         coroutineScope.launch {
             launcherDataStore.recordFinderUsage(targetKey)
@@ -481,11 +499,39 @@ fun OneUiHomeCloneApp(
         }
     }
 
+    fun refreshFinderContactsPermission(showRevokedFeedback: Boolean) {
+        val wasGranted = finderContactsPermissionGranted
+        val isGranted = finderContactsRepository.hasContactsPermission()
+        if (wasGranted && !isGranted && finderContactsEnabled && showRevokedFeedback) {
+            showFeedback(appContext.getString(R.string.feedback_contacts_permission_revoked))
+        }
+        finderContactsPermissionGranted = isGranted
+        if (!isGranted) {
+            finderContactSearchState = FinderContactSearchState(
+                enabled = finderContactsEnabled,
+                permissionGranted = false,
+            )
+        }
+    }
+
     DisposableEffect(appContext, lifecycleOwner, notificationBadgeMode) {
         refreshNotificationBadgeAccess(showRevokedFeedback = false)
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 refreshNotificationBadgeAccess(showRevokedFeedback = true)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    DisposableEffect(appContext, lifecycleOwner, finderContactsEnabled) {
+        refreshFinderContactsPermission(showRevokedFeedback = false)
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshFinderContactsPermission(showRevokedFeedback = true)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -610,6 +656,7 @@ fun OneUiHomeCloneApp(
         swipeDownForNotifications = toggles.swipeDownForNotifications
         addNewAppsToHomeScreen = toggles.addNewAppsToHomeScreen
         notificationBadgeMode = toggles.notificationBadgeMode
+        finderContactsEnabled = toggles.finderContactsEnabled
         lockHomeScreenLayout = toggles.lockHomeScreenLayout
         homeLayoutMode = toggles.homeLayoutMode
         drawerSortMode = toggles.drawerSortMode
@@ -699,6 +746,7 @@ fun OneUiHomeCloneApp(
                     swipeDownForNotifications = swipeDownForNotifications,
                     addNewAppsToHomeScreen = addNewAppsToHomeScreen,
                     notificationBadgeMode = notificationBadgeMode,
+                    finderContactsEnabled = finderContactsEnabled,
                     lockHomeScreenLayout = lockHomeScreenLayout,
                     homeLayoutMode = homeLayoutMode,
                     drawerSortMode = drawerSortMode,
@@ -837,6 +885,26 @@ fun OneUiHomeCloneApp(
             .filterValues { shortcuts -> shortcuts.isNotEmpty() }
         buildFinderShortcutResults(searchQuery, shortcutsByApp, finderUsageStats)
     }
+    LaunchedEffect(searchQuery, finderContactsEnabled, finderContactsPermissionGranted, finderContactsRepository) {
+        finderContactSearchState = finderContactsRepository.search(
+            query = searchQuery,
+            enabled = finderContactsEnabled,
+            permissionGranted = finderContactsPermissionGranted,
+        )
+    }
+    val finderContactResults = remember(
+        searchQuery,
+        finderContactSearchState,
+        finderContactsEnabled,
+        finderContactsPermissionGranted,
+    ) {
+        buildFinderContactResults(
+            query = searchQuery,
+            contacts = finderContactSearchState.results,
+            enabled = finderContactsEnabled,
+            permissionGranted = finderContactsPermissionGranted,
+        )
+    }
     val widgetCategories = remember(widgetTemplates) { buildWidgetCategories(widgetTemplates) }
     val filteredWidgetTemplates = remember(selectedWidgetCategory, widgetSearchQuery, widgetTemplates) {
         filterWidgetsForPicker(widgetTemplates, selectedWidgetCategory, widgetSearchQuery)
@@ -865,6 +933,7 @@ fun OneUiHomeCloneApp(
         addNewAppsToHomeScreen,
         notificationBadgeMode,
         localizedNotificationBadgeModeTitle,
+        finderContactsEnabled,
         homePages,
         defaultHomePageIndex,
         defaultFinderHomePageLabel,
@@ -885,6 +954,7 @@ fun OneUiHomeCloneApp(
             widgetLabelsEnabled = widgetLabelsEnabled,
             swipeDownForNotifications = swipeDownForNotifications,
             addNewAppsToHomeScreen = addNewAppsToHomeScreen,
+            finderContactsEnabled = finderContactsEnabled,
             homePageCount = homePages.size,
             defaultHomePageLabel = defaultFinderHomePageLabel,
             hiddenAppCount = hiddenAppIds.size,
@@ -1011,6 +1081,7 @@ fun OneUiHomeCloneApp(
             swipeDownForNotifications = swipeDownForNotifications,
             addNewAppsToHomeScreen = addNewAppsToHomeScreen,
             notificationBadgeMode = notificationBadgeMode,
+            finderContactsEnabled = finderContactsEnabled,
             lockHomeScreenLayout = lockHomeScreenLayout,
             homeLayoutMode = homeLayoutMode,
             drawerSortMode = drawerSortMode,
@@ -1038,6 +1109,7 @@ fun OneUiHomeCloneApp(
         swipeDownForNotifications = toggles.swipeDownForNotifications
         addNewAppsToHomeScreen = toggles.addNewAppsToHomeScreen
         notificationBadgeMode = toggles.notificationBadgeMode
+        finderContactsEnabled = toggles.finderContactsEnabled
         lockHomeScreenLayout = toggles.lockHomeScreenLayout
         homeLayoutMode = toggles.homeLayoutMode
         drawerSortMode = toggles.drawerSortMode
@@ -1199,6 +1271,9 @@ fun OneUiHomeCloneApp(
                 restoredPlaceholderAppCount = restoredPlaceholderCount(homePages),
                 finderIndexedAppCount = appsScreenApps.size,
                 finderIndexedShortcutCount = finderShortcutsByAppId.values.sumOf { it.size },
+                finderContactsEnabled = finderContactsEnabled,
+                finderContactsPermissionGranted = finderContactsPermissionGranted,
+                finderIndexedContactCount = finderContactSearchState.indexedCount,
                 finderRecentSearchCount = recentSearches.size,
                 finderUsageTargetCount = finderUsageStats.targetCount,
                 finderUsageLaunchCount = finderUsageStats.totalLaunchCount,
@@ -1784,6 +1859,7 @@ fun OneUiHomeCloneApp(
                 settingResults = finderSettings,
                 actionResults = finderActions,
                 shortcutResults = finderShortcutResults,
+                contactResults = finderContactResults,
                 recentSearches = recentSearches,
                 onQueryChange = { searchQuery = it },
                 onClose = closeDrawer,
@@ -1865,6 +1941,15 @@ fun OneUiHomeCloneApp(
                         }
                     }
                 },
+                onOpenContact = { contact ->
+                    if (finderContactsRepository.openContact(contact)) {
+                        activeOverlay = null
+                        openFolderTarget = null
+                        searchQuery = ""
+                    } else {
+                        showFeedback(appContext.getString(R.string.feedback_contact_open_failed))
+                    }
+                },
                 onOpenApp = { app ->
                     rememberSearch(if (searchQuery.isBlank()) app.name else searchQuery)
                     activeOverlay = null
@@ -1943,6 +2028,8 @@ fun OneUiHomeCloneApp(
                 notificationBadgePermissionGranted = notificationBadgePermissionGranted,
                 notificationBadgeActiveAppCount = if (notificationBadgePermissionGranted) notificationBadgeCounts.count { it.value > 0 } else 0,
                 notificationBadgeActiveCount = if (notificationBadgePermissionGranted) notificationBadgeCounts.values.sum() else 0,
+                finderContactsEnabled = finderContactsEnabled,
+                finderContactsPermissionGranted = finderContactsPermissionGranted,
                 homeLayoutMode = homeLayoutMode,
                 lockHomeScreenLayout = lockHomeScreenLayout,
                 motionPreset = motionPreset,
@@ -1980,6 +2067,20 @@ fun OneUiHomeCloneApp(
                     }.onFailure {
                         showFeedback(appContext.getString(R.string.feedback_badge_access_needed))
                     }
+                },
+                onFinderContactsEnabledChange = { enabled ->
+                    finderContactsEnabled = enabled
+                    if (enabled && !finderContactsPermissionGranted) {
+                        contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                    } else if (!enabled) {
+                        finderContactSearchState = FinderContactSearchState(
+                            enabled = false,
+                            permissionGranted = finderContactsPermissionGranted,
+                        )
+                    }
+                },
+                onRequestFinderContactsPermission = {
+                    contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
                 },
                 onHomeLayoutModeChange = { homeLayoutMode = it },
                 onLockHomeScreenLayoutChange = { lockHomeScreenLayout = it },

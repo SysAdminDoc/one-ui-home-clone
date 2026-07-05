@@ -9,6 +9,7 @@ data class LauncherState(
     val swipeDownForNotifications: Boolean = true,
     val addNewAppsToHomeScreen: Boolean = true,
     val notificationBadgeMode: NotificationBadgeModeKey = NotificationBadgeModeKey.OFF,
+    val finderContactsEnabled: Boolean = false,
     val lockHomeScreenLayout: Boolean = false,
     val homeLayoutMode: HomeLayoutKey = HomeLayoutKey.HOME_AND_APPS_SCREENS,
     val drawerSortMode: DrawerSortKey = DrawerSortKey.CUSTOM_ORDER,

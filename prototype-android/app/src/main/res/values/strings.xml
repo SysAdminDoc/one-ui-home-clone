@@ -6,6 +6,7 @@
     <string name="action_clear">Clear</string>
     <string name="action_done">Done</string>
     <string name="action_hide">Hide</string>
+    <string name="action_allow">Allow</string>
     <string name="action_open">Open</string>
     <string name="action_open_settings">Open settings</string>
     <string name="action_later">Later</string>
@@ -83,6 +84,7 @@
     <string name="settings_privacy_summary">Launcher data stays on this device. The app does not request internet access and Android backup is disabled.</string>
     <string name="settings_privacy_network">Network: no INTERNET permission is declared, so launcher data is not sent to a server by the app.</string>
     <string name="settings_privacy_apps">Installed apps: launchable apps and profile labels are read locally for Home, Apps screen, Finder, folders, and hide-apps state.</string>
+    <string name="settings_privacy_contacts">Contacts: optional Finder contact matches require the Contacts in Finder setting plus Android contacts permission; names are shown only in live results.</string>
     <string name="settings_privacy_search_layout">Search and layout: recent Finder searches, hidden apps, pages, folders, settings, and widget IDs stay in app-private storage with allowBackup=false.</string>
     <string name="settings_privacy_widgets_wallpaper">Widgets and wallpaper: Android widget, status bar, haptic, and wallpaper APIs are used for launcher behavior only.</string>
     <string name="settings_privacy_exports">Exports: backups include launcher layout data by design; diagnostics include only aggregate counts and sanitized crash summary fields.</string>
@@ -97,6 +99,12 @@
     <string name="settings_badge_access_denied_summary">Open Android settings to allow notification access. Badges stay off until permission is granted, and notification text is never stored.</string>
     <string name="settings_badge_access_off_summary">Badge notifications are off. Turn on dots or numbers before granting Android notification access.</string>
     <string name="settings_badge_count_summary">%1$d active notifications across %2$d apps.</string>
+    <string name="settings_finder_contacts">Contacts in Finder</string>
+    <string name="settings_finder_contacts_off_summary">Contacts never appear in Finder unless this is turned on.</string>
+    <string name="settings_finder_contacts_granted_summary">Finder queries Contacts only while you type. Contact names are not saved to recent searches, backups, or diagnostics.</string>
+    <string name="settings_finder_contacts_denied_summary">Contacts are enabled, but Android contacts permission is not granted. No contact results are shown.</string>
+    <string name="settings_finder_contacts_permission">Contacts permission</string>
+    <string name="settings_finder_contacts_permission_summary">Allow Android contacts access to show local contact matches in Finder.</string>
     <string name="settings_about_home_screen">About Home screen</string>
     <string name="settings_value_on">On</string>
     <string name="settings_value_dots">Dots</string>
@@ -108,6 +116,7 @@
     <string name="drawer_title_finder">Finder</string>
     <string name="drawer_title_search">Search</string>
     <string name="drawer_section_apps_screen">Apps screen</string>
+    <string name="drawer_section_contacts">Contacts</string>
     <string name="drawer_custom_order_summary">Custom order stays paged, matching the default Apps screen flow.</string>
     <string name="drawer_reorder_active_summary">Moving %1$s. Tap another app to place it after that app, or tap Done.</string>
     <string name="drawer_recent_searches">Recent searches</string>
@@ -140,6 +149,7 @@
     <string name="finder_action_manage_hidden_title">Manage hidden apps</string>
     <string name="finder_action_manage_hidden_summary">Review which apps are hidden from Home and Apps screens</string>
     <string name="finder_action_hide_apps_summary">Choose which apps disappear from Home and Apps screens</string>
+    <string name="finder_contact_summary">Contact</string>
 
     <string name="context_action_app_sheet_summary">App actions</string>
     <string name="context_action_app_info">App info</string>
@@ -244,6 +254,9 @@
     <string name="feedback_drawer_reorder_started">Move %1$s after another app.</string>
     <string name="feedback_drawer_reordered">%1$s moved after %2$s.</string>
     <string name="feedback_finder_history_cleared">Finder result ranking cleared.</string>
+    <string name="feedback_contacts_permission_needed">Allow contacts permission to show Contacts in Finder.</string>
+    <string name="feedback_contacts_permission_revoked">Contacts permission was revoked; Finder contact results are hidden.</string>
+    <string name="feedback_contact_open_failed">Couldn\'t open contact.</string>
     <string name="feedback_shortcut_open_failed">Couldn\'t open %1$s.</string>
     <string name="feedback_badge_access_needed">Allow notification access in Android settings to show badges.</string>
     <string name="feedback_badge_access_revoked">Notification access was revoked; badge counts are hidden.</string>
@@ -301,6 +314,7 @@
     <string name="a11y_setting_row">%1$s, %2$s</string>
     <string name="a11y_finder_setting_result">%1$s, %2$s, %3$s</string>
     <string name="a11y_finder_action_result">%1$s, %2$s</string>
+    <string name="a11y_finder_contact_result">%1$s, %2$s</string>
     <string name="a11y_drawer_reorder_source">%1$s, selected for Apps screen reorder</string>
     <string name="a11y_hide_app_state">%1$s, %2$s</string>
     <string name="a11y_widget_move_left">Move widget left</string>

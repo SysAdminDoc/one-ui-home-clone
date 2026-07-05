@@ -221,6 +221,7 @@ object LauncherBackupCodec {
             .put("swipeDownForNotifications", state.swipeDownForNotifications)
             .put("addNewAppsToHomeScreen", state.addNewAppsToHomeScreen)
             .put("notificationBadgeMode", state.notificationBadgeMode.raw)
+            .put("finderContactsEnabled", state.finderContactsEnabled)
             .put("lockHomeScreenLayout", state.lockHomeScreenLayout)
             .put("homeLayoutMode", state.homeLayoutMode.raw)
             .put("drawerSortMode", state.drawerSortMode.raw)
@@ -236,6 +237,7 @@ object LauncherBackupCodec {
             swipeDownForNotifications = obj?.optBoolean("swipeDownForNotifications", true) ?: true,
             addNewAppsToHomeScreen = obj?.optBoolean("addNewAppsToHomeScreen", true) ?: true,
             notificationBadgeMode = NotificationBadgeModeKey.fromRaw(obj?.optString("notificationBadgeMode")),
+            finderContactsEnabled = obj?.optBoolean("finderContactsEnabled", false) ?: false,
             lockHomeScreenLayout = obj?.optBoolean("lockHomeScreenLayout", false) ?: false,
             homeLayoutMode = HomeLayoutKey.fromRaw(obj?.optString("homeLayoutMode")),
             drawerSortMode = DrawerSortKey.fromRaw(obj?.optString("drawerSortMode")),

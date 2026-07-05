@@ -3,6 +3,7 @@ package com.oneuihomeclone.ui
 import android.content.ComponentName
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Intent
+import android.net.Uri
 import android.os.UserHandle
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -124,6 +125,13 @@ internal data class FinderActionItem(
     val usageKey: String = "action:${type.name}",
 )
 
+internal data class FinderContactResult(
+    val id: String,
+    val displayName: String,
+    val subtitle: String?,
+    val lookupUri: Uri,
+)
+
 internal enum class AppContextSource {
     HOME,
     DOCK,
@@ -230,6 +238,7 @@ internal enum class FinderSettingType {
     LOCK_LAYOUT,
     ADD_NEW_APPS,
     BADGE_NOTIFICATIONS,
+    FINDER_CONTACTS,
 }
 
 internal enum class HomeLayoutMode(val title: String) {
@@ -277,6 +286,7 @@ internal data class PersistedToggles(
     val swipeDownForNotifications: Boolean,
     val addNewAppsToHomeScreen: Boolean,
     val notificationBadgeMode: NotificationBadgeMode,
+    val finderContactsEnabled: Boolean,
     val lockHomeScreenLayout: Boolean,
     val homeLayoutMode: HomeLayoutMode,
     val drawerSortMode: DrawerSortMode,
@@ -296,6 +306,7 @@ internal fun LauncherState.toPersistedToggles(): PersistedToggles = PersistedTog
         NotificationBadgeModeKey.DOTS -> NotificationBadgeMode.DOTS
         NotificationBadgeModeKey.DOTS_AND_NUMBER -> NotificationBadgeMode.DOTS_AND_NUMBER
     },
+    finderContactsEnabled = finderContactsEnabled,
     lockHomeScreenLayout = lockHomeScreenLayout,
     homeLayoutMode = when (homeLayoutMode) {
         HomeLayoutKey.HOME_AND_APPS_SCREENS -> HomeLayoutMode.HOME_AND_APPS_SCREENS
@@ -328,6 +339,7 @@ internal fun PersistedToggles.toLauncherState(): LauncherState = LauncherState(
         NotificationBadgeMode.DOTS -> NotificationBadgeModeKey.DOTS
         NotificationBadgeMode.DOTS_AND_NUMBER -> NotificationBadgeModeKey.DOTS_AND_NUMBER
     },
+    finderContactsEnabled = finderContactsEnabled,
     lockHomeScreenLayout = lockHomeScreenLayout,
     homeLayoutMode = when (homeLayoutMode) {
         HomeLayoutMode.HOME_AND_APPS_SCREENS -> HomeLayoutKey.HOME_AND_APPS_SCREENS
@@ -353,4 +365,6 @@ internal const val MAX_HOME_GRID_ITEMS = 16
 internal const val MAX_CONTEXT_SHORTCUTS = 4
 internal const val MAX_FINDER_SHORTCUT_RESULTS = 8
 internal const val MAX_FINDER_SHORTCUT_APPS_SCANNED = 96
+internal const val MAX_FINDER_CONTACT_RESULTS = 8
+internal const val MAX_DEVICE_CONTACT_ROWS = 32
 internal const val MAX_APP_ICON_CACHE_ENTRIES = 96

@@ -43,6 +43,9 @@ class LauncherDiagnosticsTest {
                 restoredPlaceholderAppCount = 1,
                 finderIndexedAppCount = 39,
                 finderIndexedShortcutCount = 6,
+                finderContactsEnabled = true,
+                finderContactsPermissionGranted = true,
+                finderIndexedContactCount = 7,
                 finderRecentSearchCount = 2,
                 finderUsageTargetCount = 4,
                 finderUsageLaunchCount = 11,
@@ -70,6 +73,9 @@ class LauncherDiagnosticsTest {
         assertTrue(diagnostics.contains("badges.totalCount=8"))
         assertTrue(diagnostics.contains("finder.indexedApps=39"))
         assertTrue(diagnostics.contains("finder.indexedShortcuts=6"))
+        assertTrue(diagnostics.contains("finder.contactsEnabled=true"))
+        assertTrue(diagnostics.contains("finder.contactsPermissionGranted=true"))
+        assertTrue(diagnostics.contains("finder.indexedContacts=7"))
         assertTrue(diagnostics.contains("finder.recentSearches=2"))
         assertTrue(diagnostics.contains("finder.usageTargets=4"))
         assertTrue(diagnostics.contains("finder.usageLaunches=11"))
@@ -78,6 +84,7 @@ class LauncherDiagnosticsTest {
         assertTrue(diagnostics.contains("privacy.rawAppNames=false"))
         assertTrue(diagnostics.contains("privacy.rawSearchHistory=false"))
         assertTrue(diagnostics.contains("privacy.rawNotificationText=false"))
+        assertTrue(diagnostics.contains("privacy.rawContactNames=false"))
         assertFalse(diagnostics.contains("raw second line"))
         assertFalse(diagnostics.contains("Gmail"))
         assertFalse(diagnostics.contains("recent search"))
@@ -110,6 +117,9 @@ class LauncherDiagnosticsTest {
                 restoredPlaceholderAppCount = 0,
                 finderIndexedAppCount = 8,
                 finderIndexedShortcutCount = 1,
+                finderContactsEnabled = false,
+                finderContactsPermissionGranted = false,
+                finderIndexedContactCount = 0,
                 finderRecentSearchCount = 0,
                 finderUsageTargetCount = 0,
                 finderUsageLaunchCount = 0,
@@ -138,6 +148,7 @@ class LauncherDiagnosticsTest {
         assertTrue(content.contains("widgets.providerProfiles=1"))
         assertTrue(content.contains("privacy.rawAppNames=false"))
         assertTrue(content.contains("privacy.rawNotificationText=false"))
+        assertTrue(content.contains("privacy.rawContactNames=false"))
         assertFalse(content.contains("Calendar"))
         assertFalse(content.contains("query="))
     }

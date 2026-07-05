@@ -42,6 +42,7 @@ private val Context.launcherDataStore: DataStore<Preferences> by preferencesData
                     "notifications_swipe",
                     "add_new_apps_to_home_screen",
                     "notification_badge_mode",
+                    "finder_contacts_enabled",
                     "lock_home_screen_layout",
                     "home_layout_mode",
                     "drawer_sort_mode",
@@ -109,6 +110,7 @@ class LauncherDataStore(context: Context) {
             setSwipeDownForNotifications(state.swipeDownForNotifications)
             setAddNewAppsToHomeScreen(state.addNewAppsToHomeScreen)
             setNotificationBadgeMode(state.notificationBadgeMode)
+            setFinderContactsEnabled(state.finderContactsEnabled)
             setLockHomeScreenLayout(state.lockHomeScreenLayout)
             setHomeLayoutMode(state.homeLayoutMode)
             setDrawerSortMode(state.drawerSortMode)
@@ -123,6 +125,7 @@ class LauncherDataStore(context: Context) {
         fun setSwipeDownForNotifications(value: Boolean) { prefs[Keys.NOTIFICATIONS_SWIPE] = value }
         fun setAddNewAppsToHomeScreen(value: Boolean) { prefs[Keys.ADD_NEW_APPS_TO_HOME] = value }
         fun setNotificationBadgeMode(value: NotificationBadgeModeKey) { prefs[Keys.NOTIFICATION_BADGE_MODE] = value.raw }
+        fun setFinderContactsEnabled(value: Boolean) { prefs[Keys.FINDER_CONTACTS_ENABLED] = value }
         fun setLockHomeScreenLayout(value: Boolean) { prefs[Keys.LOCK_LAYOUT] = value }
         fun setHomeLayoutMode(value: HomeLayoutKey) { prefs[Keys.HOME_LAYOUT] = value.raw }
         fun setDrawerSortMode(value: DrawerSortKey) { prefs[Keys.DRAWER_SORT] = value.raw }
@@ -138,6 +141,7 @@ class LauncherDataStore(context: Context) {
         val NOTIFICATIONS_SWIPE = booleanPreferencesKey("notifications_swipe")
         val ADD_NEW_APPS_TO_HOME = booleanPreferencesKey("add_new_apps_to_home_screen")
         val NOTIFICATION_BADGE_MODE = stringPreferencesKey("notification_badge_mode")
+        val FINDER_CONTACTS_ENABLED = booleanPreferencesKey("finder_contacts_enabled")
         val LOCK_LAYOUT = booleanPreferencesKey("lock_home_screen_layout")
         val HOME_LAYOUT = stringPreferencesKey("home_layout_mode")
         val DRAWER_SORT = stringPreferencesKey("drawer_sort_mode")
@@ -154,6 +158,7 @@ class LauncherDataStore(context: Context) {
         swipeDownForNotifications = this[Keys.NOTIFICATIONS_SWIPE] ?: true,
         addNewAppsToHomeScreen = this[Keys.ADD_NEW_APPS_TO_HOME] ?: true,
         notificationBadgeMode = NotificationBadgeModeKey.fromRaw(this[Keys.NOTIFICATION_BADGE_MODE]),
+        finderContactsEnabled = this[Keys.FINDER_CONTACTS_ENABLED] ?: false,
         lockHomeScreenLayout = this[Keys.LOCK_LAYOUT] ?: false,
         homeLayoutMode = HomeLayoutKey.fromRaw(this[Keys.HOME_LAYOUT]),
         drawerSortMode = DrawerSortKey.fromRaw(this[Keys.DRAWER_SORT]),
