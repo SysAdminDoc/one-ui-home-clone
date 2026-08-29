@@ -106,7 +106,7 @@
     <string name="settings_value_on">On</string>
     <string name="settings_value_dots">Dots</string>
     <string name="settings_value_dots_and_number">Dots and number</string>
-    <string name="settings_about_version">One UI Home Clone 0.2.3</string>
+    <string name="settings_about_version">One UI Home Clone 0.2.4</string>
     <string name="settings_mode_description">Switch between the traditional Home and Apps screens setup and the simpler Home screen only layout.</string>
     <string name="settings_category_gestures">Gestures</string>
 

@@ -2,14 +2,14 @@
 
 <p align="center">
 
-[![Version](https://img.shields.io/badge/version-0.2.3-4A88FF)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.4-4A88FF)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-4A88FF)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%209.0%2B-4A88FF)](prototype-android/app/build.gradle.kts)
 [![Stack](https://img.shields.io/badge/stack-Kotlin%20%2B%20Compose-4A88FF)](prototype-android/)
 
 </p>
 
-A standalone Kotlin/Compose Android launcher pursuing **Samsung One UI 7** parity — layout, motion, terminology, settings structure, and default behavior. Clone, not a port: no Samsung proprietary assets or brand names shipped.
+A standalone Kotlin/Compose Android launcher pursuing **Samsung One UI 7** parity: layout, motion, terminology, settings structure, and default behavior. Clone, not a port: no Samsung proprietary assets or brand names shipped.
 
 ## What makes this different
 
@@ -17,17 +17,17 @@ Unlike Lawnchair / Niagara / OpenLauncher, the project's north star is **Samsung
 
 ## What lives here
 
-- [docs/product-vision.md](docs/product-vision.md) — target product definition + success criteria
-- [docs/architecture.md](docs/architecture.md) — project boundaries + migration plan
-- [docs/parity-checklist.md](docs/parity-checklist.md) — behavior-by-behavior Samsung parity checklist
-- [docs/ui-spec.md](docs/ui-spec.md) — visual + interaction spec
-- [backlog/epics.md](backlog/epics.md) — major workstreams
-- [backlog/phase-01.md](backlog/phase-01.md) — first implementation milestone
-- [references/clone-brief.md](references/clone-brief.md) — scope + non-goals
-- [ROADMAP.md](ROADMAP.md) — planned features + competitive research (3 rounds) + implementation deep dive
-- [prototype-android/](prototype-android/) — standalone Android Compose prototype (app package)
+- [docs/product-vision.md](docs/product-vision.md): target product definition + success criteria
+- [docs/architecture.md](docs/architecture.md): project boundaries + migration plan
+- [docs/parity-checklist.md](docs/parity-checklist.md): behavior-by-behavior Samsung parity checklist
+- [docs/ui-spec.md](docs/ui-spec.md): visual + interaction spec
+- [backlog/epics.md](backlog/epics.md): major workstreams
+- [backlog/phase-01.md](backlog/phase-01.md): first implementation milestone
+- [references/clone-brief.md](references/clone-brief.md): scope + non-goals
+- [ROADMAP.md](ROADMAP.md): planned features + competitive research (3 rounds) + implementation deep dive
+- [prototype-android/](prototype-android/): standalone Android Compose prototype (app package)
 
-## Current state (v0.2.3)
+## Current state (v0.2.4)
 
 Compose-first prototype covering:
 
@@ -55,7 +55,7 @@ v0.2.2 moves app inventory onto Android's launcher contract:
 - Package/profile changes refresh the inventory through `LauncherApps.Callback`
 - Launch targets carry their profile-aware component and user handle, with the existing sample apps retained only as the empty/error fallback
 
-v0.2.3 adds local data-safety, widget, Finder, layout, packaging, and gate hardening:
+v0.2.4 adds local data-safety, widget, Finder, layout, packaging, and gate hardening:
 
 - `LauncherDataStore.state` is collected by Compose and is now the only writer for media page, Apps button, labels, notification swipe, locked layout, home layout, drawer sort, motion preset, and folder grid toggles
 - The old SharedPreferences file is used only as a one-shot migration source on first DataStore read
@@ -82,11 +82,11 @@ v0.2.3 adds local data-safety, widget, Finder, layout, packaging, and gate harde
 
 v0.2.0 landed the widgets + persistence + motion primitives:
 
-- `LauncherDataStore` — DataStore Preferences store with one-shot migration from the v0.1.0 SharedPreferences file
-- `WidgetPersistence` — versioned JSON widget-ID store on its own DataStore file, bounds-checked decode (128 KB / 1024 entries) to contain corrupt-file blast radius
-- `MotionScheme` + `ProvideMotionScheme` — Standard / Reduced presets exposed as raw `SpringParams`, threaded through a `LocalMotionScheme` CompositionLocal. Platform `ANIMATOR_DURATION_SCALE == 0` forces Reduced
-- `WidgetBindContract` — stateless `ActivityResultContract` for `ACTION_APPWIDGET_BIND` that round-trips the allocated widget ID through an Intent extra so process death during the bind dialog still deallocates correctly on cancel
-- `WidgetPreviewLoader` — `previewLayout` (API 31+) → `previewImage` → provider icon fallback
+- `LauncherDataStore`: DataStore Preferences store with one-shot migration from the v0.1.0 SharedPreferences file
+- `WidgetPersistence`: versioned JSON widget-ID store on its own DataStore file, bounds-checked decode (128 KB / 1024 entries) to contain corrupt-file blast radius
+- `MotionScheme` + `ProvideMotionScheme`: Standard / Reduced presets exposed as raw `SpringParams`, threaded through a `LocalMotionScheme` CompositionLocal. Platform `ANIMATOR_DURATION_SCALE == 0` forces Reduced
+- `WidgetBindContract`: stateless `ActivityResultContract` for `ACTION_APPWIDGET_BIND` that round-trips the allocated widget ID through an Intent extra so process death during the bind dialog still deallocates correctly on cancel
+- `WidgetPreviewLoader`: `previewLayout` (API 31+) → `previewImage` → provider icon fallback
 - Dep bumps: Compose BOM 2024.01 → 2024.10.01 (Compose 1.7 / Material3 1.3), Kotlin 1.9.22 → 1.9.24, core-ktx / activity-compose / lifecycle / material advanced to current stable; `datastore-preferences` 1.1.1 added
 
 Widget bind / preview / persistence now feed live Home widget cells with move, resize, remove, and unavailable-provider recovery controls. Drop-to-edge page creation remains v0.2.x follow-up work.
@@ -98,13 +98,13 @@ From repo root:
 ```bash
 # Git Bash / Linux / macOS
 cd prototype-android
-JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew assembleDebug
+JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-21.0.12.8-hotspot" ./gradlew assembleDebug
 ```
 
 ```powershell
 # PowerShell
 cd prototype-android
-$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
+$env:JAVA_HOME='C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot'
 $env:Path="$env:JAVA_HOME\bin;$env:Path"
 .\gradlew.bat assembleDebug
 ```
@@ -127,7 +127,7 @@ Copy-Item ..\keystore.properties.example .\keystore.properties
 Output lands in `prototype-android/app/build/outputs/release-channel/` as a
 versioned signed APK plus a JSON metadata file containing version, SDK, signing,
 size, SHA-256, and upgrade-install information. Upgrade an existing install with
-`adb install -r app/build/outputs/release-channel/one-ui-home-clone-v0.2.3-release.apk`.
+`adb install -r app/build/outputs/release-channel/one-ui-home-clone-v0.2.4-release.apk`.
 
 Device-backed parity/performance smoke:
 
@@ -200,4 +200,4 @@ Samsung, One UI, and related marks are trademarks of Samsung Electronics Co., Lt
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT: see [LICENSE](LICENSE).

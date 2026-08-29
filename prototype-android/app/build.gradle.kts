@@ -17,8 +17,8 @@ val keystoreProps: Properties = Properties().apply {
 }
 val hasReleaseKeystore: Boolean = keystoreProps.getProperty("storeFile")?.isNotBlank() == true
 val launcherApplicationId = "com.oneuihomeclone"
-val launcherVersionCode = 5
-val launcherVersionName = "0.2.3"
+val launcherVersionCode = 6
+val launcherVersionName = "0.2.4"
 
 fun File.sha256Hex(): String {
     val digest = MessageDigest.getInstance("SHA-256")

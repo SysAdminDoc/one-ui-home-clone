@@ -16,8 +16,8 @@ class LauncherDiagnosticsTest {
     fun buildLauncherDiagnostics_exportsOnlySanitizedCounts() {
         val diagnostics = buildLauncherDiagnostics(
             LauncherDiagnosticsSnapshot(
-                versionName = "0.2.3\nleak",
-                versionCode = 5,
+                versionName = "0.2.4\nleak",
+                versionCode = 6,
                 buildType = "debug",
                 sdkInt = 35,
                 targetSdk = 35,
@@ -96,8 +96,8 @@ class LauncherDiagnosticsTest {
 
         val file = store.export(
             LauncherDiagnosticsSnapshot(
-                versionName = "0.2.3",
-                versionCode = 5,
+                versionName = "0.2.4",
+                versionCode = 6,
                 buildType = "debug",
                 sdkInt = 35,
                 targetSdk = 35,

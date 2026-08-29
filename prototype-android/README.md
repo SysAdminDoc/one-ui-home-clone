@@ -13,13 +13,13 @@ Standalone Android Compose prototype for the Samsung One UI 7 parity launcher.
 From the `prototype-android/` directory:
 
 ```powershell
-$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
+$env:JAVA_HOME='C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot'
 $env:Path="$env:JAVA_HOME\bin;$env:Path"
 .\gradlew.bat assembleDebug
 ```
 
 ```bash
-JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew assembleDebug
+JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-21.0.12.8-hotspot" ./gradlew assembleDebug
 ```
 
 ## Release-channel package
@@ -37,7 +37,7 @@ JSON metadata with version, SDK, signing, size, SHA-256, and upgrade-install
 fields. Install upgrades with:
 
 ```powershell
-adb install -r app/build/outputs/release-channel/one-ui-home-clone-v0.2.3-release.apk
+adb install -r app/build/outputs/release-channel/one-ui-home-clone-v0.2.4-release.apk
 ```
 
 ## Install + set as launcher
@@ -67,16 +67,16 @@ Pixel-class hardware when the ROADMAP thresholds should fail the command.
 Compose-first launcher prototype split into surface-focused UI files under
 `app/src/main/java/com/oneuihomeclone/ui/`.
 
-- **MainActivity** - `singleTask` launcher activity with `onNewIntent` observer so HOME re-entry resets overlay state
-- **LauncherPreferences** (`data/`) - SharedPreferences-backed persistence for user-facing toggles
-- **OneUiHomeCloneTheme** (`ui/theme/`) - full Material 3 day/night color scheme + One UI type scale
-- **OneUiHomeCloneApp** (`ui/`) - state orchestration, persistence, overlay routing, and widget/app loading
-- **LauncherLayoutContract** (`ui/`) - phone portrait, phone landscape, foldable-width, and tablet grid/width contracts
-- **HomeSurface / DrawerUi / FolderUi / WidgetPickerUi / SettingsUi / EditModeUi / NotificationUi** (`ui/`) - focused Compose surfaces
-- **SharedComponents** (`ui/`) - shared controls, app icons, settings rows, and in-app feedback
+- **MainActivity**: `singleTask` launcher activity with `onNewIntent` observer so HOME re-entry resets overlay state
+- **LauncherPreferences** (`data/`): SharedPreferences-backed persistence for user-facing toggles
+- **OneUiHomeCloneTheme** (`ui/theme/`): full Material 3 day/night color scheme + One UI type scale
+- **OneUiHomeCloneApp** (`ui/`): state orchestration, persistence, overlay routing, and widget/app loading
+- **LauncherLayoutContract** (`ui/`): phone portrait, phone landscape, foldable-width, and tablet grid/width contracts
+- **HomeSurface / DrawerUi / FolderUi / WidgetPickerUi / SettingsUi / EditModeUi / NotificationUi** (`ui/`): focused Compose surfaces
+- **SharedComponents** (`ui/`): shared controls, app icons, settings rows, and in-app feedback
 
 ## Notes
 
-- Not included in the Lawnchair Lite root Gradle build - intentional
+- Not included in the Lawnchair Lite root Gradle build. This is intentional.
 - Has its own Gradle settings + app module
 - Shipping target: standalone app; decide at v1.0 whether to merge selected work back into Lawnchair Lite
