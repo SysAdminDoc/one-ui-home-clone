@@ -106,7 +106,7 @@
     <string name="settings_value_on">On</string>
     <string name="settings_value_dots">Dots</string>
     <string name="settings_value_dots_and_number">Dots and number</string>
-    <string name="settings_about_version">One UI Home Clone 0.2.4</string>
+    <string name="settings_about_version">One UI Home Clone 0.2.5</string>
     <string name="settings_mode_description">Switch between the traditional Home and Apps screens setup and the simpler Home screen only layout.</string>
     <string name="settings_category_gestures">Gestures</string>
 
@@ -182,8 +182,8 @@
     <string name="widgets_health_template_summary">Built-in launcher template for parity testing.</string>
     <string name="widgets_health_setup_required">Setup required</string>
     <string name="widgets_health_setup_required_summary">Android opens this provider\'s setup screen before adding it to Home.</string>
-    <string name="widgets_health_preview_unavailable">Preview unavailable</string>
-    <string name="widgets_health_preview_unavailable_summary">Provider loaded, but Android did not return a preview image or layout.</string>
+    <string name="widgets_health_preview_unavailable">Simplified preview</string>
+    <string name="widgets_health_preview_unavailable_summary">Android did not supply a widget preview, so the launcher is showing a simplified preview.</string>
     <string name="widgets_health_unavailable">Unavailable</string>
     <string name="widgets_health_unavailable_summary">Provider is missing. Reinstall the app or remove the restored Home placeholder.</string>
 

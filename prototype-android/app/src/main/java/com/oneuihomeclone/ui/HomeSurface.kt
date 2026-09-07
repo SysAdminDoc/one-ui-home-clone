@@ -59,7 +59,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -1121,16 +1120,20 @@ private fun DrawableWidgetPreview(
     modifier: Modifier,
     contentScale: ContentScale,
 ) {
-    val density = LocalDensity.current
     val drawable = when (preview) {
         is PreviewSource.PreviewImage -> preview.drawable
         is PreviewSource.ProviderIcon -> preview.drawable
         else -> null
     }
-    val bitmap = remember(drawable, density) {
+    val bitmap = remember(drawable, preview) {
         drawable?.let {
             runCatching {
-                it.toBitmap(width = 320, height = 180, config = Bitmap.Config.ARGB_8888)
+                val (width, height) = widgetPreviewBitmapSize(
+                    providerIcon = preview is PreviewSource.ProviderIcon,
+                    intrinsicWidth = it.intrinsicWidth,
+                    intrinsicHeight = it.intrinsicHeight,
+                )
+                it.toBitmap(width = width, height = height, config = Bitmap.Config.ARGB_8888)
                     .asImageBitmap()
             }.getOrNull()
         }
@@ -1151,6 +1154,20 @@ private fun DrawableWidgetPreview(
                 .background(Color.White.copy(alpha = 0.82f)),
         )
     }
+}
+
+internal fun widgetPreviewBitmapSize(
+    providerIcon: Boolean,
+    intrinsicWidth: Int,
+    intrinsicHeight: Int,
+): Pair<Int, Int> {
+    if (providerIcon) return 144 to 144
+
+    val sourceWidth = intrinsicWidth.takeIf { it > 0 } ?: 320
+    val sourceHeight = intrinsicHeight.takeIf { it > 0 } ?: 180
+    val scale = minOf(640f / sourceWidth, 360f / sourceHeight, 1f)
+    return (sourceWidth * scale).roundToInt().coerceAtLeast(1) to
+        (sourceHeight * scale).roundToInt().coerceAtLeast(1)
 }
 
 @Composable

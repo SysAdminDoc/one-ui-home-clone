@@ -23,11 +23,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,6 +42,9 @@ import com.oneuihomeclone.ui.theme.OneUiSurface
 import com.oneuihomeclone.ui.theme.OneUiText
 import com.oneuihomeclone.ui.theme.OneUiTextSecondary
 import com.oneuihomeclone.widgets.PreviewSource
+import com.oneuihomeclone.widgets.WidgetPreviewLoader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun WidgetPickerOverlay(
@@ -124,7 +130,10 @@ internal fun WidgetPickerOverlay(
                         WidgetPickerEmptyState(selectedCategory = selectedCategory, searchQuery = searchQuery)
                     }
                 } else {
-                    lazyItems(widgets) { widget ->
+                    lazyItems(
+                        items = widgets,
+                        key = { widget -> widget.stableWidgetKey() },
+                    ) { widget ->
                         WidgetTemplateCard(widget = widget, onAddWidget = onAddWidget)
                     }
                 }
@@ -138,9 +147,27 @@ internal fun WidgetTemplateCard(
     widget: WidgetTemplateModel,
     onAddWidget: (WidgetTemplateModel) -> Unit,
 ) {
+    val appContext = LocalContext.current.applicationContext
+    val providerInfo = widget.providerInfo
+    val resolvedPreview: PreviewSource by produceState(
+        initialValue = widget.previewSource,
+        key1 = providerInfo?.provider?.flattenToShortString(),
+        key2 = widget.previewSource,
+    ) {
+        if (providerInfo != null && widget.previewSource == PreviewSource.Empty) {
+            value = withContext(Dispatchers.IO) {
+                WidgetPreviewLoader.load(appContext, providerInfo)
+            }
+        }
+    }
+    val displayedWidget = if (resolvedPreview == widget.previewSource) {
+        widget
+    } else {
+        widget.copy(previewSource = resolvedPreview)
+    }
     val providerUnavailable = widget.isProviderUnavailable()
     val requiresSetup = widget.requiresConfiguration()
-    val previewFallback = widget.hasPreviewFallback()
+    val previewFallback = displayedWidget.hasPreviewFallback()
     val healthLabel = when {
         providerUnavailable -> stringResource(R.string.widgets_health_unavailable)
         requiresSetup -> stringResource(R.string.widgets_health_setup_required)
@@ -228,7 +255,7 @@ internal fun WidgetTemplateCard(
                         }
                     } else {
                         WidgetPreviewPane(
-                            widget = widget,
+                            widget = displayedWidget,
                             modifier = Modifier.fillMaxSize(),
                             compact = false,
                         )

@@ -17,8 +17,8 @@ val keystoreProps: Properties = Properties().apply {
 }
 val hasReleaseKeystore: Boolean = keystoreProps.getProperty("storeFile")?.isNotBlank() == true
 val launcherApplicationId = "com.oneuihomeclone"
-val launcherVersionCode = 6
-val launcherVersionName = "0.2.4"
+val launcherVersionCode = 7
+val launcherVersionName = "0.2.5"
 
 fun File.sha256Hex(): String {
     val digest = MessageDigest.getInstance("SHA-256")
@@ -165,7 +165,7 @@ tasks.register("releaseChannelPackage") {
                 "fileName": "${packagedApk.name.jsonEscaped()}",
                 "sha256": "${packagedApk.sha256Hex()}",
                 "sizeBytes": ${packagedApk.length()},
-                "path": "${packagedApk.absolutePath.jsonEscaped()}"
+                "path": "release-channel/${packagedApk.name.jsonEscaped()}"
               },
               "signing": {
                 "scheme": "release",

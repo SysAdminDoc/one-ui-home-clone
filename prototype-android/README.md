@@ -1,82 +1,81 @@
-# One UI Home Clone Prototype
+# One UI Home Clone Android project
 
-Standalone Android Compose prototype for the Samsung One UI 7 parity launcher.
+This directory contains the standalone Kotlin and Jetpack Compose launcher. It builds independently and does not depend on Lawnchair Lite.
 
-## Purpose
+## Requirements
 
-- Validate the visual language
-- Prototype home, drawer, Finder, folders, edit mode, widgets, and settings flows
-- Iterate without touching Lawnchair Lite app code
+- Android Studio with Android API 37 and platform tools
+- JDK 17 or newer
+- An Android 9 or newer emulator for connected checks
+- A private release keystore for signed packaging
 
 ## Build
 
-From the `prototype-android/` directory:
+From this directory in PowerShell:
 
 ```powershell
-$env:JAVA_HOME='C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot'
-$env:Path="$env:JAVA_HOME\bin;$env:Path"
-.\gradlew.bat assembleDebug
+$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
+$env:ANDROID_HOME="$env:LOCALAPPDATA\Android\Sdk"
+.\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-```bash
-JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-21.0.12.8-hotspot" ./gradlew assembleDebug
-```
+The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Release-channel package
+## Connected checks
 
-Copy `../keystore.properties.example` to `keystore.properties`, fill in the
-local release keystore values, then run:
+Use an emulator so launcher-role changes do not disturb a daily-use device:
 
 ```powershell
-.\gradlew.bat :app:releaseChannelPackage
+$env:ANDROID_SERIAL='emulator-5590'
+.\gradlew.bat :app:connectedDebugAndroidTest
 ```
 
-The task builds `assembleRelease`, requires the local release keystore, copies a
-versioned signed APK to `app/build/outputs/release-channel/`, and writes adjacent
-JSON metadata with version, SDK, signing, size, SHA-256, and upgrade-install
-fields. Install upgrades with:
+The connected suite covers Home, Apps, Finder, settings persistence, widgets, backup and restore, recovery actions, RTL layout, and the pseudo-locale fixture.
+
+Local device gates capture launch time, resident memory, drawer frame pacing, app-launch latency, Home and Back behavior, Finder keyboard behavior, landscape layout, and system-bar contrast:
 
 ```powershell
-adb install -r app/build/outputs/release-channel/one-ui-home-clone-v0.2.4-release.apk
-```
-
-## Install + set as launcher
-
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME
-# pick "One UI Home Clone" -> "Always"
-```
-
-## Device gates
-
-With one emulator or device attached:
-
-```powershell
+$env:ANDROID_SERIAL='emulator-5590'
 .\gradlew.bat deviceGates
 ```
 
-The task builds and installs the debug APK, cold-launches the launcher, captures
-Home and Apps screen screenshots, records RSS, drawer frame pacing, an app-launch
-tap probe, and a Perfetto trace when the device allows it. Reports are written to
-`app/build/reports/device-gates/`. Use `.\gradlew.bat deviceGatesEnforced` on
-Pixel-class hardware when the ROADMAP thresholds should fail the command.
+Reports are written to `app/build/reports/device-gates/`. `deviceGatesEnforced` returns a failure when a measured threshold is missed.
+
+## Signed package
+
+Copy `../keystore.properties.example` to `keystore.properties` and enter the local keystore values. Never commit that file or the keystore.
+
+```powershell
+.\gradlew.bat clean :app:releaseChannelPackage
+```
+
+The output directory is `app/build/outputs/release-channel/`. It contains a versioned signed APK plus JSON metadata with the SDK levels, signing configuration, file size, and SHA-256 digest.
+
+## Marketing assets
+
+Rebuild the project mark, app icon, adaptive icon layers, downloadable icon pack, wordmark, banner, and social preview:
+
+```powershell
+.\tools\build-brand-assets.ps1
+```
+
+After creating the signed package, capture the release on an isolated emulator:
+
+```powershell
+.\tools\capture-marketing.ps1 `
+  -DeviceSerial emulator-5590 `
+  -ApkPath .\app\build\outputs\release-channel\one-ui-home-clone-v0.2.5-release.apk
+```
+
+The capture tool rejects physical-device serials, installs the supplied APK, records each product surface, and restores the emulator's prior Home app and theme mode.
 
 ## Architecture
 
-Compose-first launcher prototype split into surface-focused UI files under
-`app/src/main/java/com/oneuihomeclone/ui/`.
+- `MainActivity.kt` owns the launcher activity and Android role flows.
+- `ui/OneUiHomeCloneApp.kt` coordinates state, persistence, overlays, widgets, and app inventory.
+- `ui/HomeSurface.kt`, `DrawerUi.kt`, `EditModeUi.kt`, `WidgetPickerUi.kt`, and `SettingsUi.kt` render the main product surfaces.
+- `data/` holds bounded local stores, backup and restore, and diagnostics export.
+- `notifications/` provides local aggregate badge counts after Android grants access.
+- `baselineprofile/` exercises cold Home start, Apps, Finder, and an app launch for release optimization.
 
-- **MainActivity**: `singleTask` launcher activity with `onNewIntent` observer so HOME re-entry resets overlay state
-- **LauncherPreferences** (`data/`): SharedPreferences-backed persistence for user-facing toggles
-- **OneUiHomeCloneTheme** (`ui/theme/`): full Material 3 day/night color scheme + One UI type scale
-- **OneUiHomeCloneApp** (`ui/`): state orchestration, persistence, overlay routing, and widget/app loading
-- **LauncherLayoutContract** (`ui/`): phone portrait, phone landscape, foldable-width, and tablet grid/width contracts
-- **HomeSurface / DrawerUi / FolderUi / WidgetPickerUi / SettingsUi / EditModeUi / NotificationUi** (`ui/`): focused Compose surfaces
-- **SharedComponents** (`ui/`): shared controls, app icons, settings rows, and in-app feedback
-
-## Notes
-
-- Not included in the Lawnchair Lite root Gradle build. This is intentional.
-- Has its own Gradle settings + app module
-- Shipping target: standalone app; decide at v1.0 whether to merge selected work back into Lawnchair Lite
+The manifest does not request internet access. Contacts and notification access are optional, and both features default to off.

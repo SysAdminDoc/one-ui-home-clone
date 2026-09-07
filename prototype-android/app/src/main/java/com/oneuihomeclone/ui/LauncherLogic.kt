@@ -491,7 +491,7 @@ internal fun WidgetTemplateModel.isProviderUnavailable(): Boolean =
     providerInfo == null && restoredProviderPackage != null
 
 internal fun WidgetTemplateModel.hasPreviewFallback(): Boolean =
-    providerInfo != null && previewSource == PreviewSource.Empty
+    providerInfo != null && (previewSource == PreviewSource.Empty || previewSource is PreviewSource.ProviderIcon)
 
 private fun WidgetTemplateModel.widgetSearchText(): String =
     listOfNotNull(
@@ -1098,7 +1098,13 @@ internal fun Set<String>.toggle(value: String): Set<String> {
 
 internal fun buildHomePage(id: Int, allApps: List<CloneApp>): HomePageModel {
     val metadata = when ((id - 1) % 3) {
-        0 -> listOf("Home $id", "Monday", "30", "73° and bright", "Build parity first. Add customization only after the launcher feels native.")
+        0 -> listOf(
+            "Home $id",
+            "Welcome home",
+            "Ready",
+            "Everything in its place",
+            "Swipe up for apps. Press and hold anywhere to personalize your Home screen.",
+        )
         1 -> listOf("Home $id", "Focus", "4 blocks", "Calendar, tasks, and routines", "Every screen should have a purpose, not just icons.")
         else -> listOf("Home $id", "Evening", "3 scenes", "Lighting, music, and home controls", "Dedicated pages keep routines, widgets, and media moments easy to reach.")
     }

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.2.5 (2026-09-06)
+
+### Added
+
+- A new original launcher identity with adaptive color, monochrome, app icon, downloadable icon pack, banner, wordmark, and social preview assets.
+- A repeatable isolated-emulator capture tool for Home, Apps, Finder, edit mode, widgets, and settings screenshots.
+- A product-focused screenshot tour and direct signed-APK download path in the project README.
+
+### Changed
+
+- First-launch Home copy now reads like a finished product instead of an internal parity note.
+- Project and prototype documentation now focus on installation, privacy, product behavior, and local verification.
+- GitHub presentation now uses concise positioning, expanded discovery topics, and current release metadata.
+
+### Fixed
+
+- Widget provider icons now keep a square aspect ratio when Android does not supply a full widget preview.
+- Widget cards now distinguish a full provider preview from the simplified fallback that appears when Android does not supply one.
+- Filtered widget results now keep stable item identities so previews cannot carry over from the previous provider row.
+- Release metadata now uses a portable artifact path instead of recording a build-machine path.
+
+### Verified
+
+- Unit tests, Android lint, debug assembly, connected UI tests, release assembly, release signing, and emulator smoke checks all run locally before publication.
+
 ## v0.2.4 (2026-08-29)
 
 ### Added
@@ -147,7 +172,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adaptive launcher icon, light-first One UI palette, Samsung-style blue accent
 - GitHub Actions release workflow (`release.yml`): signed release APK + debug APK + AAB attached per tag
 - Keystore signing config gated on `keystore.properties`; debug builds work without it
-- MIT license, shields.io README badges, repo `CLAUDE.md` working notes
+- MIT license and shields.io README badges
 - `LauncherPreferences` (SharedPreferences-backed) persisting 8 user-facing toggles: media page, apps button, app/widget labels, notification swipe, lock layout, home-layout mode, drawer sort
 - Launcher `HOME` + `DEFAULT` intent filter + `singleTask` + `onNewIntent` observer so HOME re-entry collapses overlays and scrolls to default page
 - `BackHandler` absorbing back-press on home: overlays collapse first, then search clears, then page resets to default, then press is absorbed

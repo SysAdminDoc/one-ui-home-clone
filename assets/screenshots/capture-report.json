@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "generator": "prototype-android/tools/capture-marketing.ps1",
+  "generatedAt": "2026-09-07T02:05:54.0088276Z",
+  "source": {
+    "artifact": "one-ui-home-clone-v0.2.5-release.apk",
+    "sha256": "072a29fc7d5417465376d7d0ff5d4d219e13a925978f08691ee0a6f89ef4e678",
+    "sizeBytes": 4037538
+  },
+  "environment": {
+    "type": "isolated Android emulator",
+    "androidApi": "35",
+    "resolution": "1080x2400"
+  },
+  "captures": {
+    "home": "home.png",
+    "apps": "apps.png",
+    "finder": "finder.png",
+    "settings": "settings.png",
+    "editMode": "edit-mode.png",
+    "widgets": "widgets.png"
+  }
+}

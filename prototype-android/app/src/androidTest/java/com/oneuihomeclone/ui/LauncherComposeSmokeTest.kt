@@ -301,7 +301,7 @@ class LauncherComposeSmokeTest {
                 summary = PreviousCrashSummary(
                     timestamp = "2026-07-05T12:00:00",
                     thread = "main",
-                    versionName = "0.2.4",
+                    versionName = "0.2.5",
                     versionCode = "5",
                     exceptionClass = "java.lang.IllegalStateException",
                 ),

@@ -25,7 +25,7 @@ keystore.properties
 **/app/build/
 **/app/release/
 
-# AI agent working files — never commit
+# Local working files
 CLAUDE.md
 CODEX_CHANGELOG.md
 .claude/
@@ -48,12 +48,9 @@ prototype-android/keystore.properties
 # Markdown files local-only (except README)
 *.md
 !README.md
+!CHANGELOG.md
 
-# Markdown files local-only (except README)
-*.md
-!README.md
-
-# AI config
+# Local assistant configuration
 AGENTS.md
 .codex/
 .ai/
