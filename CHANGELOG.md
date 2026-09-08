@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.2.6 (2026-09-08)
+
+### Added
+
+- All five original logo concepts, the selected full-resolution master, and a browsable selection record.
+- Release and screenshot integrity checks, including regression tests that reject stale capture evidence.
+
+### Changed
+
+- The README identifies the launcher as a prototype and explains the difference between built-in layout cards, provider previews, and live widgets.
+- Signed packaging now produces the checksum sidecar automatically. Release screenshots record hashes for the final APK and each image.
+- The capture tool reads its default APK version from the Android build configuration.
+
+### Fixed
+
+- Home-screen text no longer shows through the Apps drawer or Finder. Both surfaces use an opaque background, covered by pixel-level emulator regression tests.
+
+### Verified
+
+- 100 unit tests and 15 connected emulator tests passed. Android lint completed without errors; it still reports 16 warnings.
+- The signed release keeps the original project certificate. Six fresh screenshots were captured from that exact APK and compared with the previous release.
+- Original concept hashes, 32 local documentation links, APK checksums, and screenshot hashes passed verification. Five invalid release fixtures were rejected in both Windows PowerShell 5.1 and PowerShell 7.
+
 ## v0.2.5 (2026-09-06)
 
 ### Added

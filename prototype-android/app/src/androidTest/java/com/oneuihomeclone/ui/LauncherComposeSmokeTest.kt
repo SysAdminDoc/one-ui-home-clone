@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.res.Configuration
 import android.os.Environment
 import android.os.LocaleList
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -11,10 +14,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -22,6 +29,7 @@ import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -39,6 +47,7 @@ import com.oneuihomeclone.data.LauncherDataStore
 import com.oneuihomeclone.data.LauncherState
 import com.oneuihomeclone.data.PersistedLauncherLayout
 import com.oneuihomeclone.ui.theme.OneUiHomeCloneTheme
+import com.oneuihomeclone.ui.theme.OneUiBackground
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.flow.first
@@ -532,6 +541,54 @@ class LauncherComposeSmokeTest {
         composeRule.onNodeWithText("[!! Finder !!]").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Open Apps screen").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Clock").assertIsDisplayed()
+    }
+
+    @Test
+    fun appsDrawerOccludesHomeContent() = assertDrawerOccludesHome("")
+
+    @Test
+    fun finderOccludesHomeContent() = assertDrawerOccludesHome("settings")
+
+    private fun assertDrawerOccludesHome(query: String) {
+        setLauncherContent {
+            Box(Modifier.fillMaxSize().background(Color.Magenta)) {
+                DrawerOverlay(
+                    layoutContract = resolveLauncherLayoutContract(widthDp = 412, heightDp = 915),
+                    query = query,
+                    apps = emptyList(),
+                    appsScreenApps = emptyList(),
+                    drawerPages = listOf(emptyList()),
+                    homeLayoutMode = HomeLayoutMode.HOME_AND_APPS_SCREENS,
+                    drawerSortMode = DrawerSortMode.CUSTOM_ORDER,
+                    drawerPageIndex = 0,
+                    hiddenAppCount = 0,
+                    settingResults = emptyList(),
+                    actionResults = emptyList(),
+                    shortcutResults = emptyList(),
+                    contactResults = emptyList(),
+                    recentSearches = emptyList(),
+                    onQueryChange = {},
+                    onClose = {},
+                    onOpenSettings = {},
+                    onSelectSortMode = {},
+                    onSelectDrawerPage = {},
+                    onOpenHideApps = {},
+                    onSelectRecentSearch = {},
+                    onOpenSettingResult = {},
+                    onOpenAction = {},
+                    onOpenContact = {},
+                    onOpenApp = {},
+                    onOpenAppActions = { _, _ -> },
+                    appLabelsEnabled = true,
+                )
+            }
+        }
+        val pixels = composeRule.onRoot().captureToImage().toPixelMap()
+        assertEquals(
+            "Home content must not bleed through the drawer",
+            OneUiBackground.toArgb(),
+            pixels[1, pixels.height / 2].toArgb(),
+        )
     }
 
     private fun setLauncherContent(

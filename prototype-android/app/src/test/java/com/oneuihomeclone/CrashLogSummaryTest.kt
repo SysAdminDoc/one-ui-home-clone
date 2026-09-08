@@ -41,11 +41,11 @@ class CrashLogSummaryTest {
                 exceptionClass = "java.lang.IllegalStateException",
             ),
             sdkInt = 35,
-            versionName = "0.2.5",
-            versionCode = 7,
+            versionName = "0.2.6",
+            versionCode = 8,
         )
 
-        assertTrue(diagnostics.contains("versionName=0.2.5"))
+        assertTrue(diagnostics.contains("versionName=0.2.6"))
         assertTrue(diagnostics.contains("previousCrash.exception=java.lang.IllegalStateException"))
         assertFalse(diagnostics.contains("second line"))
         assertFalse(diagnostics.contains("contains user text"))

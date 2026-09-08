@@ -111,7 +111,7 @@ internal fun DrawerOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(OneUiBackground.copy(alpha = 0.96f)),
+            .background(OneUiBackground),
         contentAlignment = Alignment.TopCenter,
     ) {
         Column(

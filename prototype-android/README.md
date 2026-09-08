@@ -49,7 +49,7 @@ Copy `../keystore.properties.example` to `keystore.properties` and enter the loc
 .\gradlew.bat clean :app:releaseChannelPackage
 ```
 
-The output directory is `app/build/outputs/release-channel/`. It contains a versioned signed APK plus JSON metadata with the SDK levels, signing configuration, file size, and SHA-256 digest.
+The output directory is `app/build/outputs/release-channel/`. It contains a versioned signed APK, a `.sha256` checksum file, and JSON metadata with the SDK levels, signing configuration, file size, and SHA-256 digest. Publishing an upgrade requires the original project signing key. Don't generate a replacement key for an existing release channel.
 
 ## Marketing assets
 
@@ -64,10 +64,18 @@ After creating the signed package, capture the release on an isolated emulator:
 ```powershell
 .\tools\capture-marketing.ps1 `
   -DeviceSerial emulator-5590 `
-  -ApkPath .\app\build\outputs\release-channel\one-ui-home-clone-v0.2.5-release.apk
+  -ApkPath .\app\build\outputs\release-channel\one-ui-home-clone-v0.2.6-release.apk
+.\tools\verify-marketing.ps1
+.\tools\test-marketing-verification.ps1
 ```
 
-The capture tool rejects physical-device serials, installs the supplied APK, records each product surface, and restores the emulator's prior Home app and theme mode.
+The capture tool rejects physical-device serials, installs the supplied APK, records each product surface, and restores the emulator's prior Home app and theme mode. If `-ApkPath` is omitted, it uses the version declared in `app/build.gradle.kts`. It clears only this app's data on the emulator, so use a disposable headless emulator, not your development session.
+
+Before the Home capture, a tap in the empty page gutter returns the emulator to touch mode. This clears keyboard-focus highlights left by connected tests without changing the launcher layout.
+
+The capture record includes the final APK digest and an integrity record for every screenshot. The verification tool checks those records against the release files, along with the README's local links and the original [logo concepts](../assets/brand/concepts/README.md). Its regression checks reject stale APK metadata, mismatched screenshots, and missing captures. Run capture after the last release build so the README never points to evidence from an earlier APK.
+
+Screenshots show the actual prototype. Built-in Calendar and Weather cards are layout previews. Provider previews in the widget picker are not proof that a live widget has been configured.
 
 ## Architecture
 

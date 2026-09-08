@@ -15,7 +15,9 @@ if ($DeviceSerial -notmatch "^emulator-\d+$") {
     throw "Marketing capture only runs on an Android emulator. Received: $DeviceSerial"
 }
 if ([string]::IsNullOrWhiteSpace($ApkPath)) {
-    $ApkPath = Join-Path $repoRoot "prototype-android\app\build\outputs\release-channel\one-ui-home-clone-v0.2.5-release.apk"
+    $buildConfig = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "prototype-android\app\build.gradle.kts")
+    if ($buildConfig -notmatch 'val launcherVersionName = "([\d.]+)"') { throw "Launcher version was not found." }
+    $ApkPath = Join-Path $repoRoot "prototype-android\app\build\outputs\release-channel\one-ui-home-clone-v$($Matches[1])-release.apk"
 }
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
     $OutputDir = Join-Path $repoRoot "assets\screenshots"
@@ -188,6 +190,11 @@ try {
 
     Start-Launcher
     Wait-ForLabel -Label "Home and Apps screens" | Out-Null
+    # Instrumentation can leave Android in keyboard-navigation mode. Return to
+    # touch mode in the empty page gutter so a focused widget is not highlighted.
+    $neutralY = [int]($script:ScreenSize.Height * 0.10)
+    Invoke-Adb -Arguments @("shell", "input", "touchscreen", "tap", "4", "$neutralY") | Out-Null
+    Start-Sleep -Milliseconds 450
     $captured.home = Save-MarketingScreenshot -Name "home"
 
     Open-Drawer -ScreenSize $script:ScreenSize
@@ -224,8 +231,16 @@ try {
     Wait-ForLabel -Label "Calendar month view" | Out-Null
     $captured.widgets = Save-MarketingScreenshot -Name "widgets"
 
+    $captureIntegrity = [ordered]@{}
+    foreach ($fileName in $captured.Values) {
+        $file = Get-Item -LiteralPath (Join-Path $OutputDir $fileName)
+        $captureIntegrity[$fileName] = [ordered]@{
+            sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName).Hash.ToLowerInvariant()
+            sizeBytes = $file.Length
+        }
+    }
     $report = [ordered]@{
-        schemaVersion = 1
+        schemaVersion = 2
         generator = "prototype-android/tools/capture-marketing.ps1"
         generatedAt = (Get-Date).ToUniversalTime().ToString("o")
         source = [ordered]@{
@@ -239,6 +254,7 @@ try {
             resolution = "$($script:ScreenSize.Width)x$($script:ScreenSize.Height)"
         }
         captures = $captured
+        captureIntegrity = $captureIntegrity
     }
     $reportPath = Join-Path $OutputDir "capture-report.json"
     $reportJson = (($report | ConvertTo-Json -Depth 6) -replace "`r`n", "`n") + "`n"

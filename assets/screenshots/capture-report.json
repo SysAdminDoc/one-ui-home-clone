@@ -1,10 +1,10 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generator": "prototype-android/tools/capture-marketing.ps1",
-  "generatedAt": "2026-09-07T02:05:54.0088276Z",
+  "generatedAt": "2026-09-08T04:35:27.4812707Z",
   "source": {
-    "artifact": "one-ui-home-clone-v0.2.5-release.apk",
-    "sha256": "072a29fc7d5417465376d7d0ff5d4d219e13a925978f08691ee0a6f89ef4e678",
+    "artifact": "one-ui-home-clone-v0.2.6-release.apk",
+    "sha256": "9a140a1cfffb118d0c0d1cf93f43a8307914cf2f1d9725c8b6184ce6b1ed2a56",
     "sizeBytes": 4037538
   },
   "environment": {
@@ -19,5 +19,31 @@
     "settings": "settings.png",
     "editMode": "edit-mode.png",
     "widgets": "widgets.png"
+  },
+  "captureIntegrity": {
+    "home.png": {
+      "sha256": "11276f96ca48b8428f28868e32d5f28fda5ccc8336f0a0e6f3fe2311c8c16a58",
+      "sizeBytes": 425671
+    },
+    "apps.png": {
+      "sha256": "69914154e488ddbc5fc154a5b2ec18c6274910777d39b904e928c2fdd2db6a28",
+      "sizeBytes": 307740
+    },
+    "finder.png": {
+      "sha256": "781f0c22e86d07446d4b6416cf18ce3ff1303a9bdd7d73042d56af5d7ee07d76",
+      "sizeBytes": 117332
+    },
+    "settings.png": {
+      "sha256": "926aae821ff5eca7c060e4629a5ab736975ef32f5c3d76fbf0ec1e1e8b395327",
+      "sizeBytes": 159409
+    },
+    "edit-mode.png": {
+      "sha256": "62955242f7eac3177c0d58621b6bf1d8924d7d280791b7eae3c56f2462a225ab",
+      "sizeBytes": 262848
+    },
+    "widgets.png": {
+      "sha256": "1f146eef70e3314a9986dc678372f5433a6b06de786e006bf4cc11a17fdf2ac8",
+      "sizeBytes": 258650
+    }
   }
 }

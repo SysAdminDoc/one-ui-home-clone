@@ -17,8 +17,8 @@ val keystoreProps: Properties = Properties().apply {
 }
 val hasReleaseKeystore: Boolean = keystoreProps.getProperty("storeFile")?.isNotBlank() == true
 val launcherApplicationId = "com.oneuihomeclone"
-val launcherVersionCode = 7
-val launcherVersionName = "0.2.5"
+val launcherVersionCode = 8
+val launcherVersionName = "0.2.6"
 
 fun File.sha256Hex(): String {
     val digest = MessageDigest.getInstance("SHA-256")
@@ -134,8 +134,12 @@ tasks.register("releaseChannelPackage") {
     val releaseApk = layout.buildDirectory.file("outputs/apk/release/app-release.apk")
     val channelApkName = "one-ui-home-clone-v$launcherVersionName-release.apk"
     val channelApk = outputDir.map { it.file(channelApkName) }
+    val checksumFile = outputDir.map { it.file("$channelApkName.sha256") }
     val metadataFile = outputDir.map { it.file("one-ui-home-clone-v$launcherVersionName-release.json") }
-    outputs.files(channelApk, metadataFile)
+    inputs.file(releaseApk)
+    inputs.property("versionName", launcherVersionName)
+    inputs.property("versionCode", launcherVersionCode)
+    outputs.files(channelApk, checksumFile, metadataFile)
 
     doLast {
         check(hasReleaseKeystore) {
@@ -149,6 +153,8 @@ tasks.register("releaseChannelPackage") {
         destinationDir.mkdirs()
         val packagedApk = channelApk.get().asFile
         sourceApk.copyTo(packagedApk, overwrite = true)
+        val packagedSha256 = packagedApk.sha256Hex()
+        checksumFile.get().asFile.writeText("$packagedSha256  ${packagedApk.name}\n")
 
         val releaseStoreFile = rootProject.file(keystoreProps.getProperty("storeFile"))
         val metadata = """
@@ -163,7 +169,7 @@ tasks.register("releaseChannelPackage") {
               "artifact": {
                 "type": "apk",
                 "fileName": "${packagedApk.name.jsonEscaped()}",
-                "sha256": "${packagedApk.sha256Hex()}",
+                "sha256": "$packagedSha256",
                 "sizeBytes": ${packagedApk.length()},
                 "path": "release-channel/${packagedApk.name.jsonEscaped()}"
               },
@@ -178,6 +184,7 @@ tasks.register("releaseChannelPackage") {
         """.trimIndent()
         metadataFile.get().asFile.writeText(metadata)
         logger.lifecycle("Release-channel APK: ${packagedApk.absolutePath}")
+        logger.lifecycle("Release-channel checksum: ${checksumFile.get().asFile.absolutePath}")
         logger.lifecycle("Release-channel metadata: ${metadataFile.get().asFile.absolutePath}")
     }
 }
