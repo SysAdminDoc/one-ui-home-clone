@@ -5,6 +5,16 @@
 [![Platform](https://img.shields.io/badge/Android-9%2B-2586FF?logo=android&logoColor=white)](prototype-android/app/build.gradle.kts)
 [![Kotlin](https://img.shields.io/badge/Kotlin-Compose-2586FF?logo=kotlin&logoColor=white)](prototype-android/)
 
+<p align="center">
+  <a href="https://ko-fi.com/X8K126YVER">
+    <img height="42" src="https://storage.ko-fi.com/cdn/kofi2.png?v=3" alt="Buy me a coffee on Ko-fi" />
+  </a>
+</p>
+
+<p align="center">
+  <sub><em>If this project helps you, a coffee helps me keep working on it.</em></sub>
+</p>
+
 One UI Home Clone is an open-source Android launcher prototype inspired by Samsung's Home and Apps workflow. Organize installed apps into folders, find them with local search, and experiment with home-screen layouts. It's built in Kotlin and Compose, without Samsung code or proprietary artwork.
 
 [Try the signed APK](https://github.com/SysAdminDoc/one-ui-home-clone/releases/latest/download/one-ui-home-clone-v0.2.6-release.apk) · [Release notes](https://github.com/SysAdminDoc/one-ui-home-clone/releases/latest) · [Original logo concepts](assets/brand/concepts/README.md)
